@@ -38,7 +38,7 @@ public class ItemComandaRepository implements PanacheRepositoryBase<ItemComanda,
         Sort sort = Sort.by(sortBy != null ? sortBy : "dataLancamento", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(size, page);
+        Page pageable = Page.of(page, size);
         
         var panacheQuery = find(query, sort, comanda);
         panacheQuery.page(pageable);

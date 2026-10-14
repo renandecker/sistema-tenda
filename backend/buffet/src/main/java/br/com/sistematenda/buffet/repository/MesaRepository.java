@@ -55,7 +55,7 @@ public class MesaRepository implements PanacheRepositoryBase<Mesa, UUID> {
         Sort sort = Sort.by(sortBy != null ? sortBy : "numero", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(size, page);
+        Page pageable = Page.of(page, size);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);

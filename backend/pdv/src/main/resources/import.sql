@@ -11,7 +11,7 @@ VALUES (
     true,
     NOW(),
     false
-) ON CONFLICT (email) DO NOTHING;
+) ON CONFLICT (email) DO UPDATE SET senha_hash = EXCLUDED.senha_hash, nome = EXCLUDED.nome, ativo = true;
 
 -- Perfis do admin (ElementCollection -> common_usuario_perfil)
 INSERT INTO common_usuario_perfil (usuario_id, perfil)
@@ -21,7 +21,11 @@ CROSS JOIN (VALUES
     ('ADMIN'), ('GERENTE'), ('FISCAL'), ('CONTABIL'),
     ('PDV'), ('ESTOQUE'), ('FRUTEIRA'), ('BUFFET')
 ) AS t(perfil)
-WHERE u.email = 'admin@sistematenda.com';
+WHERE u.email = 'admin@sistematenda.com'
+AND NOT EXISTS (
+    SELECT 1 FROM common_usuario_perfil p
+    WHERE p.usuario_id = u.id AND p.perfil = t.perfil
+);
 
 -- Initialize default roles/perfis reference (for documentation)
 -- ADMIN - Acesso total ao sistema

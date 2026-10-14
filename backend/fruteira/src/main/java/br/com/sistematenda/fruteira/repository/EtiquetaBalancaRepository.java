@@ -44,7 +44,7 @@ public class EtiquetaBalancaRepository implements PanacheRepositoryBase<Etiqueta
         Sort sort = Sort.by(sortBy != null ? sortBy : "codigo", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(size, page);
+        Page pageable = Page.of(page, size);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);

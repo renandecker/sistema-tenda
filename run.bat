@@ -38,7 +38,7 @@ echo.
 
 echo [3/4] Compilando backend Maven ^(pode demorar na primeira vez^)...
 pushd "%BACKEND%"
-call mvn -q clean install -DskipTests
+call mvn -o -q clean install -DskipTests
 set "MVN_ERR=!errorlevel!"
 popd
 if not "!MVN_ERR!"=="0" (
@@ -71,7 +71,7 @@ powershell -NoProfile -Command "$c=Get-NetTCPConnection -LocalPort 3000 -State L
 echo ============================================================
 echo    Iniciando servicos...
 echo ============================================================
-start "Sistema Tenda - Backend" /D "%BACKEND%\pdv" cmd /k mvn io.quarkus:quarkus-maven-plugin:%QUARKUS_VERSION%:dev
+start "Sistema Tenda - Backend" /D "%BACKEND%\pdv" cmd /k mvn -o io.quarkus:quarkus-maven-plugin:%QUARKUS_VERSION%:dev
 start "Sistema Tenda - Frontend" /D "%FRONTEND%" cmd /k npm run dev
 echo.
 echo    Backend : http://localhost:8080
@@ -98,7 +98,7 @@ exit /b 0
 
 :check_port
 set "PORT_OK=0"
-powershell -NoProfile -Command "if((New-Object Net.Sockets.TcpClient).ConnectAsync('localhost',%~1).Wait(1000)){exit 0}else{exit 1}" >nul 2>&1
+powershell -NoProfile -Command "$ok=$false; foreach($h in @('127.0.0.1','::1')){ try{ if((New-Object Net.Sockets.TcpClient).ConnectAsync($h,%~1).Wait(700)){$ok=$true;break} }catch{} }; if($ok){exit 0}else{exit 1}" >nul 2>&1
 if !errorlevel! equ 0 set "PORT_OK=1"
 goto :eof
 

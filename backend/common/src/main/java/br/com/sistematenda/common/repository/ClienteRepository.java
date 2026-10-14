@@ -58,7 +58,7 @@ public class ClienteRepository implements PanacheRepositoryBase<Cliente, UUID> {
         Sort sort = Sort.by(sortBy != null ? sortBy : "nome",
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
 
-        Page pageable = Page.of(size, page);
+        Page pageable = Page.of(page, size);
 
         List<Cliente> content = find(query.toString(), sort, params.toArray()).page(pageable).list();
         long totalElements = count(query.toString(), params.toArray());

@@ -39,12 +39,14 @@ import {
   PriceChange as PriceChangeIcon,
   Warning as WarningIcon,
   AttachMoney as AttachMoneyIcon,
+  ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { usePdv } from '@/contexts/PdvContext';
 import { brand } from '@/theme';
 
 const drawerWidth = 260;
+const triggerWidth = 12;
 
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
@@ -80,6 +82,7 @@ export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
@@ -150,7 +153,7 @@ export function Layout() {
             <ListItemButton
               key={item.path}
               selected={active}
-              onClick={() => item.path && navigate(item.path)}
+              onClick={() => { item.path && navigate(item.path); setMenuOpen(false); }}
               sx={{ borderRadius: 2, mx: 1, my: 0.25 }}
             >
               <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
@@ -170,8 +173,6 @@ export function Layout() {
       <AppBar
         position="fixed"
         sx={{
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
           bgcolor: 'background.paper',
           borderBottom: 1,
           borderColor: 'divider',
@@ -204,6 +205,59 @@ export function Layout() {
         </Toolbar>
       </AppBar>
 
+      {/* Menu suspenso que revela ao passar o mouse na borda esquerda (desktop) */}
+      <Box
+        onMouseEnter={() => setMenuOpen(true)}
+        onMouseLeave={() => setMenuOpen(false)}
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          height: '100vh',
+          width: menuOpen ? drawerWidth : triggerWidth,
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          transition: 'width 220ms ease',
+        }}
+      >
+        {!menuOpen && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 16,
+              left: 0,
+              width: triggerWidth,
+              height: 88,
+              borderTopRightRadius: 8,
+              borderBottomRightRadius: 8,
+              bgcolor: 'primary.main',
+              opacity: 0.75,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'primary.contrastText',
+            }}
+          >
+            <ChevronRightIcon fontSize="small" />
+          </Box>
+        )}
+        <Box
+          sx={{
+            width: drawerWidth,
+            height: '100%',
+            bgcolor: 'background.paper',
+            borderRight: 1,
+            borderColor: 'divider',
+            overflowY: 'auto',
+            transform: menuOpen ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 220ms ease',
+            boxShadow: menuOpen ? 4 : 0,
+          }}
+        >
+          {drawer}
+        </Box>
+      </Box>
+
       <Drawer
         variant="temporary"
         open={mobileOpen}
@@ -217,23 +271,12 @@ export function Layout() {
         {drawer}
       </Drawer>
 
-      <Drawer
-        variant="permanent"
-        sx={{
-          display: { xs: 'none', md: 'block' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, borderRight: 1, borderColor: 'divider' },
-        }}
-        open
-      >
-        {drawer}
-      </Drawer>
-
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
+          width: '100%',
           mt: '64px',
           bgcolor: 'background.default',
           minHeight: 'calc(100vh - 64px)',
