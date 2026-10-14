@@ -167,11 +167,15 @@ export const apiPdv = {
   aplicarDesconto: (id: string, valor: number) => api.put(`/pdv/vendas/${id}/desconto`, null, { params: { valor } }),
   aplicarAcrescimo: (id: string, valor: number) => api.put(`/pdv/vendas/${id}/acrescimo`, null, { params: { valor } }),
   processarPagamento: (id: string, data: any) => api.post(`/pdv/vendas/${id}/pagamento`, data),
-  finalizarVenda: (id: string) => api.post(`/pdv/vendas/${id}/finalizar`),
+  finalizarVenda: (id: string, cpfConsumidor?: string) => api.post(`/pdv/vendas/${id}/finalizar`, null, { params: { cpfConsumidor } }),
   cancelarVenda: (id: string, motivo: string) => api.post(`/pdv/vendas/${id}/cancelar`, null, { params: { motivo } }),
   getTotalVendas: (dataInicio: string, dataFim: string) => api.get('/pdv/vendas/total-vendas', { params: { dataInicio, dataFim } }),
   getTotalFruteira: (dataInicio: string, dataFim: string) => api.get('/pdv/vendas/total-fruteira', { params: { dataInicio, dataFim } }),
   getTotalBuffet: (dataInicio: string, dataFim: string) => api.get('/pdv/vendas/total-buffet', { params: { dataInicio, dataFim } }),
+
+  // PIX
+  gerarPix: (id: string, valor: number, txid?: string) => api.post(`/pdv/vendas/${id}/pix/gerar`, null, { params: { valor, txid } }),
+  consultarPix: (id: string, txid: string) => api.get(`/pdv/vendas/${id}/pix/status`, { params: { txid } }),
 
   // Itens Venda
   listItensVenda: (vendaId: string) => api.get(`/pdv/itens-venda/venda/${vendaId}`),
@@ -207,6 +211,14 @@ export const apiEstoque = {
 
 export const apiFiscal = {
   listNfe: (params?: any) => api.get('/fiscal/nfe', { params }),
+  getNfe: (id: string) => api.get(`/fiscal/nfe/${id}`),
+  getNfeByChave: (chaveAcesso: string) => api.get(`/fiscal/nfe/chave/${chaveAcesso}`),
+  cancelarNfe: (id: string, justificativa: string) => api.post(`/fiscal/nfe/${id}/cancelar`, null, { params: { justificativa } }),
+  consultarNfe: (id: string) => api.post(`/fiscal/nfe/${id}/consultar`),
+  downloadXml: (id: string) => api.get(`/fiscal/nfe/${id}/xml`, { responseType: 'blob' }),
+  downloadDanfe: (id: string) => api.get(`/fiscal/nfe/${id}/danfe`, { responseType: 'blob' }),
+  inutilizarNumeracao: (justificativa: string, numeroInicial: number, numeroFinal: number) => 
+    api.post('/fiscal/nfe/inutilizar', null, { params: { justificativa, numeroInicial, numeroFinal } }),
   listSpedFiscal: (params?: any) => api.get('/fiscal/sped-fiscal', { params }),
   listDre: (params?: any) => api.get('/fiscal/dre', { params }),
   listAtivos: (params?: any) => api.get('/fiscal/ativos', { params }),

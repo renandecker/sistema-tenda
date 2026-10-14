@@ -1,6 +1,7 @@
 package br.com.sistematenda.buffet.service;
 
 import br.com.sistematenda.buffet.dto.TransferenciaEstoqueDTO;
+import br.com.sistematenda.fruteira.dto.ProdutoDTO;
 import br.com.sistematenda.buffet.entity.TransferenciaEstoque;
 import br.com.sistematenda.buffet.mapper.TransferenciaEstoqueMapper;
 import br.com.sistematenda.buffet.repository.TransferenciaEstoqueRepository;
@@ -29,19 +30,11 @@ public class TransferenciaEstoqueService extends BaseCrudServiceImpl<Transferenc
     TransferenciaEstoqueRepository repository;
 
     @Inject
-    TransferenciaEstoqueMapper mapper;
-
-    @Inject
     ProdutoService produtoService;
 
     @Override
     protected TransferenciaEstoqueRepository getRepository() {
         return repository;
-    }
-
-    @Override
-    protected TransferenciaEstoqueMapper getMapper() {
-        return mapper;
     }
 
     @Override
@@ -67,13 +60,13 @@ public class TransferenciaEstoqueService extends BaseCrudServiceImpl<Transferenc
 
     @Override
     public PageResponse<TransferenciaEstoqueDTO> findAll(int page, int size, String sortBy, String sortDirection) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, null, null, null, null);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, null, null, null, null));
     }
 
     public PageResponse<TransferenciaEstoqueDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                                           TransferenciaEstoque.StatusTransferencia status,
                                                           UUID produtoId, LocalDateTime inicio, LocalDateTime fim) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, status, produtoId, inicio, fim);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, status, produtoId, inicio, fim));
     }
 
     @Override
@@ -87,7 +80,7 @@ public class TransferenciaEstoqueService extends BaseCrudServiceImpl<Transferenc
         entity.solicitadoPor = "SISTEMA"; // TODO: usuário logado
         
         // Buscar custo do produto na fruteira
-        ProdutoDTO produtoFruteira = produtoService.findById(dto.getProduto().getId());
+        ProdutoDTO produtoFruteira = produtoService.findById(UUID.fromString(dto.getProduto().getId()));
         entity.custoUnitario = produtoFruteira.getCustoMedio();
         entity.valorTotal = entity.quantidade.multiply(entity.custoUnitario);
         

@@ -35,6 +35,8 @@ public class ItemVenda extends BaseEntity {
         BEBIDA("Bebida"),
         SOBREMESA("Sobremesa"),
         ADICIONAL("Adicional"),
+        PRATO_FEITO("Prato Feito"),
+        OUTROS("Outros"),
         SERVICO("Serviço");
 
         private final String descricao;

@@ -2,7 +2,8 @@ package br.com.sistematenda.fruteira.repository;
 
 import br.com.sistematenda.fruteira.entity.Produto;
 import br.com.sistematenda.fruteira.entity.TabelaPreco;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import br.com.sistematenda.common.dto.PageResponse;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -10,9 +11,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @ApplicationScoped
-public class TabelaPrecoRepository implements PanacheRepository<TabelaPreco> {
+public class TabelaPrecoRepository implements PanacheRepositoryBase<TabelaPreco, UUID> {
 
     public List<TabelaPreco> findByProduto(Produto produto) {
         return find("produto = ?1 and deleted = false order by dataInicio desc", produto).list();
@@ -53,7 +55,7 @@ public class TabelaPrecoRepository implements PanacheRepository<TabelaPreco> {
         Sort sort = Sort.by(sortBy != null ? sortBy : "dataInicio", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(page, size, sort);
+        Page pageable = Page.of(size, page);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);

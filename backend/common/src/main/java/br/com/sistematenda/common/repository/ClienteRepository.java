@@ -1,15 +1,21 @@
 package br.com.sistematenda.common.repository;
 
-import br.com.sistematenda.common.entity.Cliente;
 import br.com.sistematenda.common.dto.ClienteDTO;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import br.com.sistematenda.common.dto.PageResponse;
+import br.com.sistematenda.common.entity.Cliente;
+import br.com.sistematenda.common.enums.TipoPessoa;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
+import io.quarkus.panache.common.Page;
+import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @ApplicationScoped
-public class ClienteRepository implements PanacheRepository<Cliente> {
+public class ClienteRepository implements PanacheRepositoryBase<Cliente, UUID> {
 
     public Optional<Cliente> findByEmail(String email) {
         return find("email = ?1 and deleted = false", email).firstResultOptional();
@@ -34,7 +40,7 @@ public class ClienteRepository implements PanacheRepository<Cliente> {
     public PageResponse<ClienteDTO> findPaginated(int page, int size, String sortBy, String sortDirection,
                                                   TipoPessoa tipo, String nome, Boolean ativo) {
         StringBuilder query = new StringBuilder("deleted = false");
-        var params = new java.util.ArrayList<Object>();
+        List<Object> params = new ArrayList<>();
 
         if (tipo != null) {
             query.append(" and tipoPessoa = ?").append(params.size() + 1);
@@ -49,41 +55,41 @@ public class ClienteRepository implements PanacheRepository<Cliente> {
             params.add(ativo ? "ATIVO" : "INATIVO");
         }
 
-        Sort sort = Sort.by(sortBy != null ? sortBy : "nome", 
+        Sort sort = Sort.by(sortBy != null ? sortBy : "nome",
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
-        
-        Page pageable = Page.of(page, size, sort);
-        
-        var panacheQuery = find(query.toString(), sort, params.toArray());
-        panacheQuery.page(pageable);
-        
-        List<Cliente> content = panacheQuery.list();
+
+        Page pageable = Page.of(size, page);
+
+        List<Cliente> content = find(query.toString(), sort, params.toArray()).page(pageable).list();
         long totalElements = count(query.toString(), params.toArray());
-        
-        // Converter para DTOs
-        java.util.List<ClienteDTO> dtoList = content.stream()
-            .map(c -> {
-                ClienteDTO dto = new ClienteDTO();
-                dto.id = c.id.toString();
-                dto.nome = c.nome;
-                dto.email = c.email;
-                dto.telefone = c.telefone;
-                dto.cpfCnpj = c.cpfCnpj;
-                dto.tipoPessoa = c.tipoPessoa;
-                dto.tipoCliente = c.tipoCliente;
-                dto.status = c.status;
-                dto.pontosFidelidade = c.pontosFidelidade;
-                dto.limiteCredito = c.limiteCredito;
-                return dto;
-            })
+
+        List<ClienteDTO> dtoList = content.stream()
+            .map(this::toDTO)
             .toList();
-        
-        return new PageResponse<>(
-            dtoList,
-            totalElements,
-            page,
-            size
-        );
+
+        return PageResponse.of(dtoList, totalElements, page, size);
+    }
+
+    private ClienteDTO toDTO(Cliente c) {
+        ClienteDTO dto = new ClienteDTO();
+        dto.setId(c.id);
+        dto.setNome(c.nome);
+        dto.setEmail(c.email);
+        dto.setTelefone(c.telefone);
+        dto.setCpfCnpj(c.cpfCnpj);
+        dto.setTipoPessoa(c.tipoPessoa);
+        dto.setTipoCliente(c.tipoCliente);
+        dto.setStatus(c.status);
+        dto.setPontosFidelidade(c.pontosFidelidade);
+        dto.setLimiteCredito(c.limiteCredito);
+        dto.setDataNascimento(c.dataNascimento);
+        dto.setRgIe(c.rgIe);
+        dto.setInscricaoEstadual(c.inscricaoEstadual);
+        dto.setNomeFantasia(c.nomeFantasia);
+        dto.setObservacoes(c.observacoes);
+        dto.setContatoComercial(c.contatoComercial);
+        dto.setEmailComercial(c.emailComercial);
+        return dto;
     }
 
     public void toggleStatus(UUID id) {

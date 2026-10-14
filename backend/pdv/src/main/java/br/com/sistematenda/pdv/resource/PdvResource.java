@@ -3,7 +3,7 @@ package br.com.sistematenda.pdv.resource;
 import br.com.sistematenda.pdv.dto.PdvDTO;
 import br.com.sistematenda.pdv.entity.Pdv;
 import br.com.sistematenda.pdv.service.PdvService;
-import br.com.sistematenda.common.dto.PageResponse
+import br.com.sistematenda.common.dto.PageResponse;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;

@@ -7,15 +7,21 @@ import br.com.sistematenda.fruteira.service.ProdutoService;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.exception.BusinessException;
 import jakarta.inject.Inject;
-import jakarta.validation.*;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.sse.OutboundSseEvent;
 import jakarta.ws.rs.sse.Sse;
+import jakarta.ws.rs.sse.SseEventSink;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Path("/fruteira/balanca")
 @Produces(MediaType.APPLICATION_JSON)
@@ -27,7 +33,7 @@ public class BalancaResource {
     @Inject
     ProdutoService produtoService;
 
-    @Sse
+    @Context
     Sse sse;
 
     @GET

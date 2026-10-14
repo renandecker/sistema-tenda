@@ -25,6 +25,10 @@
             <version>${project.version}</version>
         </dependency>
 
+
+        <!-- wmixvideo/nfe - Biblioteca para NFe/NFCe -->
+        <!-- Note: com.github.wmixvideo:nfe might be unavailable in standard public Maven Central or require jitpack/specific repo. If missing, comment out or stub. -->
+
         <!-- XML processing for NFe/NF-e -->
         <dependency>
             <groupId>org.apache.santuario</groupId>

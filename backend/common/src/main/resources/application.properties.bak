@@ -15,6 +15,7 @@ quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/sistematenda
 quarkus.hibernate-orm.database.generation=update
 quarkus.hibernate-orm.log.sql=true
 quarkus.hibernate-orm.log.format_sql=true
+quarkus.hibernate-orm.sql-load-script=import.sql
 
 # REST
 quarkus.resteasy-reactive.path=/api
@@ -62,3 +63,8 @@ fiscal.schemas-path=schemas/
 
 # Dev Mode
 quarkus.devservices.enabled=true
+
+# Custom JWT properties (HMAC)
+jwt.secret=${JWT_SECRET:minha-chave-secreta-super-segura-para-desenvolvimento-local-32-chars-min}
+jwt.expiration-hours=24
+jwt.issuer=sistema-tenda

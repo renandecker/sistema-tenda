@@ -7,6 +7,7 @@ import br.com.sistematenda.buffet.mapper.ComandaMapper;
 import br.com.sistematenda.buffet.repository.ComandaRepository;
 import br.com.sistematenda.buffet.repository.MesaRepository;
 import br.com.sistematenda.common.dto.PageResponse;
+import br.com.sistematenda.common.enums.ModalidadeBuffet;
 import br.com.sistematenda.common.enums.StatusComanda;
 import br.com.sistematenda.common.exception.BusinessException;
 import br.com.sistematenda.common.exception.NotFoundException;
@@ -30,22 +31,14 @@ public class ComandaService extends BaseCrudServiceImpl<Comanda, ComandaDTO, UUI
     ComandaRepository repository;
 
     @Inject
-    ComandaMapper mapper;
-
-    @Inject
     MesaRepository mesaRepository;
 
     @Inject
     ItemComandaService itemComandaService;
 
     @Override
-    protected ComandaRepository getRepository() {
+    public ComandaRepository getRepository() {
         return repository;
-    }
-
-    @Override
-    protected ComandaMapper getMapper() {
-        return mapper;
     }
 
     @Override
@@ -77,13 +70,13 @@ public class ComandaService extends BaseCrudServiceImpl<Comanda, ComandaDTO, UUI
 
     @Override
     public PageResponse<ComandaDTO> findAll(int page, int size, String sortBy, String sortDirection) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, null, null, null, null);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, null, null, null, null));
     }
 
     public PageResponse<ComandaDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                             StatusComanda status, LocalDate dataInicio, LocalDate dataFim,
                                             UUID mesaId) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, status, dataInicio, dataFim, mesaId);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, status, dataInicio, dataFim, mesaId));
     }
 
     @Override
@@ -103,21 +96,22 @@ public class ComandaService extends BaseCrudServiceImpl<Comanda, ComandaDTO, UUI
         entity.abertaPor = "SISTEMA"; // TODO: usuário logado
         
         if (dto.getMesa() != null && dto.getMesa().getId() != null) {
-            Mesa mesa = mesaRepository.findById(dto.getMesa().getId());
+            Mesa mesa = mesaRepository.findById(UUID.fromString(dto.getMesa().getId()));
             if (mesa == null) {
                 throw new NotFoundException("Mesa", dto.getMesa().getId());
+
             }
             if (!mesa.isDisponivel()) {
                 throw new BusinessException("MESA_INDISPONIVEL", "Mesa não está disponível");
             }
             entity.mesa = mesa;
             mesa.status = Mesa.StatusMesa.OCUPADA;
-            mesaRepository.getRepository().persist(mesa);
+            mesaRepository.persist(mesa);
         }
         
         // Definir preços baseado na modalidade
         if (entity.modalidade == null) {
-            entity.modalidade = Comanda.ModalidadeBuffet.POR_PESO;
+            entity.modalidade = ModalidadeBuffet.POR_PESO;
         }
         
         getRepository().persist(entity);
@@ -150,7 +144,7 @@ public class ComandaService extends BaseCrudServiceImpl<Comanda, ComandaDTO, UUI
         // Liberar mesa se houver
         if (entity.mesa != null) {
             entity.mesa.status = Mesa.StatusMesa.LIVRE;
-            mesaRepository.getRepository().persist(entity.mesa);
+            mesaRepository.persist(entity.mesa);
         }
         
         return mapper.toDTO(entity);
@@ -173,7 +167,7 @@ public class ComandaService extends BaseCrudServiceImpl<Comanda, ComandaDTO, UUI
         
         if (entity.mesa != null) {
             entity.mesa.status = Mesa.StatusMesa.OCUPADA;
-            mesaRepository.getRepository().persist(entity.mesa);
+            mesaRepository.persist(entity.mesa);
         }
         
         getRepository().persist(entity);
@@ -202,7 +196,7 @@ public class ComandaService extends BaseCrudServiceImpl<Comanda, ComandaDTO, UUI
         // Liberar mesa se houver
         if (entity.mesa != null) {
             entity.mesa.status = Mesa.StatusMesa.LIVRE;
-            mesaRepository.getRepository().persist(entity.mesa);
+            mesaRepository.persist(entity.mesa);
         }
         
         getRepository().persist(entity);

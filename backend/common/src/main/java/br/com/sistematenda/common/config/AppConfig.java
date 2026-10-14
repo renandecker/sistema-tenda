@@ -1,23 +1,23 @@
 package br.com.sistematenda.common.config;
 
-import io.quarkus.runtime.annotations.ConfigItem;
-import io.quarkus.runtime.annotations.ConfigRoot;
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
 
-@ConfigRoot(name = "app")
-public class AppConfig {
+@ConfigMapping(prefix = "app")
+public interface AppConfig {
 
-    @ConfigItem(name = "name", defaultValue = "Sistema Tenda")
-    public String name;
+    @WithDefault("Sistema Tenda")
+    String name();
 
-    @ConfigItem(name = "version", defaultValue = "1.0.0")
-    public String version;
+    @WithDefault("1.0.0")
+    String version();
 
-    @ConfigItem(name = "timezone", defaultValue = "America/Sao_Paulo")
-    public String timezone;
+    @WithDefault("America/Sao_Paulo")
+    String timezone();
 
-    @ConfigItem(name = "currency", defaultValue = "BRL")
-    public String currency;
+    @WithDefault("BRL")
+    String currency();
 
-    @ConfigItem(name = "locale", defaultValue = "pt_BR")
-    public String locale;
+    @WithDefault("pt_BR")
+    String locale();
 }

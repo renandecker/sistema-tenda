@@ -3,7 +3,7 @@ package br.com.sistematenda.pdv.repository;
 import br.com.sistematenda.pdv.entity.Pdv;
 import br.com.sistematenda.pdv.entity.SessaoCaixa;
 import br.com.sistematenda.common.dto.PageResponse;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -12,9 +12,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @ApplicationScoped
-public class SessaoCaixaRepository implements PanacheRepository<SessaoCaixa> {
+public class SessaoCaixaRepository implements PanacheRepositoryBase<SessaoCaixa, UUID> {
 
     public Optional<SessaoCaixa> findAbertaByPdv(Pdv pdv) {
         return find("pdv = ?1 and status = 'ABERTA' and deleted = false", pdv).firstResultOptional();
@@ -60,7 +61,7 @@ public class SessaoCaixaRepository implements PanacheRepository<SessaoCaixa> {
         Sort sort = Sort.by(sortBy != null ? sortBy : "dataAbertura", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(page, size, sort);
+        Page pageable = Page.of(page, size);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);
@@ -74,9 +75,9 @@ public class SessaoCaixaRepository implements PanacheRepository<SessaoCaixa> {
     public java.math.BigDecimal getTotalVendasPeriodo(LocalDate dataInicio, LocalDate dataFim) {
         LocalDateTime inicio = dataInicio.atStartOfDay();
         LocalDateTime fim = dataFim.atTime(23, 59, 59);
-        return find("dataAbertura >= ?1 and dataAbertura <= ?2 and status = 'FECHADA' and deleted = false", 
+        return find("select sum(totalVendas) from SessaoCaixa where dataAbertura >= ?1 and dataAbertura <= ?2 and status = 'FECHADA' and deleted = false", 
                 inicio, fim)
-            .project(java.math.BigDecimal.class, "sum(totalVendas)")
+            .project(java.math.BigDecimal.class)
             .firstResultOptional()
             .orElse(java.math.BigDecimal.ZERO);
     }

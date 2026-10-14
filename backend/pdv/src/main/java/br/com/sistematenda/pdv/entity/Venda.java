@@ -4,6 +4,7 @@ import br.com.sistematenda.common.entity.BaseEntity;
 import br.com.sistematenda.common.enums.FormaPagamento;
 import br.com.sistematenda.common.enums.StatusVenda;
 import br.com.sistematenda.buffet.entity.Comanda;
+import br.com.sistematenda.fiscal.entity.Nfe;
 import br.com.sistematenda.fruteira.entity.Produto;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
@@ -115,6 +116,10 @@ public class Venda extends BaseEntity {
 
     @Column(name = "danfe_nfce", columnDefinition = "BYTEA")
     public byte[] danfeNfce;
+
+    @ManyToOne
+    @JoinColumn(name = "nfce_id")
+    public Nfe nfce;
 
     @OneToMany(mappedBy = "venda", cascade = CascadeType.ALL, orphanRemoval = true)
     public List<ItemVenda> itens;

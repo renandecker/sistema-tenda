@@ -1,6 +1,7 @@
 package br.com.sistematenda.fiscal.entity;
 
 import br.com.sistematenda.common.entity.BaseEntity;
+import br.com.sistematenda.common.entity.Fornecedor;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;

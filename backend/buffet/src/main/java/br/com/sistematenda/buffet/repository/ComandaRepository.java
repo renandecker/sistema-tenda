@@ -4,11 +4,13 @@ import br.com.sistematenda.buffet.entity.Comanda;
 import br.com.sistematenda.buffet.entity.Mesa;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.enums.StatusComanda;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import io.quarkus.hibernate.orm.panache.Panache;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,7 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
-public class ComandaRepository implements PanacheRepository<Comanda> {
+public class ComandaRepository implements PanacheRepositoryBase<Comanda, UUID> {
 
     public Optional<Comanda> findByNumero(String numero) {
         return find("numero = ?1 and deleted = false", numero).firstResultOptional();
@@ -70,7 +72,7 @@ public class ComandaRepository implements PanacheRepository<Comanda> {
         Sort sort = Sort.by(sortBy != null ? sortBy : "dataAbertura", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(page, size, sort);
+        Page pageable = Page.of(size, page);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);
@@ -84,11 +86,14 @@ public class ComandaRepository implements PanacheRepository<Comanda> {
     public BigDecimal getTotalVendasPeriodo(LocalDate dataInicio, LocalDate dataFim) {
         LocalDateTime inicio = dataInicio.atStartOfDay();
         LocalDateTime fim = dataFim.atTime(23, 59, 59);
-        return find("dataFechamento >= ?1 and dataFechamento <= ?2 and status in ('FECHADA', 'PAGA') and deleted = false", 
-                inicio, fim)
-            .project(java.math.BigDecimal.class, "sum(valorTotal)")
-            .firstResultOptional()
-            .orElse(java.math.BigDecimal.ZERO);
+        BigDecimal total = Panache.getEntityManager()
+            .createQuery("select coalesce(sum(c.valorTotal), 0) from Comanda c "
+                + "where c.dataFechamento >= :inicio and c.dataFechamento <= :fim "
+                + "and c.status in ('FECHADA', 'PAGA') and c.deleted = false", BigDecimal.class)
+            .setParameter("inicio", inicio)
+            .setParameter("fim", fim)
+            .getSingleResult();
+        return total != null ? total : BigDecimal.ZERO;
     }
 
     public long countAbertas() {

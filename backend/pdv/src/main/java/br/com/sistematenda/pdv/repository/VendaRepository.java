@@ -4,7 +4,7 @@ import br.com.sistematenda.pdv.entity.Venda;
 import br.com.sistematenda.buffet.entity.Comanda;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.enums.StatusVenda;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -16,7 +16,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
-public class VendaRepository implements PanacheRepository<Venda> {
+public class VendaRepository implements PanacheRepositoryBase<Venda, UUID> {
 
     public Optional<Venda> findByNumero(String numero) {
         return find("numero = ?1 and deleted = false", numero).firstResultOptional();
@@ -74,7 +74,7 @@ public class VendaRepository implements PanacheRepository<Venda> {
         Sort sort = Sort.by(sortBy != null ? sortBy : "data", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(page, size, sort);
+        Page pageable = Page.of(page, size);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);
@@ -88,9 +88,9 @@ public class VendaRepository implements PanacheRepository<Venda> {
     public java.math.BigDecimal getTotalVendasPeriodo(LocalDate dataInicio, LocalDate dataFim) {
         LocalDateTime inicio = dataInicio.atStartOfDay();
         LocalDateTime fim = dataFim.atTime(23, 59, 59);
-        return find("data >= ?1 and data <= ?2 and status in ('FINALIZADA', 'PAGA') and deleted = false", 
+        return find("select sum(valorTotal) from Venda where data >= ?1 and data <= ?2 and status in ('FINALIZADA', 'PAGA') and deleted = false", 
                 inicio, fim)
-            .project(java.math.BigDecimal.class, "sum(valorTotal)")
+            .project(java.math.BigDecimal.class)
             .firstResultOptional()
             .orElse(java.math.BigDecimal.ZERO);
     }
@@ -98,9 +98,9 @@ public class VendaRepository implements PanacheRepository<Venda> {
     public java.math.BigDecimal getTotalFruteiraPeriodo(LocalDate dataInicio, LocalDate dataFim) {
         LocalDateTime inicio = dataInicio.atStartOfDay();
         LocalDateTime fim = dataFim.atTime(23, 59, 59);
-        return find("data >= ?1 and data <= ?2 and status in ('FINALIZADA', 'PAGA') and deleted = false", 
+        return find("select sum(subtotalFruteira) from Venda where data >= ?1 and data <= ?2 and status in ('FINALIZADA', 'PAGA') and deleted = false", 
                 inicio, fim)
-            .project(java.math.BigDecimal.class, "sum(subtotalFruteira)")
+            .project(java.math.BigDecimal.class)
             .firstResultOptional()
             .orElse(java.math.BigDecimal.ZERO);
     }
@@ -108,9 +108,9 @@ public class VendaRepository implements PanacheRepository<Venda> {
     public java.math.BigDecimal getTotalBuffetPeriodo(LocalDate dataInicio, LocalDate dataFim) {
         LocalDateTime inicio = dataInicio.atStartOfDay();
         LocalDateTime fim = dataFim.atTime(23, 59, 59);
-        return find("data >= ?1 and data <= ?2 and status in ('FINALIZADA', 'PAGA') and deleted = false", 
+        return find("select sum(subtotalBuffet) from Venda where data >= ?1 and data <= ?2 and status in ('FINALIZADA', 'PAGA') and deleted = false", 
                 inicio, fim)
-            .project(java.math.BigDecimal.class, "sum(subtotalBuffet)")
+            .project(java.math.BigDecimal.class)
             .firstResultOptional()
             .orElse(java.math.BigDecimal.ZERO);
     }
@@ -120,8 +120,8 @@ public class VendaRepository implements PanacheRepository<Venda> {
     }
 
     public String getProximoNumero(UUID pdvId) {
-        Long ultima = find("pdvId = ?1 and deleted = false", pdvId)
-            .project(Long.class, "max(numeroUltimaVenda)")
+        Long ultima = find("select max(numeroUltimaVenda) from Venda where pdvId = ?1 and deleted = false", pdvId)
+            .project(Long.class)
             .firstResultOptional()
             .orElse(0L);
         return String.format("%06d", ultima + 1);

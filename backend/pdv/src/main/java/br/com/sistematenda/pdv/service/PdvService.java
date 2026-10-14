@@ -30,7 +30,6 @@ public class PdvService extends BaseCrudServiceImpl<Pdv, PdvDTO, UUID> {
         return repository;
     }
 
-    @Override
     protected PdvMapper getMapper() {
         return mapper;
     }
@@ -56,12 +55,12 @@ public class PdvService extends BaseCrudServiceImpl<Pdv, PdvDTO, UUID> {
 
     @Override
     public PageResponse<PdvDTO> findAll(int page, int size, String sortBy, String sortDirection) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, null, null);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, null, null));
     }
 
     public PageResponse<PdvDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                         Pdv.StatusPdv status, Boolean ativo) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, status, ativo);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, status, ativo));
     }
 
     @Override

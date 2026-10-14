@@ -31,9 +31,6 @@ public class ReceitaService extends BaseCrudServiceImpl<Receita, ReceitaDTO, UUI
     ReceitaRepository repository;
 
     @Inject
-    ReceitaMapper mapper;
-
-    @Inject
     ProdutoBuffetRepository produtoBuffetRepository;
 
     @Inject
@@ -42,11 +39,6 @@ public class ReceitaService extends BaseCrudServiceImpl<Receita, ReceitaDTO, UUI
     @Override
     protected ReceitaRepository getRepository() {
         return repository;
-    }
-
-    @Override
-    protected ReceitaMapper getMapper() {
-        return mapper;
     }
 
     @Override
@@ -70,12 +62,12 @@ public class ReceitaService extends BaseCrudServiceImpl<Receita, ReceitaDTO, UUI
 
     @Override
     public PageResponse<ReceitaDTO> findAll(int page, int size, String sortBy, String sortDirection) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, null);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, null));
     }
 
     public PageResponse<ReceitaDTO> findAll(int page, int size, String sortBy, String sortDirection,
-                                            Boolean ativa) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, ativa);
+                                             Boolean ativa) {
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, ativa));
     }
 
     @Override
@@ -84,7 +76,7 @@ public class ReceitaService extends BaseCrudServiceImpl<Receita, ReceitaDTO, UUI
         validateCreate(dto);
         
         Receita entity = mapper.toEntity(dto);
-        entity.produto = produtoBuffetRepository.findById(dto.getProduto().getId());
+        entity.produto = produtoBuffetRepository.findById(UUID.fromString(dto.getProduto().getId()));
         if (entity.produto == null) {
             throw new NotFoundException("Produto", dto.getProduto().getId());
         }
@@ -102,7 +94,7 @@ public class ReceitaService extends BaseCrudServiceImpl<Receita, ReceitaDTO, UUI
             for (ReceitaDTO.ReceitaIngredienteDTO ingDto : dto.getIngredientes()) {
                 ReceitaIngrediente ingrediente = new ReceitaIngrediente();
                 ingrediente.receita = entity;
-                ingrediente.produto = produtoFruteiraService.getRepository().findById(
+                ingrediente.produto = produtoFruteiraService.buscarEntidade(
                     java.util.UUID.fromString(ingDto.getProduto().getId()));
                 ingrediente.quantidade = ingDto.getQuantidade();
                 ingrediente.unidade = ingDto.getUnidade();
@@ -157,7 +149,7 @@ public class ReceitaService extends BaseCrudServiceImpl<Receita, ReceitaDTO, UUI
             for (ReceitaDTO.ReceitaIngredienteDTO ingDto : dto.getIngredientes()) {
                 ReceitaIngrediente ingrediente = new ReceitaIngrediente();
                 ingrediente.receita = novaReceita;
-                ingrediente.produto = produtoFruteiraService.getRepository().findById(
+                ingrediente.produto = produtoFruteiraService.buscarEntidade(
                     java.util.UUID.fromString(ingDto.getProduto().getId()));
                 ingrediente.quantidade = ingDto.getQuantidade();
                 ingrediente.unidade = ingDto.getUnidade();
@@ -182,10 +174,10 @@ public class ReceitaService extends BaseCrudServiceImpl<Receita, ReceitaDTO, UUI
         
         if (ingredientesDto != null) {
             for (ReceitaDTO.ReceitaIngredienteDTO ingDto : ingredientesDto) {
-                Produto produtoFruteira = produtoFruteiraService.getRepository().findById(
+                Produto produtoFruteira = produtoFruteiraService.buscarEntidade(
                     java.util.UUID.fromString(ingDto.getProduto().getId()));
                 if (produtoFruteira != null) {
-                    BigDecimal custoUnitario = produtoFruteira.getCustoMedio();
+                    BigDecimal custoUnitario = produtoFruteira.custoMedio;
                     BigDecimal custoIngrediente = ingDto.getQuantidade().multiply(custoUnitario);
                     custoTotal = custoTotal.add(custoIngrediente);
                 }
@@ -220,7 +212,7 @@ public class ReceitaService extends BaseCrudServiceImpl<Receita, ReceitaDTO, UUI
         }
         
         // Verificar se já existe receita ativa para este produto
-        ProdutoBuffet produto = produtoBuffetRepository.findById(dto.getProduto().getId());
+        ProdutoBuffet produto = produtoBuffetRepository.findById(UUID.fromString(dto.getProduto().getId()));
         if (produto != null) {
             repository.findByProduto(produto).ifPresent(r -> {
                 if (r.ativa) {

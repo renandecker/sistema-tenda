@@ -3,7 +3,6 @@ package br.com.sistematenda.fruteira.service;
 import br.com.sistematenda.fruteira.dto.TabelaPrecoDTO;
 import br.com.sistematenda.fruteira.entity.Produto;
 import br.com.sistematenda.fruteira.entity.TabelaPreco;
-import br.com.sistematenda.fruteira.mapper.TabelaPrecoMapper;
 import br.com.sistematenda.fruteira.repository.TabelaPrecoRepository;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.exception.NotFoundException;
@@ -27,19 +26,11 @@ public class TabelaPrecoService extends BaseCrudServiceImpl<TabelaPreco, TabelaP
     TabelaPrecoRepository repository;
 
     @Inject
-    TabelaPrecoMapper mapper;
-
-    @Inject
     ProdutoService produtoService;
 
     @Override
     protected TabelaPrecoRepository getRepository() {
         return repository;
-    }
-
-    @Override
-    protected TabelaPrecoMapper getMapper() {
-        return mapper;
     }
 
     @Override
@@ -67,12 +58,12 @@ public class TabelaPrecoService extends BaseCrudServiceImpl<TabelaPreco, TabelaP
 
     @Override
     public PageResponse<TabelaPrecoDTO> findAll(int page, int size, String sortBy, String sortDirection) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, null, null, null);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, null, null, null));
     }
 
     public PageResponse<TabelaPrecoDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                                 Boolean ativa, LocalDate dataInicio, LocalDate dataFim) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, ativa, dataInicio, dataFim);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, ativa, dataInicio, dataFim));
     }
 
     @Override
@@ -82,7 +73,7 @@ public class TabelaPrecoService extends BaseCrudServiceImpl<TabelaPreco, TabelaP
         
         TabelaPreco entity = mapper.toEntity(dto);
         entity.produto = new Produto();
-        entity.produto.id = dto.getProduto().getId();
+        entity.produto.id = UUID.fromString(dto.getProduto().getId());
         entity.aplicadaEm = LocalDateTime.now();
         entity.aplicadaPor = "SISTEMA"; // TODO: pegar usuário logado
         

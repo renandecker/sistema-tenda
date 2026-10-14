@@ -37,7 +37,7 @@ export function PdvProvider({ children }: { children: React.ReactNode }) {
   const [pdvs, setPdvs] = useState<Pdv[]>([]);
   const [selectedPdv, setSelectedPdv] = useState<Pdv | null>(null);
   const [sessaoAtiva, setSessaoAtiva] = useState<SessaoCaixa | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
 
   const fetchPdvs = async () => {
     try {

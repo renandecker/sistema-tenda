@@ -2,16 +2,17 @@ package br.com.sistematenda.pdv.repository;
 
 import br.com.sistematenda.pdv.entity.Pdv;
 import br.com.sistematenda.common.dto.PageResponse;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @ApplicationScoped
-public class PdvRepository implements PanacheRepository<Pdv> {
+public class PdvRepository implements PanacheRepositoryBase<Pdv, UUID> {
 
     public Optional<Pdv> findByCodigo(String codigo) {
         return find("codigo = ?1 and deleted = false", codigo).firstResultOptional();
@@ -46,7 +47,7 @@ public class PdvRepository implements PanacheRepository<Pdv> {
         Sort sort = Sort.by(sortBy != null ? sortBy : "codigo", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(page, size, sort);
+        Page pageable = Page.of(page, size);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);

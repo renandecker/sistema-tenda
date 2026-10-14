@@ -12,6 +12,7 @@ import org.jboss.logging.Logger;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.Base64;
 
 @ApplicationScoped
@@ -25,7 +26,7 @@ public class BarcodeService {
             BitMatrix matrix = writer.encode(content, BarcodeFormat.CODE_128, width, height);
             BufferedImage image = MatrixToImageWriter.toBufferedImage(matrix);
             return imageToBase64(image);
-        } catch (WriterException e) {
+        } catch (Exception e) {
             LOG.error("Erro ao gerar Code128", e);
             throw new RuntimeException("Erro ao gerar código de barras", e);
         }
@@ -49,7 +50,7 @@ public class BarcodeService {
             BitMatrix matrix = writer.encode(content, BarcodeFormat.CODE_128, width, height);
             BufferedImage image = MatrixToImageWriter.toBufferedImage(matrix);
             return imageToBytes(image);
-        } catch (WriterException e) {
+        } catch (Exception e) {
             LOG.error("Erro ao gerar Code128", e);
             throw new RuntimeException("Erro ao gerar código de barras", e);
         }

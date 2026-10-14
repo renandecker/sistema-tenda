@@ -2,16 +2,18 @@ package br.com.sistematenda.fruteira.repository;
 
 import br.com.sistematenda.fruteira.entity.EtiquetaBalanca;
 import br.com.sistematenda.fruteira.entity.Produto;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import br.com.sistematenda.common.dto.PageResponse;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @ApplicationScoped
-public class EtiquetaBalancaRepository implements PanacheRepository<EtiquetaBalanca> {
+public class EtiquetaBalancaRepository implements PanacheRepositoryBase<EtiquetaBalanca, UUID> {
 
     public Optional<EtiquetaBalanca> findByCodigo(String codigo) {
         return find("codigo = ?1 and deleted = false", codigo).firstResultOptional();
@@ -42,7 +44,7 @@ public class EtiquetaBalancaRepository implements PanacheRepository<EtiquetaBala
         Sort sort = Sort.by(sortBy != null ? sortBy : "codigo", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(page, size, sort);
+        Page pageable = Page.of(size, page);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);

@@ -1,21 +1,27 @@
 package br.com.sistematenda.fiscal.repository;
 
-import br.com.sistematenda.fiscal.entity.Compra;
-import br.com.sistematenda.fiscal.entity.ItemCompra;
 import br.com.sistematenda.common.dto.PageResponse;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import br.com.sistematenda.fiscal.dto.CompraDTO;
+import br.com.sistematenda.fiscal.entity.Compra;
+import br.com.sistematenda.fiscal.entity.Compra.StatusCompra;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @ApplicationScoped
-public class CompraRepository implements PanacheRepository<Compra> {
+public class CompraRepository implements PanacheRepositoryBase<Compra, UUID> {
 
-    public List<Compra> findByFornecedor(Fornecedor fornecedor) {
-        return find("fornecedor = ?1 and deleted = false", fornecedor).list();
+    public List<Compra> findByFornecedor(UUID fornecedorId) {
+        return find("fornecedor.id = ?1 and deleted = false", fornecedorId).list();
     }
 
     public List<Compra> findByStatus(StatusCompra status) {
@@ -28,11 +34,15 @@ public class CompraRepository implements PanacheRepository<Compra> {
         return find("dataCompra >= ?1 and dataCompra <= ?2 and deleted = false", inicio, fim).list();
     }
 
+    public Optional<Compra> findByNumero(String numero) {
+        return find("numeroNota = ?1 and deleted = false", numero).firstResultOptional();
+    }
+
     public PageResponse<CompraDTO> findPaginated(int page, int size, String sortBy, String sortDirection,
                                                  StatusCompra status, LocalDate dataInicio, LocalDate dataFim,
-                                                 Fornecedor fornecedor) {
+                                                 UUID fornecedorId) {
         StringBuilder query = new StringBuilder("deleted = false");
-        var params = new java.util.ArrayList<Object>();
+        List<Object> params = new ArrayList<>();
 
         if (status != null) {
             query.append(" and status = ?").append(params.size() + 1);
@@ -46,61 +56,62 @@ public class CompraRepository implements PanacheRepository<Compra> {
             query.append(" and dataCompra <= ?").append(params.size() + 1);
             params.add(dataFim.atTime(23, 59, 59));
         }
-        if (fornecedor != null) {
+        if (fornecedorId != null) {
             query.append(" and fornecedor.id = ?").append(params.size() + 1);
-            params.add(fornecedor.id);
+            params.add(fornecedorId);
         }
 
-        Sort sort = Sort.by(sortBy != null ? sortBy : "dataCompra", 
+        Sort sort = Sort.by(sortBy != null ? sortBy : "dataCompra",
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
-        
-        Page pageable = Page.of(page, size, sort);
-        
-        var panacheQuery = find(query.toString(), sort, params.toArray());
-        panacheQuery.page(pageable);
-        
-        List<Compra> content = panacheQuery.list();
+
+        Page pageable = Page.of(page, size);
+
+        List<Compra> content = find(query.toString(), sort, params.toArray()).page(pageable).list();
         long totalElements = count(query.toString(), params.toArray());
-        
-        // Converter para DTOs
-        java.util.List<CompraDTO> dtoList = content.stream()
-            .map(c -> {
-                CompraDTO dto = new CompraDTO();
-                dto.id = c.id.toString();
-                dto.numeroNota = c.numeroNota;
-                serieNota = c.serieNota;
-                dto.dataCompra = c.dataCompra;
-                dto.fornecedor = c.fornecedor != null ? c.fornecedor.nome : "";
-                dto.valorTotal = c.valorTotal;
-                dto.status = c.status;
-                dto.condicaoPagamento = c.condicaoPagamento;
-                return dto;
-            })
-            .toList();
-        
-        return new PageResponse<>(
-            dtoList,
-            totalElements,
-            page,
-            size
-        );
+
+        List<CompraDTO> dtoList = content.stream().map(this::toDTO).toList();
+
+        return PageResponse.of(dtoList, totalElements, page, size);
     }
 
-    public java.math.BigDecimal getTotalComprasPeriodo(LocalDate dataInicio, LocalDate dataFim) {
-        LocalDateTime inicio = dataInicio.atStartOfDay();
-        LocalDateTime fim = dataFim.atTime(23, 59, 59);
-        return find("dataCompra >= ?1 and dataCompra <= ?2 and status = 'RECEBIDA' and deleted = false", inicio, fim)
-            .project(java.math.BigDecimal.class, "sum(valorTotal)")
-            .firstResultOptional()
-            .orElse(java.math.BigDecimal.ZERO);
+    private CompraDTO toDTO(Compra c) {
+        CompraDTO dto = new CompraDTO();
+        dto.setId(c.id);
+        dto.setNumeroNota(c.numeroNota);
+        dto.setSerieNota(c.serieNota);
+        dto.setDataCompra(c.dataCompra);
+        dto.setFornecedor(c.fornecedor != null ? c.fornecedor.nome : null);
+        dto.setValorTotal(c.valorTotal);
+        dto.setValorIcms(c.valorIcms);
+        dto.setValorIpi(c.valorIpi);
+        dto.setValorPis(c.valorPis);
+        dto.setValorCofins(c.valorCofins);
+        dto.setDesconto(c.desconto);
+        dto.setFrete(c.frete);
+        dto.setOutrasDespesas(c.outrasDespesas);
+        dto.setStatus(c.status != null ? CompraDTO.StatusCompra.valueOf(c.status.name()) : null);
+        dto.setCondicaoPagamento(c.condicaoPagamento);
+        dto.setObservacoes(c.observacoes);
+        dto.setNomeFornecedor(c.nomeFornecedor);
+        dto.setCnpjFornecedor(c.cnpjFornecedor);
+        return dto;
     }
 
-    public java.math.BigDecimal getTotalCeasaPeriodo(LocalDate dataInicio, LocalDate dataFim) {
+    public BigDecimal getTotalComprasPeriodo(LocalDate dataInicio, LocalDate dataFim) {
         LocalDateTime inicio = dataInicio.atStartOfDay();
         LocalDateTime fim = dataFim.atTime(23, 59, 59);
-        return find("dataCompra >= ?1 and dataCompra <= ?2 and status = 'RECEBIDA' and deleted = false ", inicio, fim)
-            .project(java.math.BigDecimal.class, "sum(preco_referencia_ceasa * quantidade)")
+        return find("select sum(valorTotal) from Compra where dataCompra >= ?1 and dataCompra <= ?2 and status = 'RECEBIDA' and deleted = false", inicio, fim)
+            .project(BigDecimal.class)
             .firstResultOptional()
-            .orElse(java.math.BigDecimal.ZERO);
+            .orElse(BigDecimal.ZERO);
+    }
+
+    public BigDecimal getTotalCeasaPeriodo(LocalDate dataInicio, LocalDate dataFim) {
+        LocalDateTime inicio = dataInicio.atStartOfDay();
+        LocalDateTime fim = dataFim.atTime(23, 59, 59);
+        return find("select sum(valorTotal) from Compra where dataCompra >= ?1 and dataCompra <= ?2 and status = 'RECEBIDA' and deleted = false", inicio, fim)
+            .project(BigDecimal.class)
+            .firstResultOptional()
+            .orElse(BigDecimal.ZERO);
     }
 }

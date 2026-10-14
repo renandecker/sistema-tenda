@@ -1,11 +1,18 @@
 package br.com.sistematenda.pdv.service;
 
 import br.com.sistematenda.pdv.dto.PagamentoDTO;
+import br.com.sistematenda.pdv.dto.VendaDTO;
 import br.com.sistematenda.pdv.entity.Pagamento;
 import br.com.sistematenda.pdv.entity.Venda;
 import br.com.sistematenda.pdv.mapper.PagamentoMapper;
+import br.com.sistematenda.pdv.mapper.VendaMapper;
+import br.com.sistematenda.pdv.pix.PixService;
 import br.com.sistematenda.pdv.repository.PagamentoRepository;
 import br.com.sistematenda.pdv.repository.VendaRepository;
+import br.com.sistematenda.pdv.tef.TefService;
+import br.com.sistematenda.pdv.tef.TefIniciarTransacaoRequest;
+import br.com.sistematenda.pdv.tef.TefTransacaoResponse;
+import br.com.sistematenda.pdv.tef.TipoTransacaoTef;
 import br.com.sistematenda.common.enums.FormaPagamento;
 import br.com.sistematenda.common.exception.BusinessException;
 import br.com.sistematenda.common.exception.NotFoundException;
@@ -33,12 +40,20 @@ public class PagamentoService extends BaseCrudServiceImpl<Pagamento, PagamentoDT
     @Inject
     VendaRepository vendaRepository;
 
+    @Inject
+    VendaMapper vendaMapper;
+
+    @Inject
+    PixService pixService;
+
+    @Inject
+    TefService tefService;
+
     @Override
     protected PagamentoRepository getRepository() {
         return repository;
     }
 
-    @Override
     protected PagamentoMapper getMapper() {
         return mapper;
     }
@@ -86,9 +101,21 @@ public class PagamentoService extends BaseCrudServiceImpl<Pagamento, PagamentoDT
         // Processar baseado na forma de pagamento
         switch (request.formaPagamento) {
             case DINHEIRO -> processarDinheiro(entity);
-            case CARTAO_CREDITO, CARTAO_DEBITO -> processarCartao(entity, request);
-            case PIX -> processarPix(entity, request);
-            case VALE_ALIMENTACAO, VALE_REFEICAO, VALE_CULTURA -> processarVale(entity, request);
+            case CARTAO_CREDITO, CARTAO_DEBITO -> {
+                if (request.tefRequestId != null && !request.tefRequestId.isBlank()) {
+                    processarCartaoTef(entity, request);
+                } else {
+                    processarCartao(entity, request);
+                }
+            }
+            case PIX -> processarPix(entity, request, vendaId);
+            case VALE_ALIMENTACAO, VALE_REFEICAO, VALE_CULTURA -> {
+                if (request.tefRequestId != null && !request.tefRequestId.isBlank()) {
+                    processarValeTef(entity, request);
+                } else {
+                    processarVale(entity, request);
+                }
+            }
             default -> {
                 entity.status = Pagamento.StatusPagamento.AUTORIZADO;
                 entity.dataAutorizacao = LocalDateTime.now();
@@ -107,19 +134,16 @@ public class PagamentoService extends BaseCrudServiceImpl<Pagamento, PagamentoDT
         }
         vendaRepository.persist(venda);
         
-        return new VendaService().mapper.toDTO(venda);
+        return vendaMapper.toDTO(venda);
     }
 
     private void processarDinheiro(Pagamento entity) {
         entity.status = Pagamento.StatusPagamento.AUTORIZADO;
         entity.dataAutorizacao = LocalDateTime.now();
-        // Para dinheiro, não há taxa
         entity.valorTaxa = BigDecimal.ZERO;
     }
 
     private void processarCartao(Pagamento entity, VendaService.PagamentoRequest request) {
-        // Simular integração TEF
-        // Em produção, aqui faria a chamada para o TEF
         entity.status = Pagamento.StatusPagamento.AUTORIZADO;
         entity.dataAutorizacao = LocalDateTime.now();
         entity.nsu = request.nsu != null ? request.nsu : gerarNSU();
@@ -127,20 +151,25 @@ public class PagamentoService extends BaseCrudServiceImpl<Pagamento, PagamentoDT
         entity.bandeiraCartao = request.bandeiraCartao;
         entity.ultimosDigitosCartao = request.ultimosDigitosCartao;
         
-        // Calcular taxa (exemplo: 2.5% para crédito, 1.5% para débito)
         BigDecimal taxaPercentual = entity.formaPagamento == FormaPagamento.CARTAO_CREDITO 
             ? new BigDecimal("0.025") 
             : new BigDecimal("0.015");
         entity.valorTaxa = entity.valor.multiply(taxaPercentual).setScale(4, BigDecimal.ROUND_HALF_UP);
     }
 
-    private void processarPix(Pagamento entity, VendaService.PagamentoRequest request) {
-        entity.status = Pagamento.StatusPagamento.AUTORIZADO;
-        entity.dataAutorizacao = LocalDateTime.now();
-        entity.pixTxId = request.pixTxId != null ? request.pixTxId : gerarPixTxId();
-        entity.pixQrCode = request.pixQrCode;
-        // Pix geralmente não tem taxa para o comerciante
-        entity.valorTaxa = BigDecimal.ZERO;
+    private void processarPix(Pagamento entity, VendaService.PagamentoRequest request, UUID vendaId) {
+        if (request.pixTxId != null && !request.pixTxId.isEmpty()) {
+            entity.status = Pagamento.StatusPagamento.AUTORIZADO;
+            entity.dataAutorizacao = LocalDateTime.now();
+            entity.pixTxId = request.pixTxId;
+            entity.pixQrCode = request.pixQrCode;
+            entity.valorTaxa = BigDecimal.ZERO;
+        } else {
+            entity.status = Pagamento.StatusPagamento.PENDENTE;
+            entity.pixTxId = pixService.gerarTxid(vendaId);
+            entity.pixQrCode = null;
+            entity.valorTaxa = BigDecimal.ZERO;
+        }
     }
 
     private void processarVale(Pagamento entity, VendaService.PagamentoRequest request) {
@@ -148,7 +177,6 @@ public class PagamentoService extends BaseCrudServiceImpl<Pagamento, PagamentoDT
         entity.dataAutorizacao = LocalDateTime.now();
         entity.valeNumero = request.valeNumero;
         entity.valeValidade = request.valeValidade;
-        // Vales podem ter taxa dependendo da operadora
         entity.valorTaxa = BigDecimal.ZERO;
     }
 
@@ -179,5 +207,94 @@ public class PagamentoService extends BaseCrudServiceImpl<Pagamento, PagamentoDT
 
     private String gerarPixTxId() {
         return "PIX" + System.currentTimeMillis();
+    }
+
+    private void processarCartaoTef(Pagamento entity, VendaService.PagamentoRequest request) {
+        try {
+            TefTransacaoResponse tefResponse = tefService.confirmarTransacao(request.tefRequestId);
+            
+            if (!tefResponse.sucesso) {
+                entity.status = Pagamento.StatusPagamento.NEGADO;
+                entity.mensagemRetorno = tefResponse.mensagem;
+                throw new BusinessException("TEF_NEGADO", tefResponse.mensagem != null ? tefResponse.mensagem : "Transação negada pelo TEF");
+            }
+
+            entity.status = Pagamento.StatusPagamento.AUTORIZADO;
+            entity.dataAutorizacao = LocalDateTime.now();
+            entity.nsu = tefResponse.nsu;
+            entity.codigoAutorizacao = tefResponse.codigoAutorizacao;
+            entity.bandeiraCartao = request.bandeiraCartao;
+            entity.ultimosDigitosCartao = request.ultimosDigitosCartao;
+            entity.comprovante = tefResponse.comprovanteEstabelecimento;
+            entity.mensagemRetorno = "TEF: " + tefResponse.mensagem;
+
+            BigDecimal taxaPercentual = entity.formaPagamento == FormaPagamento.CARTAO_CREDITO 
+                ? new BigDecimal("0.025") 
+                : new BigDecimal("0.015");
+            entity.valorTaxa = entity.valor.multiply(taxaPercentual).setScale(4, BigDecimal.ROUND_HALF_UP);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException("TEF_ERROR", "Erro ao processar confirmação TEF: " + e.getMessage());
+        }
+    }
+
+    private void processarValeTef(Pagamento entity, VendaService.PagamentoRequest request) {
+        try {
+            TefTransacaoResponse tefResponse = tefService.confirmarTransacao(request.tefRequestId);
+            
+            if (!tefResponse.sucesso) {
+                entity.status = Pagamento.StatusPagamento.NEGADO;
+                entity.mensagemRetorno = tefResponse.mensagem;
+                throw new BusinessException("TEF_NEGADO", tefResponse.mensagem != null ? tefResponse.mensagem : "Transação negada pelo TEF");
+            }
+
+            entity.status = Pagamento.StatusPagamento.AUTORIZADO;
+            entity.dataAutorizacao = LocalDateTime.now();
+            entity.nsu = tefResponse.nsu;
+            entity.codigoAutorizacao = tefResponse.codigoAutorizacao;
+            entity.bandeiraCartao = request.bandeiraCartao;
+            entity.valeNumero = request.valeNumero;
+            entity.valeValidade = request.valeValidade;
+            entity.comprovante = tefResponse.comprovanteEstabelecimento;
+            entity.mensagemRetorno = "TEF: " + tefResponse.mensagem;
+            entity.valorTaxa = BigDecimal.ZERO;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException("TEF_ERROR", "Erro ao processar confirmação TEF: " + e.getMessage());
+        }
+    }
+
+    @Transactional
+    public TefTransacaoResponse iniciarTransacaoTef(UUID vendaId, VendaService.PagamentoRequest request) {
+        Venda venda = vendaRepository.findById(vendaId);
+        if (venda == null || venda.deleted) {
+            throw new NotFoundException("Venda", vendaId);
+        }
+
+        BigDecimal saldoDevedor = venda.valorTotal.subtract(getTotalPago(vendaId));
+        if (request.valor.compareTo(saldoDevedor) > 0) {
+            throw new ValidationException("Valor do pagamento excede o saldo devedor: " + saldoDevedor);
+        }
+
+        TefIniciarTransacaoRequest tefRequest = new TefIniciarTransacaoRequest();
+        tefRequest.valor = request.valor;
+        tefRequest.tipoTransacao = TipoTransacaoTef.fromFormaPagamento(request.formaPagamento.name());
+        tefRequest.parcelas = request.parcelas != null ? request.parcelas : 1;
+        tefRequest.bandeira = request.bandeiraCartao;
+        tefRequest.documento = venda.numero;
+        tefRequest.cpfCnpjConsumidor = request.cpfConsumidor;
+
+        return tefService.iniciarTransacao(tefRequest);
+    }
+
+    @Transactional
+    public void cancelarTransacaoTef(String tefRequestId) {
+        tefService.desfazerTransacao(tefRequestId);
+    }
+
+    public String reimprimirComprovanteTef(String tefRequestId, String via) {
+        return tefService.reimprimirComprovante(tefRequestId, via);
     }
 }

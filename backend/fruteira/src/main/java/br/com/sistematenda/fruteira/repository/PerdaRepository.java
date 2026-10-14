@@ -2,7 +2,9 @@ package br.com.sistematenda.fruteira.repository;
 
 import br.com.sistematenda.fruteira.entity.Perda;
 import br.com.sistematenda.fruteira.entity.Produto;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import br.com.sistematenda.common.dto.PageResponse;
+import io.quarkus.hibernate.orm.panache.Panache;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -14,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
-public class PerdaRepository implements PanacheRepository<Perda> {
+public class PerdaRepository implements PanacheRepositoryBase<Perda, UUID> {
 
     public List<Perda> findByProduto(Produto produto) {
         return find("produto = ?1 and deleted = false", produto).list();
@@ -33,17 +35,24 @@ public class PerdaRepository implements PanacheRepository<Perda> {
     }
 
     public BigDecimal getTotalPerdasPeriodo(LocalDate dataInicio, LocalDate dataFim) {
-        return find("data >= ?1 and data <= ?2 and deleted = false", dataInicio, dataFim)
-            .project(BigDecimal.class, "sum(valorTotal)")
-            .firstResultOptional()
-            .orElse(BigDecimal.ZERO);
+        BigDecimal total = Panache.getEntityManager()
+            .createQuery("select coalesce(sum(p.valorTotal), 0) from Perda p "
+                + "where p.data >= :inicio and p.data <= :fim and p.deleted = false", BigDecimal.class)
+            .setParameter("inicio", dataInicio)
+            .setParameter("fim", dataFim)
+            .getSingleResult();
+        return total != null ? total : BigDecimal.ZERO;
     }
 
     public BigDecimal getTotalPerdasPorTipoPeriodo(Perda.TipoPerda tipo, LocalDate dataInicio, LocalDate dataFim) {
-        return find("tipo = ?1 and data >= ?2 and data <= ?3 and deleted = false", tipo, dataInicio, dataFim)
-            .project(BigDecimal.class, "sum(valorTotal)")
-            .firstResultOptional()
-            .orElse(BigDecimal.ZERO);
+        BigDecimal total = Panache.getEntityManager()
+            .createQuery("select coalesce(sum(p.valorTotal), 0) from Perda p "
+                + "where p.tipo = :tipo and p.data >= :inicio and p.data <= :fim and p.deleted = false", BigDecimal.class)
+            .setParameter("tipo", tipo)
+            .setParameter("inicio", dataInicio)
+            .setParameter("fim", dataFim)
+            .getSingleResult();
+        return total != null ? total : BigDecimal.ZERO;
     }
 
     public List<Perda> findPendentesBaixaEstoque() {
@@ -71,7 +80,7 @@ public class PerdaRepository implements PanacheRepository<Perda> {
         Sort sort = Sort.by(sortBy != null ? sortBy : "data", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(page, size, sort);
+        Page pageable = Page.of(size, page);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);

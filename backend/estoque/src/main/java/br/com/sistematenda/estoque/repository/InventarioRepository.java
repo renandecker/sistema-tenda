@@ -43,7 +43,7 @@ public class InventarioRepository implements PanacheRepository<Inventario> {
         Sort sort = Sort.by(sortBy != null ? sortBy : "dataInicio", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(page, size, sort);
+        Page pageable = Page.of(size, page);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);

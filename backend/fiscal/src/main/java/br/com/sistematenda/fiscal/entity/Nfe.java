@@ -6,7 +6,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "fiscal_nfe", indexes = {
@@ -137,9 +139,8 @@ public class Nfe extends BaseEntity {
     @Column(name = "danfe", columnDefinition = "BYTEA")
     public byte[] danfe;
 
-    @ManyToOne
-    @JoinColumn(name = "venda_id")
-    public Venda venda;
+    @Column(name = "venda_id")
+    public UUID vendaId;
 
     @Column(name = "ambiente", length = 20)
     @Size(max = 20)

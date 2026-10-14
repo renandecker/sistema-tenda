@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Box, Button, Typography } from '@mui/material';
 import { Home as HomeIcon, Search as SearchIcon } from '@mui/icons-material';

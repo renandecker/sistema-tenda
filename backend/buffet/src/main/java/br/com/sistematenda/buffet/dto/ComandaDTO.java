@@ -2,6 +2,7 @@ package br.com.sistematenda.buffet.dto;
 
 import br.com.sistematenda.common.dto.BaseDTO;
 import br.com.sistematenda.buffet.entity.Comanda;
+import br.com.sistematenda.buffet.entity.ItemComanda;
 import br.com.sistematenda.buffet.entity.Mesa;
 import br.com.sistematenda.common.enums.ModalidadeBuffet;
 import br.com.sistematenda.common.enums.StatusComanda;
@@ -53,6 +54,14 @@ public class ComandaDTO extends BaseDTO {
         return valorTotal != null ? valorTotal.subtract(valorPago != null ? valorPago : BigDecimal.ZERO) : BigDecimal.ZERO;
     }
 
+    public boolean isFechada() {
+        return status == StatusComanda.FECHADA || status == StatusComanda.PAGA;
+    }
+
+    public boolean isPaga() {
+        return status == StatusComanda.PAGA;
+    }
+
     @Data
     public static class MesaResumoDTO {
         private String id;
@@ -64,7 +73,7 @@ public class ComandaDTO extends BaseDTO {
     public static class ItemComandaResumoDTO {
         private String id;
         private String nomeProduto;
-        private TipoItem tipo;
+        private ItemComanda.TipoItem tipo;
         private BigDecimal quantidade;
         private BigDecimal precoUnitario;
         private BigDecimal valorTotal;

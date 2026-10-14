@@ -22,17 +22,9 @@ public class MesaService extends BaseCrudServiceImpl<Mesa, MesaDTO, UUID> {
     @Inject
     MesaRepository repository;
 
-    @Inject
-    MesaMapper mapper;
-
     @Override
     protected MesaRepository getRepository() {
         return repository;
-    }
-
-    @Override
-    protected MesaMapper getMapper() {
-        return mapper;
     }
 
     @Override
@@ -64,12 +56,12 @@ public class MesaService extends BaseCrudServiceImpl<Mesa, MesaDTO, UUID> {
 
     @Override
     public PageResponse<MesaDTO> findAll(int page, int size, String sortBy, String sortDirection) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, null, null, null);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, null, null, null));
     }
 
     public PageResponse<MesaDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                          Mesa.StatusMesa status, Boolean ativa, String area) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, status, ativa, area);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, status, ativa, area));
     }
 
     @Override

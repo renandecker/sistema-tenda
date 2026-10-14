@@ -1,6 +1,7 @@
 package br.com.sistematenda.buffet.scale;
 
 import com.fazecast.jSerialComm.SerialPort;
+import br.com.sistematenda.common.config.ScaleConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
@@ -32,14 +33,14 @@ public class BuffetScaleService {
         }
 
         // Usar porta diferente da fruteira se configurado
-        String port = config.port.replace("COM1", "COM2"); // Default to COM2 for buffet
+        String port = config.port().replace("COM1", "COM2"); // Default to COM2 for buffet
         
         serialPort = SerialPort.getCommPort(port);
-        serialPort.setBaudRate(config.baudRate);
-        serialPort.setNumDataBits(config.dataBits);
-        serialPort.setNumStopBits(config.stopBits);
-        serialPort.setParity(getParity(config.parity));
-        serialPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, config.timeoutMs, 0);
+        serialPort.setBaudRate(config.baudRate());
+        serialPort.setNumDataBits(config.dataBits());
+        serialPort.setNumStopBits(config.stopBits());
+        serialPort.setParity(getParity(config.parity()));
+        serialPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, config.timeoutMs(), 0);
 
         if (serialPort.openPort()) {
             LOG.info("Conectado à balança do buffet na porta " + port);
@@ -78,7 +79,7 @@ public class BuffetScaleService {
         
         sendCommand(getReadCommand());
         
-        future.orTimeout(config.timeoutMs, TimeUnit.MILLISECONDS)
+        future.orTimeout(config.timeoutMs(), TimeUnit.MILLISECONDS)
               .exceptionally(ex -> {
                   setDataListener(previousListener);
                   return null;
@@ -148,7 +149,7 @@ public class BuffetScaleService {
     }
 
     private String getReadCommand() {
-        return switch (config.protocol.toUpperCase()) {
+        return switch (config.protocol().toUpperCase()) {
             case "TOLEDO" -> "P";
             case "FILIZOLA" -> "W";
             case "URANO" -> "S";

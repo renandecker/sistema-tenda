@@ -68,7 +68,7 @@ public class MovimentoEstoqueRepository implements PanacheRepository<MovimentoEs
         Sort sort = Sort.by(sortBy != null ? sortBy : "data", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(page, size, sort);
+        Page pageable = Page.of(size, page);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);
@@ -80,16 +80,18 @@ public class MovimentoEstoqueRepository implements PanacheRepository<MovimentoEs
     }
 
     public java.math.BigDecimal getTotalEntradasPeriodo(LocalDateTime inicio, LocalDateTime fim) {
-        return find("data >= ?1 and data <= ?2 and tipo like 'ENTRADA%' and deleted = false", inicio, fim)
-            .project(java.math.BigDecimal.class, "sum(valorTotal)")
-            .firstResultOptional()
-            .orElse(java.math.BigDecimal.ZERO);
+        return io.quarkus.hibernate.orm.panache.Panache.getEntityManager()
+            .createQuery("select coalesce(sum(m.valorTotal),0) from MovimentoEstoque m where m.data >= ?1 and m.data <= ?2 and m.tipo like 'ENTRADA%' and m.deleted = false", java.math.BigDecimal.class)
+            .setParameter(1, inicio)
+            .setParameter(2, fim)
+            .getSingleResult();
     }
 
     public java.math.BigDecimal getTotalSaidasPeriodo(LocalDateTime inicio, LocalDateTime fim) {
-        return find("data >= ?1 and data <= ?2 and tipo like 'SAIDA%' and deleted = false", inicio, fim)
-            .project(java.math.BigDecimal.class, "sum(valorTotal)")
-            .firstResultOptional()
-            .orElse(java.math.BigDecimal.ZERO);
+        return io.quarkus.hibernate.orm.panache.Panache.getEntityManager()
+            .createQuery("select coalesce(sum(m.valorTotal),0) from MovimentoEstoque m where m.data >= ?1 and m.data <= ?2 and m.tipo like 'SAIDA%' and m.deleted = false", java.math.BigDecimal.class)
+            .setParameter(1, inicio)
+            .setParameter(2, fim)
+            .getSingleResult();
     }
 }

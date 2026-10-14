@@ -1,7 +1,10 @@
 package br.com.sistematenda.pdv.resource;
 
+import br.com.sistematenda.common.pix.PixChargeRequest;
+import br.com.sistematenda.common.pix.PixChargeResponse;
 import br.com.sistematenda.pdv.dto.VendaDTO;
 import br.com.sistematenda.pdv.service.VendaService;
+import br.com.sistematenda.pdv.pix.PixService;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.enums.StatusVenda;
 import jakarta.inject.Inject;
@@ -22,6 +25,9 @@ public class VendaResource {
 
     @Inject
     VendaService service;
+
+    @Inject
+    PixService pixService;
 
     @GET
     public PageResponse<VendaDTO> listar(
@@ -118,14 +124,29 @@ public class VendaResource {
 
     @POST
     @Path("/{id}/pagamento")
-    public VendaDTO processarPagamento(@PathParam("id") UUID id, PagamentoRequest request) {
+    public VendaDTO processarPagamento(@PathParam("id") UUID id, VendaService.PagamentoRequest request) {
         return service.processarPagamento(id, request);
     }
 
     @POST
+    @Path("/{id}/pix/gerar")
+    public PixChargeResponse gerarPix(@PathParam("id") UUID id, 
+                                       @QueryParam("valor") BigDecimal valor,
+                                       @QueryParam("txid") String txid) {
+        return pixService.gerarPixParaVenda(id, valor, txid);
+    }
+
+    @GET
+    @Path("/{id}/pix/status")
+    public PixChargeResponse consultarPix(@PathParam("id") UUID id,
+                                           @QueryParam("txid") String txid) {
+        return pixService.consultarStatus(txid);
+    }
+
+    @POST
     @Path("/{id}/finalizar")
-    public VendaDTO finalizar(@PathParam("id") UUID id) {
-        return service.finalizarVenda(id);
+    public VendaDTO finalizar(@PathParam("id") UUID id, @QueryParam("cpfConsumidor") String cpfConsumidor) {
+        return service.finalizarVenda(id, cpfConsumidor);
     }
 
     @POST
@@ -155,17 +176,4 @@ public class VendaResource {
         return service.getTotalBuffetPeriodo(dataInicio, dataFim);
     }
 
-    public static class PagamentoRequest {
-        public br.com.sistematenda.common.enums.FormaPagamento formaPagamento;
-        public BigDecimal valor;
-        public Integer parcelas;
-        public String nsu;
-        public String codigoAutorizacao;
-        public String bandeiraCartao;
-        public String ultimosDigitosCartao;
-        public String pixTxId;
-        public String pixQrCode;
-        public String valeNumero;
-        public java.time.LocalDateTime valeValidade;
-    }
 }

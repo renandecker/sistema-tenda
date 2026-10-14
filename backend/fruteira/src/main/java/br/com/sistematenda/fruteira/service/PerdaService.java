@@ -1,9 +1,9 @@
 package br.com.sistematenda.fruteira.service;
 
 import br.com.sistematenda.fruteira.dto.PerdaDTO;
+import br.com.sistematenda.fruteira.dto.ProdutoDTO;
 import br.com.sistematenda.fruteira.entity.Perda;
 import br.com.sistematenda.fruteira.entity.Produto;
-import br.com.sistematenda.fruteira.mapper.PerdaMapper;
 import br.com.sistematenda.fruteira.repository.PerdaRepository;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.exception.BusinessException;
@@ -28,19 +28,11 @@ public class PerdaService extends BaseCrudServiceImpl<Perda, PerdaDTO, UUID> {
     PerdaRepository repository;
 
     @Inject
-    PerdaMapper mapper;
-
-    @Inject
     ProdutoService produtoService;
 
     @Override
     protected PerdaRepository getRepository() {
         return repository;
-    }
-
-    @Override
-    protected PerdaMapper getMapper() {
-        return mapper;
     }
 
     @Override
@@ -80,12 +72,12 @@ public class PerdaService extends BaseCrudServiceImpl<Perda, PerdaDTO, UUID> {
 
     @Override
     public PageResponse<PerdaDTO> findAll(int page, int size, String sortBy, String sortDirection) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, null, null, null);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, null, null, null));
     }
 
     public PageResponse<PerdaDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                           Perda.TipoPerda tipo, LocalDate dataInicio, LocalDate dataFim) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, tipo, dataInicio, dataFim);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, tipo, dataInicio, dataFim));
     }
 
     @Override
@@ -95,7 +87,7 @@ public class PerdaService extends BaseCrudServiceImpl<Perda, PerdaDTO, UUID> {
         
         Perda entity = mapper.toEntity(dto);
         entity.produto = new Produto();
-        entity.produto.id = dto.getProduto().getId();
+        entity.produto.id = UUID.fromString(dto.getProduto().getId());
         
         entity.valorTotal = entity.custoUnitario.multiply(entity.quantidade);
         entity.hora = LocalDateTime.now();

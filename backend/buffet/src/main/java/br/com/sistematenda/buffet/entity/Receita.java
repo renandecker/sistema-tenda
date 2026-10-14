@@ -1,6 +1,7 @@
 package br.com.sistematenda.buffet.entity;
 
 import br.com.sistematenda.common.entity.BaseEntity;
+import br.com.sistematenda.common.enums.UnidadeMedida;
 import br.com.sistematenda.fruteira.entity.Produto;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
@@ -8,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Entity
 @Table(name = "buffet_receita", indexes = {

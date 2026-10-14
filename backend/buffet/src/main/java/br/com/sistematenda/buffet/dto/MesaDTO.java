@@ -2,6 +2,7 @@ package br.com.sistematenda.buffet.dto;
 
 import br.com.sistematenda.common.dto.BaseDTO;
 import br.com.sistematenda.buffet.entity.Mesa;
+import br.com.sistematenda.common.enums.StatusComanda;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -23,11 +24,15 @@ public class MesaDTO extends BaseDTO {
     private Boolean ativa;
     private ComandaResumoDTO comandaAtiva;
 
+    public boolean isDisponivel() {
+        return status == Mesa.StatusMesa.LIVRE;
+    }
+
     @Data
     public static class ComandaResumoDTO {
         private String id;
         private String numero;
         private String clienteNome;
-        private Mesa.StatusMesa status;
+        private StatusComanda status;
     }
 }

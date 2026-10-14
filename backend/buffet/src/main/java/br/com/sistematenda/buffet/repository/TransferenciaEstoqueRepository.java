@@ -2,17 +2,19 @@ package br.com.sistematenda.buffet.repository;
 
 import br.com.sistematenda.buffet.entity.TransferenciaEstoque;
 import br.com.sistematenda.common.dto.PageResponse;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import io.quarkus.hibernate.orm.panache.Panache;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
-public class TransferenciaEstoqueRepository implements PanacheRepository<TransferenciaEstoque> {
+public class TransferenciaEstoqueRepository implements PanacheRepositoryBase<TransferenciaEstoque, UUID> {
 
     public List<TransferenciaEstoque> findByStatus(TransferenciaEstoque.StatusTransferencia status) {
         return find("status = ?1 and deleted = false", status).list();
@@ -56,7 +58,7 @@ public class TransferenciaEstoqueRepository implements PanacheRepository<Transfe
         Sort sort = Sort.by(sortBy != null ? sortBy : "data", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(page, size, sort);
+        Page pageable = Page.of(size, page);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);
@@ -67,10 +69,14 @@ public class TransferenciaEstoqueRepository implements PanacheRepository<Transfe
         return PageResponse.of(content, totalElements, page, size);
     }
 
-    public java.math.BigDecimal getTotalTransferidoPeriodo(LocalDateTime inicio, LocalDateTime fim) {
-        return find("data >= ?1 and data <= ?2 and status = 'CONCLUIDA' and deleted = false", inicio, fim)
-            .project(java.math.BigDecimal.class, "sum(valorTotal)")
-            .firstResultOptional()
-            .orElse(java.math.BigDecimal.ZERO);
+    public BigDecimal getTotalTransferidoPeriodo(LocalDateTime inicio, LocalDateTime fim) {
+        BigDecimal total = Panache.getEntityManager()
+            .createQuery("select coalesce(sum(t.valorTotal), 0) from TransferenciaEstoque t "
+                + "where t.data >= :inicio and t.data <= :fim "
+                + "and t.status = 'CONCLUIDA' and t.deleted = false", BigDecimal.class)
+            .setParameter("inicio", inicio)
+            .setParameter("fim", fim)
+            .getSingleResult();
+        return total != null ? total : BigDecimal.ZERO;
     }
 }

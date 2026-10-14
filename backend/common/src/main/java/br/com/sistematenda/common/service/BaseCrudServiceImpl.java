@@ -54,6 +54,14 @@ public abstract class BaseCrudServiceImpl<E extends BaseEntity, D, ID> implement
         return findAll(page, size, null, null);
     }
 
+    protected PageResponse<D> toDtoPage(PageResponse<E> page) {
+        return PageResponse.of(
+                page.getContent().stream().map(mapper::toDTO).toList(),
+                page.getTotalElements(),
+                page.getCurrentPage(),
+                page.getPageSize());
+    }
+
     @Override
     public List<D> findAll() {
         return getRepository().find("deleted = false").list().stream()

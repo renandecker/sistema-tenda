@@ -1,5 +1,6 @@
 package br.com.sistematenda.common.entity;
 
+import br.com.sistematenda.common.enums.TipoPessoa;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
@@ -9,18 +10,9 @@ import java.math.BigDecimal;
 @Table(name = "cadastro_clientes", indexes = {
     @Index(name = "idx_cliente_email", columnList = "email", unique = true),
     @Index(name = "idx_cliente_tipo", columnList = "tipo_pessoa"),
-    @Index(name = "idx_cliente_ativo", columnList = "ativo")
+    @Index(name = "idx_cliente_ativo", columnList = "status")
 })
 public class Cliente extends BaseEntity {
-
-    public enum TipoPessoa {
-        FISICA("Física"),
-        JURIDICA("Jurídica");
-
-        private final String descricao;
-        TipoPessoa(String descricao) { this.descricao = descricao; }
-        public String getDescricao() { return descricao; }
-    }
 
     @Column(name = "nome", nullable = false, length = 200)
     @NotNull

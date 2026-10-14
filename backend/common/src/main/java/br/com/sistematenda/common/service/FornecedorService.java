@@ -2,13 +2,10 @@ package br.com.sistematenda.common.service;
 
 import br.com.sistematenda.common.dto.FornecedorDTO;
 import br.com.sistematenda.common.entity.Fornecedor;
-import br.com.sistematenda.common.mapper.FornecedorMapper;
 import br.com.sistematenda.common.repository.FornecedorRepository;
 import br.com.sistematenda.common.dto.PageResponse;
-import br.com.sistematenda.common.exception.BusinessException;
 import br.com.sistematenda.common.exception.NotFoundException;
 import br.com.sistematenda.common.exception.ValidationException;
-import br.com.sistematenda.common.service.BaseCrudServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -23,17 +20,9 @@ public class FornecedorService extends BaseCrudServiceImpl<Fornecedor, Fornecedo
     @Inject
     FornecedorRepository repository;
 
-    @Inject
-    FornecedorMapper mapper;
-
     @Override
     protected FornecedorRepository getRepository() {
         return repository;
-    }
-
-    @Override
-    protected FornecedorMapper getMapper() {
-        return mapper;
     }
 
     @Override

@@ -2,13 +2,11 @@ package br.com.sistematenda.common.service;
 
 import br.com.sistematenda.common.dto.ClienteDTO;
 import br.com.sistematenda.common.entity.Cliente;
-import br.com.sistematenda.common.mapper.ClienteMapper;
+import br.com.sistematenda.common.enums.TipoPessoa;
 import br.com.sistematenda.common.repository.ClienteRepository;
 import br.com.sistematenda.common.dto.PageResponse;
-import br.com.sistematenda.common.exception.BusinessException;
 import br.com.sistematenda.common.exception.NotFoundException;
 import br.com.sistematenda.common.exception.ValidationException;
-import br.com.sistematenda.common.service.BaseCrudServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -23,17 +21,9 @@ public class ClienteService extends BaseCrudServiceImpl<Cliente, ClienteDTO, UUI
     @Inject
     ClienteRepository repository;
 
-    @Inject
-    ClienteMapper mapper;
-
     @Override
     protected ClienteRepository getRepository() {
         return repository;
-    }
-
-    @Override
-    protected ClienteMapper getMapper() {
-        return mapper;
     }
 
     @Override

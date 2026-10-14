@@ -4,6 +4,7 @@ import br.com.sistematenda.buffet.scale.BuffetScaleService;
 import br.com.sistematenda.fruteira.scale.ScaleParser;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.sse.Sse;

@@ -2,7 +2,9 @@ package br.com.sistematenda.pdv.service;
 
 import br.com.sistematenda.pdv.dto.SessaoCaixaDTO;
 import br.com.sistematenda.pdv.entity.SessaoCaixa;
+import br.com.sistematenda.pdv.entity.SessaoCaixa.StatusSessao;
 import br.com.sistematenda.pdv.entity.MovimentoCaixa;
+import br.com.sistematenda.pdv.entity.Pdv;
 import br.com.sistematenda.pdv.mapper.SessaoCaixaMapper;
 import br.com.sistematenda.pdv.repository.SessaoCaixaRepository;
 import br.com.sistematenda.pdv.repository.MovimentoCaixaRepository;
@@ -21,7 +23,9 @@ import jakarta.validation.Valid;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-java.time.LocalDateTime;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @ApplicationScoped
 public class SessaoCaixaService extends BaseCrudServiceImpl<SessaoCaixa, SessaoCaixaDTO, UUID> {
@@ -49,7 +53,6 @@ public class SessaoCaixaService extends BaseCrudServiceImpl<SessaoCaixa, SessaoC
         return repository;
     }
 
-    @Override
     protected SessaoCaixaMapper getMapper() {
         return mapper;
     }
@@ -78,19 +81,19 @@ public class SessaoCaixaService extends BaseCrudServiceImpl<SessaoCaixa, SessaoC
     }
 
     public List<SessaoCaixaDTO> findByPeriodo(LocalDate dataInicio, LocalDate dataFim) {
-        return repository.findByPeriodo(dataInicio.atStartOfDay(), dataFim.atTime(23, 59, 59)).stream()
+        return repository.findByPeriodo(dataInicio, dataFim).stream()
             .map(mapper::toDTO).toList();
     }
 
     @Override
     public PageResponse<SessaoCaixaDTO> findAll(int page, int size, String sortBy, String sortDirection) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, null, null, null, null);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, null, null, null, null));
     }
 
     public PageResponse<SessaoCaixaDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                                 UUID pdvId, StatusSessao status,
-                                                LocalDateTime inicio, LocalDateTime fim) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, pdvId, status, inicio, fim);
+                                                LocalDate inicio, LocalDate fim) {
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, pdvId, status, inicio, fim));
     }
 
     @Transactional
@@ -130,6 +133,24 @@ public class SessaoCaixaService extends BaseCrudServiceImpl<SessaoCaixa, SessaoC
         
         BigDecimal sangriasTotal = movimentoRepository.getTotalSangriasSessao(entity);
         BigDecimal reforcosTotal = movimentoRepository.getTotalReforcosSessao(entity);
+        
+        LocalDateTime inicioPeriodo = entity.dataAbertura;
+        LocalDateTime fimPeriodo = LocalDateTime.now();
+        BigDecimal vendasDinheiro = pagamentoRepository.getTotalByFormaPeriodo(
+            br.com.sistematenda.common.enums.FormaPagamento.DINHEIRO, inicioPeriodo, fimPeriodo);
+        BigDecimal vendasCartao = pagamentoRepository.getTotalByFormaPeriodo(
+            br.com.sistematenda.common.enums.FormaPagamento.CARTAO_CREDITO, inicioPeriodo, fimPeriodo)
+            .add(pagamentoRepository.getTotalByFormaPeriodo(
+                br.com.sistematenda.common.enums.FormaPagamento.CARTAO_DEBITO, inicioPeriodo, fimPeriodo));
+        BigDecimal vendasPix = pagamentoRepository.getTotalByFormaPeriodo(
+            br.com.sistematenda.common.enums.FormaPagamento.PIX, inicioPeriodo, fimPeriodo);
+        BigDecimal vendasVale = pagamentoRepository.getTotalByFormaPeriodo(
+            br.com.sistematenda.common.enums.FormaPagamento.VALE_ALIMENTACAO, inicioPeriodo, fimPeriodo)
+            .add(pagamentoRepository.getTotalByFormaPeriodo(
+                br.com.sistematenda.common.enums.FormaPagamento.VALE_REFEICAO, inicioPeriodo, fimPeriodo))
+            .add(pagamentoRepository.getTotalByFormaPeriodo(
+                br.com.sistematenda.common.enums.FormaPagamento.VALE_CULTURA, inicioPeriodo, fimPeriodo));
+        BigDecimal totalVendas = vendasDinheiro.add(vendasCartao).add(vendasPix).add(vendasVale);
         
         BigDecimal valorFinalSistema = entity.valorInicial
             .add(vendasDinheiro)
@@ -182,7 +203,7 @@ public class SessaoCaixaService extends BaseCrudServiceImpl<SessaoCaixa, SessaoC
         movimento.descricao = descricao;
         movimento.operador = operador;
         movimento.data = LocalDateTime.now();
-        movimentoRepository.getRepository().persist(movimento);
+        movimentoRepository.persist(movimento);
         
         entity.sangriasTotal = entity.sangriasTotal.add(valor);
         getRepository().persist(entity);
@@ -212,7 +233,7 @@ public class SessaoCaixaService extends BaseCrudServiceImpl<SessaoCaixa, SessaoC
         movimento.descricao = descricao;
         movimento.operador = operador;
         movimento.data = LocalDateTime.now();
-        movimentoRepository.getRepository().persist(movimento);
+        movimentoRepository.persist(movimento);
         
         entity.reforcosTotal = entity.reforcosTotal.add(valor);
         getRepository().persist(entity);

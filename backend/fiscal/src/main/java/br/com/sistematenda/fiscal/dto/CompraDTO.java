@@ -2,13 +2,13 @@ package br.com.sistematenda.fiscal.dto;
 
 import br.com.sistematenda.common.dto.BaseDTO;
 import br.com.sistematenda.fiscal.entity.Compra;
-import br.com.sistematenda.fiscal.entity.Fornecedor;
-import br.com.sistematenda.common.entity.Cliente;
+import br.com.sistematenda.common.entity.Fornecedor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -33,7 +33,6 @@ public class CompraDTO extends BaseDTO {
     private String observacoes;
     private List<ItemCompraDTO> itens;
 
-    @Data
     public enum StatusCompra {
         ORCAMENTO("Orçamento"),
         CONFIRMADA("Confirmada"),

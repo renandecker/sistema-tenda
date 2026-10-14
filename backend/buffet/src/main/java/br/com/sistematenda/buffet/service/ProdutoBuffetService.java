@@ -24,17 +24,9 @@ public class ProdutoBuffetService extends BaseCrudServiceImpl<ProdutoBuffet, Pro
     @Inject
     ProdutoBuffetRepository repository;
 
-    @Inject
-    ProdutoBuffetMapper mapper;
-
     @Override
-    protected ProdutoBuffetRepository getRepository() {
+    public ProdutoBuffetRepository getRepository() {
         return repository;
-    }
-
-    @Override
-    protected ProdutoBuffetMapper getMapper() {
-        return mapper;
     }
 
     @Override
@@ -80,13 +72,13 @@ public class ProdutoBuffetService extends BaseCrudServiceImpl<ProdutoBuffet, Pro
 
     @Override
     public PageResponse<ProdutoBuffetDTO> findAll(int page, int size, String sortBy, String sortDirection) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, null, null, null, null);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, null, null, null, null));
     }
 
     public PageResponse<ProdutoBuffetDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                                   ProdutoBuffet.Categoria categoria, UnidadeMedida unidadeMedida,
                                                   Boolean ativo, Boolean disponivelBalcao) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, categoria, unidadeMedida, ativo, disponivelBalcao);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, categoria, unidadeMedida, ativo, disponivelBalcao));
     }
 
     @Override

@@ -40,10 +40,10 @@ public interface CrudService<E, D, ID> {
     }
 
     default Page getPage(int page, int size, Sort sort) {
-        return Page.of(page, size, sort);
+        return Page.of(size, page);
     }
 
     default Page getPage(int page, int size) {
-        return Page.of(page, size);
+        return Page.of(size, page);
     }
 }

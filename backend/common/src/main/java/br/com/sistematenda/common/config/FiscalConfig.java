@@ -1,68 +1,76 @@
 package br.com.sistematenda.common.config;
 
-import io.quarkus.runtime.annotations.ConfigItem;
-import io.quarkus.runtime.annotations.ConfigRoot;
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
 
-@ConfigRoot(name = "fiscal")
-public class FiscalConfig {
+import java.util.Optional;
 
-    @ConfigItem(name = "ambiente", defaultValue = "HOMOLOGACAO")
-    public String ambiente;
+@ConfigMapping(prefix = "fiscal")
+public interface FiscalConfig {
 
-    @ConfigItem(name = "certificado-path")
-    public String certificadoPath;
+    @WithDefault("HOMOLOGACAO")
+    String ambiente();
 
-    @ConfigItem(name = "certificado-senha")
-    public String certificadoSenha;
+    @WithName("certificado-path")
+    Optional<String> certificadoPath();
 
-    @ConfigItem(name = "csc")
-    public String csc;
+    @WithName("certificado-senha")
+    Optional<String> certificadoSenha();
 
-    @ConfigItem(name = "csc-id")
-    public String cscId;
+    Optional<String> csc();
 
-    @ConfigItem(name = "uf", defaultValue = "SP")
-    public String uf;
+    @WithName("csc-id")
+    Optional<String> cscId();
 
-    @ConfigItem(name = "municipio-codigo")
-    public Integer municipioCodigo;
+    @WithDefault("SP")
+    String uf();
 
-    @ConfigItem(name = "municipio-nome")
-    public String municipioNome;
+    @WithName("municipio-codigo")
+    Optional<Integer> municipioCodigo();
 
-    @ConfigItem(name = "cnpj")
-    public String cnpj;
+    @WithName("municipio-nome")
+    Optional<String> municipioNome();
 
-    @ConfigItem(name = "inscricao-estadual")
-    public String inscricaoEstadual;
+    Optional<String> cnpj();
 
-    @ConfigItem(name = "inscricao-municipal")
-    public String inscricaoMunicipal;
+    @WithName("inscricao-estadual")
+    Optional<String> inscricaoEstadual();
 
-    @ConfigItem(name = "crt", defaultValue = "1")
-    public Integer crt;
+    @WithName("inscricao-municipal")
+    Optional<String> inscricaoMunicipal();
 
-    @ConfigItem(name = "serie-nfce", defaultValue = "1")
-    public Integer serieNfce;
+    @WithDefault("1")
+    Integer crt();
 
-    @ConfigItem(name = "numero-nfce-inicial", defaultValue = "1")
-    public Integer numeroNfceInicial;
+    @WithName("serie-nfce")
+    @WithDefault("1")
+    Integer serieNfce();
 
-    @ConfigItem(name = "serie-nfe", defaultValue = "1")
-    public Integer serieNfe;
+    @WithName("numero-nfce-inicial")
+    @WithDefault("1")
+    Integer numeroNfceInicial();
 
-    @ConfigItem(name = "numero-nfe-inicial", defaultValue = "1")
-    public Integer numeroNfeInicial;
+    @WithName("serie-nfe")
+    @WithDefault("1")
+    Integer serieNfe();
 
-    @ConfigItem(name = "modelo-danfe", defaultValue = "1")
-    public String modeloDanfe;
+    @WithName("numero-nfe-inicial")
+    @WithDefault("1")
+    Integer numeroNfeInicial();
 
-    @ConfigItem(name = "logo-path")
-    public String logoPath;
+    @WithName("modelo-danfe")
+    @WithDefault("1")
+    String modeloDanfe();
 
-    @ConfigItem(name = "webservice-timeout", defaultValue = "30000")
-    public int webserviceTimeout;
+    @WithName("logo-path")
+    Optional<String> logoPath();
 
-    @ConfigItem(name = "schemas-path", defaultValue = "schemas/")
-    public String schemasPath;
+    @WithName("webservice-timeout")
+    @WithDefault("30000")
+    int webserviceTimeout();
+
+    @WithName("schemas-path")
+    @WithDefault("schemas/")
+    String schemasPath();
 }

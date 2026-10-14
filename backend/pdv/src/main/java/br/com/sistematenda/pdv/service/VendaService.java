@@ -12,12 +12,17 @@ import br.com.sistematenda.fruteira.entity.Produto;
 import br.com.sistematenda.fruteira.service.ProdutoService;
 import br.com.sistematenda.buffet.entity.ProdutoBuffet;
 import br.com.sistematenda.buffet.service.ProdutoBuffetService;
+import br.com.sistematenda.fiscal.dto.NfceRequest;
+import br.com.sistematenda.fiscal.entity.Nfe;
+import br.com.sistematenda.fiscal.service.NfceService;
 import br.com.sistematenda.common.dto.PageResponse;
+import br.com.sistematenda.common.enums.FormaPagamento;
 import br.com.sistematenda.common.enums.StatusVenda;
 import br.com.sistematenda.common.exception.BusinessException;
 import br.com.sistematenda.common.exception.NotFoundException;
 import br.com.sistematenda.common.exception.ValidationException;
 import br.com.sistematenda.common.service.BaseCrudServiceImpl;
+import br.com.sistematenda.common.util.CpfUtils;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -59,12 +64,14 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
     @Inject
     PdvService pdvService;
 
+    @Inject
+    NfceService nfceService;
+
     @Override
     protected VendaRepository getRepository() {
         return repository;
     }
 
-    @Override
     protected VendaMapper getMapper() {
         return mapper;
     }
@@ -92,13 +99,13 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
 
     @Override
     public PageResponse<VendaDTO> findAll(int page, int size, String sortBy, String sortDirection) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, null, null, null, null, null);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, null, null, null, null, null));
     }
 
     public PageResponse<VendaDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                           StatusVenda status, LocalDate dataInicio, LocalDate dataFim,
                                           UUID pdvId, String clienteDocumento) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, status, dataInicio, dataFim, pdvId, clienteDocumento);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, status, dataInicio, dataFim, pdvId, clienteDocumento));
     }
 
     @Override
@@ -121,7 +128,7 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
         entity.operador = "SISTEMA"; // TODO: usuário logado
         
         if (dto.getComanda() != null && dto.getComanda().getId() != null) {
-            entity.comanda = comandaService.getRepository().findById(dto.getComanda().getId());
+            entity.comanda = comandaService.getRepository().findById(UUID.fromString(dto.getComanda().getId()));
             if (entity.comanda == null) {
                 throw new NotFoundException("Comanda", dto.getComanda().getId());
             }
@@ -145,7 +152,8 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
             throw new BusinessException("VENDA_FINALIZADA", "Não é possível adicionar itens a uma venda finalizada");
         }
         
-        return itemVendaService.adicionarItemFruteira(vendaId, produtoId, quantidade);
+        itemVendaService.adicionarItemFruteira(vendaId, produtoId, quantidade);
+        return findById(vendaId);
     }
 
     @Transactional
@@ -155,7 +163,8 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
             throw new BusinessException("VENDA_FINALIZADA", "Não é possível adicionar itens a uma venda finalizada");
         }
         
-        return itemVendaService.adicionarItemBuffet(vendaId, produtoId, quantidade);
+        itemVendaService.adicionarItemBuffet(vendaId, produtoId, quantidade);
+        return findById(vendaId);
     }
 
     @Transactional
@@ -165,7 +174,8 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
             throw new BusinessException("VENDA_FINALIZADA", "Não é possível adicionar itens a uma venda finalizada");
         }
         
-        return itemVendaService.adicionarPratoBalanca(vendaId, pesoBruto, tara);
+        itemVendaService.adicionarPratoBalanca(vendaId, pesoBruto, tara);
+        return findById(vendaId);
     }
 
     @Transactional
@@ -185,7 +195,8 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
         }
         
         // Transferir itens da comanda para a venda
-        return itemVendaService.adicionarItensComanda(vendaId, comandaId);
+        itemVendaService.adicionarItensComanda(vendaId, comandaId);
+        return findById(vendaId);
     }
 
     @Transactional
@@ -250,33 +261,72 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
         return pagamentoService.processarPagamento(vendaId, request);
     }
 
-    @Transactional
+@Transactional
     public VendaDTO finalizarVenda(UUID vendaId) {
+        return finalizarVenda(vendaId, null);
+    }
+
+    @Transactional
+    public VendaDTO finalizarVenda(UUID vendaId, String cpfConsumidor) {
         Venda entity = getRepository().findById(vendaId);
         if (entity == null || entity.deleted) {
             throw new NotFoundException("Venda", vendaId);
         }
-        
+
         if (entity.isFinalizada()) {
             throw new BusinessException("VENDA_JA_FINALIZADA", "Venda já está finalizada");
         }
-        
+
         if (entity.valorTotal.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException("VENDA_SEM_VALOR", "Venda não possui itens");
         }
-        
+
         BigDecimal totalPago = pagamentoService.getTotalPago(vendaId);
         if (totalPago.compareTo(entity.valorTotal) < 0) {
-            throw new BusinessException("PAGAMENTO_INCOMPLETO", 
+            throw new BusinessException("PAGAMENTO_INCOMPLETO",
                 "Valor pago (" + totalPago + ") menor que total (" + entity.valorTotal + ")");
         }
-        
+
         entity.status = StatusVenda.FINALIZADA;
         entity.dataFinalizacao = LocalDateTime.now();
         entity.troco = totalPago.subtract(entity.valorTotal);
         entity.valorPago = totalPago;
+
+        // Emitir NFC-e se configurado
+        if (cpfConsumidor != null && !cpfConsumidor.trim().isEmpty()) {
+            String cpfLimpo = CpfUtils.clean(cpfConsumidor);
+            if (!CpfUtils.isValid(cpfLimpo)) {
+                throw new ValidationException("CPF inválido para NFC-e");
+            }
+            entity.clienteDocumento = cpfLimpo;
+        }
+
         getRepository().persist(entity);
-        
+
+        try {
+            NfceRequest nfceRequest = new NfceRequest();
+            nfceRequest.setVendaId(entity.id);
+            nfceRequest.setClienteNome(entity.clienteNome);
+            nfceRequest.setClienteDocumento(entity.clienteDocumento);
+            nfceRequest.setValorTotal(entity.valorTotal);
+            nfceRequest.setSubtotal(entity.subtotal);
+            nfceRequest.setDesconto(entity.desconto);
+            nfceRequest.setAcrescimo(entity.acrescimo);
+
+            Nfe nfe = nfceService.emitirNfce(nfceRequest);
+            entity.nfce = nfe;
+            entity.numeroNfce = nfe.numero.toString();
+            entity.chaveNfce = nfe.chaveAcesso;
+            entity.xmlNfce = nfe.xmlAutorizado;
+            entity.danfeNfce = nfe.danfe;
+            getRepository().persist(entity);
+        } catch (BusinessException e) {
+            // Log error but don't fail the sale - allow manual NFC-e emission later
+            entity.observacoes = (entity.observacoes != null ? entity.observacoes + "\n" : "")
+                + "ERRO NFCE: " + e.getMessage();
+            getRepository().persist(entity);
+        }
+
         // Se tiver comanda, marcar como paga
         if (entity.comanda != null) {
             entity.comanda.status = br.com.sistematenda.common.enums.StatusComanda.PAGA;
@@ -284,7 +334,7 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
             entity.comanda.valorPago = totalPago;
             comandaService.getRepository().persist(entity.comanda);
         }
-        
+
         return mapper.toDTO(entity);
     }
 
@@ -341,12 +391,14 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
         public BigDecimal valor;
         public Integer parcelas;
         public String nsu;
-        private String codigoAutorizacao;
-        private String bandeiraCartao;
-        private String ultimosDigitosCartao;
-        private String pixTxId;
-        private String pixQrCode;
-        private String valeNumero;
-        private java.time.LocalDateTime valeValidade;
+        public String codigoAutorizacao;
+        public String bandeiraCartao;
+        public String ultimosDigitosCartao;
+        public String pixTxId;
+        public String pixQrCode;
+        public String valeNumero;
+        public java.time.LocalDateTime valeValidade;
+        public String tefRequestId;
+        public String cpfConsumidor;
     }
 }

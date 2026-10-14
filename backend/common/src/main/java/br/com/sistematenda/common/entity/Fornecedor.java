@@ -1,5 +1,7 @@
 package br.com.sistematenda.common.entity;
 
+import br.com.sistematenda.common.enums.CstIcms;
+import br.com.sistematenda.common.enums.CstPisCofins;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
@@ -9,7 +11,7 @@ import java.math.BigDecimal;
 @Table(name = "cadastro_fornecedores", indexes = {
     @Index(name = "idx_fornecedor_email", columnList = "email", unique = true),
     @Index(name = "idx_fornecedor_cnpj", columnList = "cnpj_cpf"),
-    @Index(name = "idx_fornecedor_ativo", columnList = "ativo")
+    @Index(name = "idx_fornecedor_ativo", columnList = "status")
 })
 public class Fornecedor extends BaseEntity {
 

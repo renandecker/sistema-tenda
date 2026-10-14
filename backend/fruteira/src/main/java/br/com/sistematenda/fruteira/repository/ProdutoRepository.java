@@ -1,9 +1,10 @@
 package br.com.sistematenda.fruteira.repository;
 
 import br.com.sistematenda.fruteira.entity.Produto;
+import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.enums.TipoProduto;
 import br.com.sistematenda.common.enums.UnidadeMedida;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -14,7 +15,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
-public class ProdutoRepository implements PanacheRepository<Produto> {
+public class ProdutoRepository implements PanacheRepositoryBase<Produto, UUID> {
 
     public Optional<Produto> findByCodigo(String codigo) {
         return find("codigo = ?1 and deleted = false", codigo).firstResultOptional();
@@ -76,7 +77,7 @@ public class ProdutoRepository implements PanacheRepository<Produto> {
         Sort sort = Sort.by(sortBy != null ? sortBy : "nome", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(page, size, sort);
+        Page pageable = Page.of(size, page);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);

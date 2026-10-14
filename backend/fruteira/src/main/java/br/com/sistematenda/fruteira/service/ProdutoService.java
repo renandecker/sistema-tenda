@@ -2,7 +2,6 @@ package br.com.sistematenda.fruteira.service;
 
 import br.com.sistematenda.fruteira.dto.ProdutoDTO;
 import br.com.sistematenda.fruteira.entity.Produto;
-import br.com.sistematenda.fruteira.mapper.ProdutoMapper;
 import br.com.sistematenda.fruteira.repository.ProdutoRepository;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.enums.TipoProduto;
@@ -26,22 +25,18 @@ public class ProdutoService extends BaseCrudServiceImpl<Produto, ProdutoDTO, UUI
     @Inject
     ProdutoRepository repository;
 
-    @Inject
-    ProdutoMapper mapper;
-
     @Override
-    protected ProdutoRepository getRepository() {
+    public ProdutoRepository getRepository() {
         return repository;
-    }
-
-    @Override
-    protected ProdutoMapper getMapper() {
-        return mapper;
     }
 
     @Override
     protected Class<Produto> getEntityClass() {
         return Produto.class;
+    }
+
+    public Produto buscarEntidade(UUID id) {
+        return repository.findById(id);
     }
 
     public ProdutoDTO findByCodigo(String codigo) {
@@ -88,12 +83,12 @@ public class ProdutoService extends BaseCrudServiceImpl<Produto, ProdutoDTO, UUI
 
     @Override
     public PageResponse<ProdutoDTO> findAll(int page, int size, String sortBy, String sortDirection) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, null, null, null);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, null, null, null));
     }
 
     public PageResponse<ProdutoDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                             TipoProduto tipo, UnidadeMedida unidadeMedida, Boolean ativo) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, tipo, unidadeMedida, ativo);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, tipo, unidadeMedida, ativo));
     }
 
     @Override

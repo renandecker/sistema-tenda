@@ -4,6 +4,7 @@ import com.fazecast.jSerialComm.SerialPort;
 import br.com.sistematenda.fruteira.entity.Produto;
 import br.com.sistematenda.fruteira.entity.EtiquetaBalanca;
 import br.com.sistematenda.fruteira.service.ProdutoService;
+import br.com.sistematenda.common.config.ScaleConfig;
 import br.com.sistematenda.common.enums.UnidadeMedida;
 import br.com.sistematenda.common.exception.BusinessException;
 import br.com.sistematenda.common.exception.NotFoundException;
@@ -50,18 +51,18 @@ public class ScaleService {
             return;
         }
 
-        serialPort = SerialPort.getCommPort(config.port);
-        serialPort.setBaudRate(config.baudRate);
-        serialPort.setNumDataBits(config.dataBits);
-        serialPort.setNumStopBits(config.stopBits);
-        serialPort.setParity(getParity(config.parity));
-        serialPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, config.timeoutMs, 0);
+        serialPort = SerialPort.getCommPort(config.port());
+        serialPort.setBaudRate(config.baudRate());
+        serialPort.setNumDataBits(config.dataBits());
+        serialPort.setNumStopBits(config.stopBits());
+        serialPort.setParity(getParity(config.parity()));
+        serialPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, config.timeoutMs(), 0);
 
         if (serialPort.openPort()) {
-            LOG.info("Conectado à balança na porta " + config.port);
+            LOG.info("Conectado à balança na porta " + config.port());
             startReading();
         } else {
-            LOG.error("Falha ao conectar à balança na porta " + config.port);
+            LOG.error("Falha ao conectar à balança na porta " + config.port());
             throw new RuntimeException("Não foi possível conectar à balança");
         }
     }
@@ -75,6 +76,40 @@ public class ScaleService {
             serialPort.closePort();
             LOG.info("Desconectado da balança");
         }
+    }
+
+    private void startReading() {
+        running = true;
+        readThread = new Thread(() -> {
+            try (InputStream input = serialPort.getInputStream()) {
+                byte[] buffer = new byte[1024];
+                StringBuilder sb = new StringBuilder();
+
+                while (running && serialPort.isOpen()) {
+                    int bytesRead = input.read(buffer);
+                    if (bytesRead > 0) {
+                        String data = new String(buffer, 0, bytesRead, StandardCharsets.US_ASCII);
+                        sb.append(data);
+
+                        int newlineIndex;
+                        while ((newlineIndex = sb.indexOf("\n")) != -1) {
+                            String line = sb.substring(0, newlineIndex).trim();
+                            sb.delete(0, newlineIndex + 1);
+
+                            if (!line.isEmpty() && dataListener != null) {
+                                dataListener.accept(line);
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                if (running) {
+                    LOG.error("Erro na leitura da balança", e);
+                }
+            }
+        });
+        readThread.setDaemon(true);
+        readThread.start();
     }
 
     public void setDataListener(Consumer<String> listener) {
@@ -100,7 +135,7 @@ public class ScaleService {
 
         sendCommand(getReadCommand());
 
-        future.orTimeout(config.timeoutMs, TimeUnit.MILLISECONDS)
+        future.orTimeout(config.timeoutMs(), TimeUnit.MILLISECONDS)
               .exceptionally(ex -> {
                   setDataListener(previousListener);
                   return null;
@@ -125,7 +160,7 @@ public class ScaleService {
 
         try {
             // Tentar parse baseado no protocolo configurado
-            switch (config.protocol.toUpperCase()) {
+            switch (config.protocol().toUpperCase()) {
                 case "TOLEDO":
                     pesoLiquido = parseToledo(trimmed);
                     break;
@@ -229,7 +264,7 @@ public class ScaleService {
         // TODO: Implementar lógica de associação à comanda/PDV
         
         // Por enquanto, apenas logar
-        LOG.info("Pesagem automática: {:.3f} kg - Comprovante a ser gerado", pesoLiquido);
+        LOG.infof("Pesagem automática: %.3f kg - Comprovante a ser gerado", pesoLiquido);
     }
 
     public void sendCommand(String command) {
@@ -259,7 +294,7 @@ public class ScaleService {
     }
 
     private String getReadCommand() {
-        return switch (config.protocol.toUpperCase()) {
+        return switch (config.protocol().toUpperCase()) {
             case "TOLEDO" -> "P";
             case "FILIZOLA" -> "W";
             case "URANO" -> "S";

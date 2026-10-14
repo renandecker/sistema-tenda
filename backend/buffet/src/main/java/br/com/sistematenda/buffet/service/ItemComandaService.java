@@ -1,6 +1,7 @@
 package br.com.sistematenda.buffet.service;
 
 import br.com.sistematenda.buffet.dto.ItemComandaDTO;
+import br.com.sistematenda.buffet.dto.ProdutoBuffetDTO;
 import br.com.sistematenda.buffet.entity.Comanda;
 import br.com.sistematenda.buffet.entity.ItemComanda;
 import br.com.sistematenda.buffet.entity.ProdutoBuffet;
@@ -29,22 +30,14 @@ public class ItemComandaService extends BaseCrudServiceImpl<ItemComanda, ItemCom
     ItemComandaRepository repository;
 
     @Inject
-    ItemComandaMapper mapper;
-
-    @Inject
     ComandaRepository comandaRepository;
 
     @Inject
     ProdutoBuffetService produtoBuffetService;
 
     @Override
-    protected ItemComandaRepository getRepository() {
+    public ItemComandaRepository getRepository() {
         return repository;
-    }
-
-    @Override
-    protected ItemComandaMapper getMapper() {
-        return mapper;
     }
 
     @Override
@@ -66,7 +59,7 @@ public class ItemComandaService extends BaseCrudServiceImpl<ItemComanda, ItemCom
         if (comanda == null) {
             throw new NotFoundException("Comanda", comandaId);
         }
-        return repository.findByComandaPaginated(comanda, page, size, sortBy, sortDirection);
+        return toDtoPage(repository.findByComandaPaginated(comanda, page, size, sortBy, sortDirection));
     }
 
     public BigDecimal getTotalByComanda(UUID comandaId) {
@@ -82,7 +75,7 @@ public class ItemComandaService extends BaseCrudServiceImpl<ItemComanda, ItemCom
     public ItemComandaDTO create(@Valid ItemComandaDTO dto) {
         validateCreate(dto);
         
-        Comanda comanda = comandaRepository.findById(dto.getComanda().getId());
+        Comanda comanda = comandaRepository.findById(UUID.fromString(dto.getComanda().getId()));
         if (comanda == null) {
             throw new NotFoundException("Comanda", dto.getComanda().getId());
         }
@@ -141,15 +134,15 @@ public class ItemComandaService extends BaseCrudServiceImpl<ItemComanda, ItemCom
             throw new BusinessException("COMANDA_FECHADA", "Comanda está fechada");
         }
         
-        if (comanda.getPrecoKg() == null || comanda.getPrecoKg().compareTo(BigDecimal.ZERO) <= 0) {
+        if (comanda.precoKg == null || comanda.precoKg.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException("PRECO_KG_NAO_DEFINIDO", "Preço por kg não definido para esta comanda");
         }
         
-        BigDecimal pesoLiquido = pesoBruto.subtract(tara != null ? tara : comanda.getTaraPadrao());
+        BigDecimal pesoLiquido = pesoBruto.subtract(tara != null ? tara : comanda.taraPadrao);
         if (pesoLiquido.compareTo(BigDecimal.ZERO) < 0) {
             pesoLiquido = BigDecimal.ZERO;
         }
-        
+
         ItemComandaDTO dto = new ItemComandaDTO();
         dto.setComanda(new ItemComandaDTO.ComandaResumoDTO());
         dto.getComanda().setId(comandaId.toString());
@@ -157,9 +150,9 @@ public class ItemComandaService extends BaseCrudServiceImpl<ItemComanda, ItemCom
         dto.setNomeProduto("Prato Buffet (Peso)");
         dto.setQuantidade(pesoLiquido);
         dto.setPesoBruto(pesoBruto);
-        dto.setTara(tara != null ? tara : comanda.getTaraPadrao());
+        dto.setTara(tara != null ? tara : comanda.taraPadrao);
         dto.setPesoLiquido(pesoLiquido);
-        dto.setPrecoUnitario(comanda.getPrecoKg());
+        dto.setPrecoUnitario(comanda.precoKg);
         
         return create(dto);
     }
@@ -241,7 +234,16 @@ public class ItemComandaService extends BaseCrudServiceImpl<ItemComanda, ItemCom
         comanda.valorTotal = subtotal
             .subtract(comanda.desconto != null ? comanda.desconto : BigDecimal.ZERO)
             .add(comanda.acrescimo != null ? comanda.acrescimo : BigDecimal.ZERO);
-        comandaRepository.getRepository().persist(comanda);
+        comandaRepository.persist(comanda);
+    }
+
+    private void validateCreate(ItemComandaDTO dto) {
+        if (dto.getComanda() == null || dto.getComanda().getId() == null) {
+            throw new ValidationException("Comanda é obrigatória");
+        }
+        if (dto.getTipo() == null) {
+            throw new ValidationException("Tipo do item é obrigatório");
+        }
     }
 
     private ItemComanda.TipoItem mapTipoFromCategoria(ProdutoBuffet.Categoria categoria) {

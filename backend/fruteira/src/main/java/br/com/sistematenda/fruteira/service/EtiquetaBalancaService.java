@@ -1,9 +1,9 @@
 package br.com.sistematenda.fruteira.service;
 
 import br.com.sistematenda.fruteira.dto.EtiquetaBalancaDTO;
+import br.com.sistematenda.fruteira.dto.ProdutoDTO;
 import br.com.sistematenda.fruteira.entity.EtiquetaBalanca;
 import br.com.sistematenda.fruteira.entity.Produto;
-import br.com.sistematenda.fruteira.mapper.EtiquetaBalancaMapper;
 import br.com.sistematenda.fruteira.repository.EtiquetaBalancaRepository;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.exception.NotFoundException;
@@ -26,19 +26,11 @@ public class EtiquetaBalancaService extends BaseCrudServiceImpl<EtiquetaBalanca,
     EtiquetaBalancaRepository repository;
 
     @Inject
-    EtiquetaBalancaMapper mapper;
-
-    @Inject
     ProdutoService produtoService;
 
     @Override
     protected EtiquetaBalancaRepository getRepository() {
         return repository;
-    }
-
-    @Override
-    protected EtiquetaBalancaMapper getMapper() {
-        return mapper;
     }
 
     @Override
@@ -70,12 +62,12 @@ public class EtiquetaBalancaService extends BaseCrudServiceImpl<EtiquetaBalanca,
 
     @Override
     public PageResponse<EtiquetaBalancaDTO> findAll(int page, int size, String sortBy, String sortDirection) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, null);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, null));
     }
 
     public PageResponse<EtiquetaBalancaDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                                     Boolean ativa) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, ativa);
+        return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, ativa));
     }
 
     @Override
@@ -85,7 +77,7 @@ public class EtiquetaBalancaService extends BaseCrudServiceImpl<EtiquetaBalanca,
         
         EtiquetaBalanca entity = mapper.toEntity(dto);
         entity.produto = new Produto();
-        entity.produto.id = dto.getProduto().getId();
+        entity.produto.id = UUID.fromString(dto.getProduto().getId());
         
         // Sincronizar preço com produto se não informado
         if (entity.preco == null || entity.preco.compareTo(BigDecimal.ZERO) == 0) {

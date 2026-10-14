@@ -163,11 +163,11 @@ public class LabelPdfService {
 
     private String escapeHtml(String text) {
         if (text == null) return "";
-        return text.replace("&", "&")
-                   .replace("<", "<")
-                   .replace(">", ">")
-                   .replace("\"", """)
-                   .replace("'", "'");
+        return text.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace("\"", "&quot;")
+                   .replace("'", "&#39;");
     }
 
     public static class EtiquetaData {

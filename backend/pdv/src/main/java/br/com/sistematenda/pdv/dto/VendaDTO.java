@@ -2,7 +2,10 @@ package br.com.sistematenda.pdv.dto;
 
 import br.com.sistematenda.common.dto.BaseDTO;
 import br.com.sistematenda.pdv.entity.Venda;
+import br.com.sistematenda.pdv.entity.ItemVenda.OrigemItem;
 import br.com.sistematenda.buffet.entity.Comanda;
+import br.com.sistematenda.fiscal.entity.Nfe;
+import br.com.sistematenda.common.enums.FormaPagamento;
 import br.com.sistematenda.common.enums.StatusVenda;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
@@ -11,6 +14,7 @@ import lombok.EqualsAndHashCode;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -41,11 +45,20 @@ public class VendaDTO extends BaseDTO {
     private UUID pdvId;
     private String numeroNfce;
     private String chaveNfce;
+    private NfeResumoDTO nfce;
     private List<ItemVendaResumoDTO> itens;
     private List<PagamentoResumoDTO> pagamentos;
 
     public BigDecimal getSaldoDevedor() {
         return valorTotal != null ? valorTotal.subtract(valorPago != null ? valorPago : BigDecimal.ZERO) : BigDecimal.ZERO;
+    }
+
+    public boolean isFinalizada() {
+        return status == StatusVenda.FINALIZADA || status == StatusVenda.PAGA;
+    }
+
+    public boolean isPaga() {
+        return valorPago != null && valorTotal != null && valorPago.compareTo(valorTotal) >= 0;
     }
 
     @Data
@@ -72,5 +85,16 @@ public class VendaDTO extends BaseDTO {
         private FormaPagamento formaPagamento;
         private BigDecimal valor;
         private String status;
+    }
+
+    @Data
+    public static class NfeResumoDTO {
+        private String id;
+        private String chaveAcesso;
+        private String numero;
+        private Integer serie;
+        private String status;
+        private String protocoloAutorizacao;
+        private String xmlAutorizado;
     }
 }

@@ -1,18 +1,24 @@
 package br.com.sistematenda.common.repository;
 
-import br.com.sistematenda.common.entity.Fornecedor;
 import br.com.sistematenda.common.dto.FornecedorDTO;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import br.com.sistematenda.common.dto.PageResponse;
+import br.com.sistematenda.common.entity.Fornecedor;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
+import io.quarkus.panache.common.Page;
+import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @ApplicationScoped
-public class FornecedorRepository implements PanacheRepository<Fornecedor> {
+public class FornecedorRepository implements PanacheRepositoryBase<Fornecedor, UUID> {
 
     public Optional<Fornecedor> findByCnpjCpf(String cnpjCpf) {
-        return find("cnpj_cpf = ?1 and deleted = false", cnpjCpf).firstResultOptional();
+        return find("cnpjCpf = ?1 and deleted = false", cnpjCpf).firstResultOptional();
     }
 
     public Optional<Fornecedor> findByEmail(String email) {
@@ -34,7 +40,7 @@ public class FornecedorRepository implements PanacheRepository<Fornecedor> {
     public PageResponse<FornecedorDTO> findPaginated(int page, int size, String sortBy, String sortDirection,
                                                      String segmento, String status) {
         StringBuilder query = new StringBuilder("deleted = false");
-        var params = new java.util.ArrayList<Object>();
+        List<Object> params = new ArrayList<>();
 
         if (segmento != null && !segmento.isBlank()) {
             query.append(" and segmentoMercado = ?").append(params.size() + 1);
@@ -45,40 +51,44 @@ public class FornecedorRepository implements PanacheRepository<Fornecedor> {
             params.add(status);
         }
 
-        Sort sort = Sort.by(sortBy != null ? sortBy : "nome", 
+        Sort sort = Sort.by(sortBy != null ? sortBy : "nome",
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
-        
-        Page pageable = Page.of(page, size, sort);
-        
-        var panacheQuery = find(query.toString(), sort, params.toArray());
-        panacheQuery.page(pageable);
-        
-        List<Fornecedor> content = panacheQuery.list();
+
+        Page pageable = Page.of(size, page);
+
+        List<Fornecedor> content = find(query.toString(), sort, params.toArray()).page(pageable).list();
         long totalElements = count(query.toString(), params.toArray());
-        
-        return new PageResponse<>(
-            content.stream().map(f -> {
-                FornecedorDTO dto = new FornecedorDTO();
-                dto.id = f.id.toString();
-                dto.nome = f.nome;
-                dto.razaoSocial = f.razaoSocial;
-                dto.email = f.email;
-                dto.telefone = f.telefone;
-                dto.cnpjCpf = f.cnpjCpf;
-                dto.tipo = f.tipo;
-                dto.segmentoMercado = f.segmentoMercado;
-                dto.status = f.status;
-                dto.codigoNcm = f.codigoNcm;
-                dto.cstIcms = f.cstIcms;
-                dto.aliquotaIcms = f.aliquotaIcms;
-                dto.prazoEntregaDias = f.prazoEntregaDias;
-                dto.condicoesPagamento = f.condicoesPagamento;
-                return dto;
-            }).toList(),
-            totalElements,
-            page,
-            size
-        );
+
+        List<FornecedorDTO> dtoList = content.stream().map(this::toDTO).toList();
+
+        return PageResponse.of(dtoList, totalElements, page, size);
+    }
+
+    private FornecedorDTO toDTO(Fornecedor f) {
+        FornecedorDTO dto = new FornecedorDTO();
+        dto.setId(f.id);
+        dto.setNome(f.nome);
+        dto.setRazaoSocial(f.razaoSocial);
+        dto.setEmail(f.email);
+        dto.setTelefone(f.telefone);
+        dto.setCnpjCpf(f.cnpjCpf);
+        dto.setTipo(f.tipo);
+        dto.setSegmentoMercado(f.segmentoMercado);
+        dto.setStatus(f.status);
+        dto.setCodigoNcm(f.codigoNcm);
+        dto.setCstIcms(f.cstIcms != null ? f.cstIcms.getCodigo() : null);
+        dto.setAliquotaIcms(f.aliquotaIcms);
+        dto.setPrazoEntregaDias(f.prazoEntregaDias);
+        dto.setCondicoesPagamento(f.condicoesPagamento);
+        dto.setSituacaoTributaria(f.situacaoTributaria);
+        dto.setAliquotaPis(f.aliquotaPis);
+        dto.setAliquotaCofins(f.aliquotaCofins);
+        dto.setPercentualDesconto(f.percentualDesconto);
+        dto.setSituacaoEntrega(f.statusEntrega);
+        dto.setPontosParceria(f.pontosParceria);
+        dto.setTotalCompras(f.totalCompras);
+        dto.setUltimaCompra(f.ultimaCompra);
+        return dto;
     }
 
     public void atualizarTotalCompras(UUID id, BigDecimal valor) {

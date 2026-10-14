@@ -4,6 +4,7 @@ public enum StatusVenda {
     ABERTA("Aberta"),
     EM_ANDAMENTO("Em Andamento"),
     FINALIZADA("Finalizada"),
+    PAGA("Paga"),
     CANCELADA("Cancelada"),
     DEVOLVIDA("Devolvida"),
     PENDENTE_PAGAMENTO("Pendente Pagamento");

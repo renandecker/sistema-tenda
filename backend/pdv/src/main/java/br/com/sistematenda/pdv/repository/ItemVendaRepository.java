@@ -3,7 +3,7 @@ package br.com.sistematenda.pdv.repository;
 import br.com.sistematenda.pdv.entity.ItemVenda;
 import br.com.sistematenda.pdv.entity.Venda;
 import br.com.sistematenda.common.dto.PageResponse;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
-public class ItemVendaRepository implements PanacheRepository<ItemVenda> {
+public class ItemVendaRepository implements PanacheRepositoryBase<ItemVenda, UUID> {
 
     public List<ItemVenda> findByVenda(Venda venda) {
         return find("venda = ?1 and cancelado = false and deleted = false", venda).list();
@@ -32,7 +32,7 @@ public class ItemVendaRepository implements PanacheRepository<ItemVenda> {
         Sort sort = Sort.by(sortBy != null ? sortBy : "id", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(page, size, sort);
+        Page pageable = Page.of(page, size);
         
         var panacheQuery = find(query, sort, venda);
         panacheQuery.page(pageable);
@@ -44,8 +44,8 @@ public class ItemVendaRepository implements PanacheRepository<ItemVenda> {
     }
 
     public java.math.BigDecimal getTotalByVenda(Venda venda) {
-        return find("venda = ?1 and cancelado = false and deleted = false", venda)
-            .project(java.math.BigDecimal.class, "sum(valorTotal)")
+        return find("select sum(valorTotal) from ItemVenda where venda = ?1 and cancelado = false and deleted = false", venda)
+            .project(java.math.BigDecimal.class)
             .firstResultOptional()
             .orElse(java.math.BigDecimal.ZERO);
     }
@@ -53,9 +53,9 @@ public class ItemVendaRepository implements PanacheRepository<ItemVenda> {
     public java.math.BigDecimal getTotalByOrigemPeriodo(ItemVenda.OrigemItem origem,
                                                          java.time.LocalDateTime inicio,
                                                          java.time.LocalDateTime fim) {
-        return find("origem = ?1 and venda.data >= ?2 and venda.data <= ?3 and cancelado = false and deleted = false", 
+        return find("select sum(valorTotal) from ItemVenda where origem = ?1 and venda.data >= ?2 and venda.data <= ?3 and cancelado = false and deleted = false", 
                 origem, inicio, fim)
-            .project(java.math.BigDecimal.class, "sum(valorTotal)")
+            .project(java.math.BigDecimal.class)
             .firstResultOptional()
             .orElse(java.math.BigDecimal.ZERO);
     }

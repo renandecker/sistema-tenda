@@ -2,16 +2,13 @@ package br.com.sistematenda.fiscal.service;
 
 import br.com.sistematenda.fiscal.dto.CompraDTO;
 import br.com.sistematenda.fiscal.entity.Compra;
-import br.com.sistematenda.fiscal.entity.Fornecedor;
-import br.com.sistematenda.fiscal.entity.ItemCompra;
 import br.com.sistematenda.fiscal.mapper.CompraMapper;
 import br.com.sistematenda.fiscal.repository.CompraRepository;
-import br.com.sistematenda.fiscal.service.ProdutoService;
 import br.com.sistematenda.common.dto.PageResponse;
-import br.com.sistematenda.common.exception.BusinessException;
 import br.com.sistematenda.common.exception.NotFoundException;
 import br.com.sistematenda.common.exception.ValidationException;
 import br.com.sistematenda.common.service.BaseCrudServiceImpl;
+import br.com.sistematenda.common.service.FornecedorService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -34,15 +31,11 @@ public class CompraService extends BaseCrudServiceImpl<Compra, CompraDTO, UUID> 
     @Inject
     FornecedorService fornecedorService;
 
-    @Inject
-    // Injected later - produto services
-
     @Override
     protected CompraRepository getRepository() {
         return repository;
     }
 
-    @Override
     protected CompraMapper getMapper() {
         return mapper;
     }
@@ -59,11 +52,8 @@ public class CompraService extends BaseCrudServiceImpl<Compra, CompraDTO, UUID> 
     }
 
     public List<CompraDTO> findByFornecedor(UUID fornecedorId) {
-        Fornecedor fornecedor = fornecedorService.findById(fornecedorId);
-        if (fornecedor == null) {
-            throw new NotFoundException("Fornecedor", fornecedorId);
-        }
-        return repository.findByFornecedor(fornecedor).stream()
+        fornecedorService.findById(fornecedorId);
+        return repository.findByFornecedor(fornecedorId).stream()
             .map(mapper::toDTO).toList();
     }
 
@@ -74,13 +64,24 @@ public class CompraService extends BaseCrudServiceImpl<Compra, CompraDTO, UUID> 
 
     @Override
     public PageResponse<CompraDTO> findAll(int page, int size, String sortBy, String sortDirection) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, null, null, null);
+        return repository.findPaginated(page, size, sortBy, sortDirection, null, null, null, null);
     }
 
     public PageResponse<CompraDTO> findAll(int page, int size, String sortBy, String sortDirection,
-                                         StatusCompra status, LocalDate dataInicio, LocalDate dataFim,
+                                         CompraDTO.StatusCompra status, LocalDate dataInicio, LocalDate dataFim,
                                          UUID fornecedorId) {
-        return repository.findPaginated(page, size, sortBy, sortDirection, status, dataInicio, dataFim, fornecedorId);
+        Compra.StatusCompra entityStatus = status != null
+            ? Compra.StatusCompra.valueOf(status.name())
+            : null;
+        return repository.findPaginated(page, size, sortBy, sortDirection, entityStatus, dataInicio, dataFim, fornecedorId);
+    }
+
+    public BigDecimal getTotalComprasPeriodo(LocalDate dataInicio, LocalDate dataFim) {
+        return repository.getTotalComprasPeriodo(dataInicio, dataFim);
+    }
+
+    public BigDecimal getTotalCeasaPeriodo(LocalDate dataInicio, LocalDate dataFim) {
+        return repository.getTotalCeasaPeriodo(dataInicio, dataFim);
     }
 
     @Override

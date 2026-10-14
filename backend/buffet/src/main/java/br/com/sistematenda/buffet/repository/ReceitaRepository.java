@@ -3,16 +3,17 @@ package br.com.sistematenda.buffet.repository;
 import br.com.sistematenda.buffet.entity.Receita;
 import br.com.sistematenda.buffet.entity.ProdutoBuffet;
 import br.com.sistematenda.common.dto.PageResponse;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @ApplicationScoped
-public class ReceitaRepository implements PanacheRepository<Receita> {
+public class ReceitaRepository implements PanacheRepositoryBase<Receita, UUID> {
 
     public Optional<Receita> findByProduto(ProdutoBuffet produto) {
         return find("produto = ?1 and deleted = false", produto).firstResultOptional();
@@ -35,7 +36,7 @@ public class ReceitaRepository implements PanacheRepository<Receita> {
         Sort sort = Sort.by(sortBy != null ? sortBy : "produto.nome", 
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
         
-        Page pageable = Page.of(page, size, sort);
+        Page pageable = Page.of(size, page);
         
         var panacheQuery = find(query.toString(), sort, params.toArray());
         panacheQuery.page(pageable);

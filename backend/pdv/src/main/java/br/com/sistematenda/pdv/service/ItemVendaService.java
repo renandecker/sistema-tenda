@@ -14,6 +14,7 @@ import br.com.sistematenda.fruteira.entity.Produto;
 import br.com.sistematenda.fruteira.service.ProdutoService;
 import br.com.sistematenda.buffet.entity.ProdutoBuffet;
 import br.com.sistematenda.buffet.service.ProdutoBuffetService;
+import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.enums.FormaPagamento;
 import br.com.sistematenda.common.exception.BusinessException;
 import br.com.sistematenda.common.exception.NotFoundException;
@@ -58,7 +59,6 @@ public class ItemVendaService extends BaseCrudServiceImpl<ItemVenda, ItemVendaDT
         return repository;
     }
 
-    @Override
     protected ItemVendaMapper getMapper() {
         return mapper;
     }
@@ -66,6 +66,23 @@ public class ItemVendaService extends BaseCrudServiceImpl<ItemVenda, ItemVendaDT
     @Override
     protected Class<ItemVenda> getEntityClass() {
         return ItemVenda.class;
+    }
+
+    public List<ItemVendaDTO> findByVenda(UUID vendaId) {
+        Venda venda = vendaRepository.findById(vendaId);
+        if (venda == null || venda.deleted) {
+            throw new NotFoundException("Venda", vendaId);
+        }
+        return repository.findByVenda(venda).stream().map(mapper::toDTO).toList();
+    }
+
+    public PageResponse<ItemVendaDTO> findByVendaPaginated(UUID vendaId, int page, int size,
+                                                           String sortBy, String sortDirection) {
+        Venda venda = vendaRepository.findById(vendaId);
+        if (venda == null || venda.deleted) {
+            throw new NotFoundException("Venda", vendaId);
+        }
+        return toDtoPage(repository.findByVendaPaginated(venda, page, size, sortBy, sortDirection));
     }
 
     @Transactional
@@ -80,9 +97,9 @@ public class ItemVendaService extends BaseCrudServiceImpl<ItemVenda, ItemVendaDT
             throw new NotFoundException("Produto", produtoId);
         }
         
-        if (produto.getEstoqueAtual().compareTo(quantidade) < 0) {
+        if (produto.estoqueAtual.compareTo(quantidade) < 0) {
             throw new BusinessException("ESTOQUE_INSUFICIENTE", 
-                "Estoque insuficiente. Disponível: " + produto.getEstoqueAtual());
+                "Estoque insuficiente. Disponível: " + produto.estoqueAtual);
         }
         
         ItemVenda entity = new ItemVenda();
@@ -282,12 +299,12 @@ public class ItemVendaService extends BaseCrudServiceImpl<ItemVenda, ItemVendaDT
         // Recalcular apenas itens desta venda
         totalFruteira = repository.findByVenda(venda).stream()
             .filter(i -> i.origem == ItemVenda.OrigemItem.FRUTEIRA && !i.cancelado)
-            .map(ItemVenda::getValorTotal)
+            .map(i -> i.valorTotal)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         
         totalBuffet = repository.findByVenda(venda).stream()
             .filter(i -> i.origem == ItemVenda.OrigemItem.BUFFET && !i.cancelado)
-            .map(ItemVenda::getValorTotal)
+            .map(i -> i.valorTotal)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         
         venda.subtotalFruteira = totalFruteira;
