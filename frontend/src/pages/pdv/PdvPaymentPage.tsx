@@ -40,6 +40,8 @@ import {
 import { toast } from 'react-toastify';
 import { apiPdv } from '@/services/api';
 import { PixPaymentModal, PixQrCode } from '@/components/pix';
+import { TefPaymentModal } from '@/components/tef';
+import { BandeiraCartao } from '@/constants/bandeiras';
 
 interface Venda {
   id: string;
@@ -96,6 +98,8 @@ export function PdvPaymentPage() {
   const [pixDialogOpen, setPixDialogOpen] = useState(false);
   const [pixGenerating, setPixGenerating] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [tefDialogOpen, setTefDialogOpen] = useState(false);
+  const [tefBandeira, setTefBandeira] = useState<BandeiraCartao>(BandeiraCartao.ALELO_ALIMENTACAO);
 
   const loadVendas = async () => {
     setLoading(true);
@@ -112,6 +116,14 @@ export function PdvPaymentPage() {
   const handlePayment = async () => {
     if (!selectedVenda) return;
 
+    // Para cartões e vales, usar fluxo TEF
+    const formasTef = ['CARTAO_CREDITO', 'CARTAO_DEBITO', 'VALE_ALIMENTACAO', 'VALE_REFEICAO', 'VALE_CULTURA'];
+    if (formasTef.includes(paymentForm.formaPagamento)) {
+      handleTefPayment();
+      return;
+    }
+
+    // Para dinheiro e PIX, fluxo direto
     try {
       const response = await apiPdv.processarPagamento(selectedVenda.id, paymentForm);
       toast.success('Pagamento processado com sucesso!');
@@ -150,6 +162,40 @@ export function PdvPaymentPage() {
   const handlePixConfirmed = () => {
     setPixDialogOpen(false);
     loadVendas();
+  };
+
+  const handleTefPayment = async () => {
+    if (!selectedVenda) return;
+
+    const formasTef = ['CARTAO_CREDITO', 'CARTAO_DEBITO', 'VALE_ALIMENTACAO', 'VALE_REFEICAO', 'VALE_CULTURA'];
+    if (!formasTef.includes(paymentForm.formaPagamento)) {
+      toast.error('Forma de pagamento não suportada para TEF');
+      return;
+    }
+
+    setTefBandeira(
+      paymentForm.formaPagamento === 'VALE_ALIMENTACAO' ? BandeiraCartao.ALELO_ALIMENTACAO :
+      paymentForm.formaPagamento === 'VALE_REFEICAO' ? BandeiraCartao.ALELO_REFEICAO :
+      BandeiraCartao.ALELO_TUDO
+    );
+    
+    setPaymentDialogOpen(false);
+    setTefDialogOpen(true);
+  };
+
+  const handleTefSuccess = async (comprovante: { cliente: string; estabelecimento: string }) => {
+    if (!selectedVenda) return;
+
+    try {
+      // O backend já processou a confirmação via webhook, só precisamos registrar o pagamento
+      // O pagamento já foi persistido no backend quando a transação foi confirmada
+      // Aqui apenas fechamos o modal e recarregamos
+      setTefDialogOpen(false);
+      toast.success('Pagamento TEF confirmado com sucesso!');
+      loadVendas();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Erro ao registrar pagamento TEF');
+    }
   };
 
   const handleFinalizarVenda = async () => {
@@ -364,6 +410,28 @@ export function PdvPaymentPage() {
                   inputProps={{ min: 1, max: 12 }}
                 />
               </Grid>
+              {['CARTAO_CREDITO', 'CARTAO_DEBITO', 'VALE_ALIMENTACAO', 'VALE_REFEICAO', 'VALE_CULTURA'].includes(paymentForm.formaPagamento) && (
+                <Grid item xs={12}>
+                  <TextField
+                    select
+                    label="Bandeira do Cartão/Vale"
+                    value={tefBandeira}
+                    onChange={(e) => setTefBandeira(e.target.value as BandeiraCartao)}
+                    fullWidth
+                    SelectProps={{ native: true }}
+                  >
+                    <option value="ALELO_ALIMENTACAO">Alelo Alimentação</option>
+                    <option value="ALELO_REFEICAO">Alelo Refeição</option>
+                    <option value="ALELO_TUDO">Alelo Tudo (Flexível)</option>
+                    <option value="BANRICOMPRAS_BANRICARD">Banricompras & Banricard</option>
+                    <option value="TICKET_EDENRED">Ticket (Edenred)</option>
+                    <option value="PLUXEE">Pluxee (antiga Sodexo)</option>
+                    <option value="VR_BENEFICIOS">VR Benefícios</option>
+                    <option value="GREEN_CARD">Green Card</option>
+                    <option value="VALECARD_VOLUS">ValeCard / Vólus</option>
+                  </TextField>
+                </Grid>
+              )}
               <Grid item xs={12}>
                 <Divider sx={{ my: 1 }} />
                 <FormControlLabel
@@ -416,6 +484,19 @@ export function PdvPaymentPage() {
         vendaId={selectedVenda?.id || ''}
         valor={selectedVenda ? getSaldoDevedor(selectedVenda) : 0}
         onPaymentConfirmed={handlePixConfirmed}
+      />
+
+      {/* Modal TEF */}
+      <TefPaymentModal
+        open={tefDialogOpen}
+        onClose={() => setTefDialogOpen(false)}
+        onSuccess={handleTefSuccess}
+        valor={selectedVenda ? getSaldoDevedor(selectedVenda) : 0}
+        formaPagamento={paymentForm.formaPagamento}
+        bandeira={tefBandeira}
+        parcelas={paymentForm.parcelas}
+        cpfConsumidor={paymentForm.cpfConsumidor}
+        vendaNumero={selectedVenda?.numero}
       />
     </Box>
   );

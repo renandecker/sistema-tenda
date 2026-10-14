@@ -43,6 +43,7 @@ br\com\sistematenda\common\dto\AuthDTO$UserDTO.class
 br\com\sistematenda\common\dto\BaseDTO.class
 br\com\sistematenda\common\enums\FormaPagamento.class
 br\com\sistematenda\common\dto\AuthDTO$ChangePasswordRequest.class
+br\com\sistematenda\common\config\FiscalConfig$Nfce.class
 br\com\sistematenda\common\exception\ValidationException.class
 br\com\sistematenda\common\service\ClienteService.class
 br\com\sistematenda\common\exception\NotFoundException.class

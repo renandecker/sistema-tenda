@@ -5,6 +5,7 @@ import br.com.sistematenda.common.exception.NotFoundException;
 import br.com.sistematenda.common.exception.ValidationException;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.UUID;
@@ -19,9 +20,9 @@ public interface CrudService<E, D, ID> {
 
     List<D> findAll();
 
-    D create(D dto);
+    D create(@Valid D dto);
 
-    D update(ID id, D dto);
+    D update(ID id, @Valid D dto);
 
     void delete(ID id);
 

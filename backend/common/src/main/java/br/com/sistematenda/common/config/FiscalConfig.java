@@ -73,4 +73,12 @@ public interface FiscalConfig {
     @WithName("schemas-path")
     @WithDefault("schemas/")
     String schemasPath();
+
+    Nfce nfce();
+
+    interface Nfce {
+
+        @WithDefault("true")
+        boolean enabled();
+    }
 }

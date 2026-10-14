@@ -7,7 +7,6 @@ import br.com.sistematenda.fiscal.entity.Nfe;
 import br.com.sistematenda.fiscal.repository.NfeRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,13 +29,10 @@ public class NfceService {
     @Inject
     NfeRepository nfeRepository;
 
-    @ConfigProperty(name = "fiscal.nfce.enabled", defaultValue = "true")
-    boolean nfceEnabled;
-
     private final AtomicLong contador = new AtomicLong();
 
     public Nfe emitirNfce(NfceRequest request) {
-        if (!nfceEnabled) {
+        if (!fiscalConfig.nfce().enabled()) {
             throw new BusinessException("NFCE_DISABLED", "Emissão de NFC-e não está habilitada");
         }
 

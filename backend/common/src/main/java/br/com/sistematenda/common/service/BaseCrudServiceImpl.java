@@ -11,6 +11,7 @@ import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.UUID;
@@ -71,7 +72,7 @@ public abstract class BaseCrudServiceImpl<E extends BaseEntity, D, ID> implement
 
     @Override
     @Transactional
-    public D create(D dto) {
+    public D create(@Valid D dto) {
         E entity = mapper.toEntity(dto);
         if (entity.id == null) {
             entity.id = generateId();
@@ -82,7 +83,7 @@ public abstract class BaseCrudServiceImpl<E extends BaseEntity, D, ID> implement
 
     @Override
     @Transactional
-    public D update(ID id, D dto) {
+    public D update(ID id, @Valid D dto) {
         E entity = getRepository().findById(id);
         if (entity == null || entity.deleted) {
             throw new NotFoundException(getEntityClass(), id);
