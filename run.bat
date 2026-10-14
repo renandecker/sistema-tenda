@@ -65,6 +65,9 @@ if not exist "%FRONTEND%\node_modules" (
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 echo.
 
+echo    Liberando porta 3000 ^(caso haja execucao anterior^)...
+powershell -NoProfile -Command "$c=Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if($c){$c.OwningProcess | Sort-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }}" >nul 2>&1
+
 echo ============================================================
 echo    Iniciando servicos...
 echo ============================================================
@@ -74,6 +77,20 @@ echo.
 echo    Backend : http://localhost:8080
 echo    Swagger : http://localhost:8080/swagger
 echo    Frontend: http://localhost:3000
+echo.
+echo    Aguardando o frontend responder para abrir o navegador...
+set "OPENED=0"
+for /l %%i in (1,1,60) do (
+    call :check_port 3000
+    if "!PORT_OK!"=="1" (
+        start "" http://localhost:3000
+        set "OPENED=1"
+        goto :opened
+    )
+    timeout /t 1 /nobreak >nul
+)
+:opened
+if "!OPENED!"=="0" echo    [AVISO] Abra manualmente no navegador: http://localhost:3000
 echo.
 echo Pressione qualquer tecla para fechar esta janela (os servicos continuam rodando)...
 pause >nul

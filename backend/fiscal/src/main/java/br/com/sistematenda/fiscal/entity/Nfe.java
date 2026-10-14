@@ -12,10 +12,10 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "fiscal_nfe", indexes = {
-    @Index(name = "idx_fiscal_nfe_chave", columnList = "chaveAcesso", unique = true),
+    @Index(name = "idx_fiscal_nfe_chave", columnList = "chave_acesso", unique = true),
     @Index(name = "idx_fiscal_nfe_numero", columnList = "numero"),
     @Index(name = "idx_fiscal_nfe_status", columnList = "status"),
-    @Index(name = "idx_fiscal_nfe_data_emissao", columnList = "dataEmissao"),
+    @Index(name = "idx_fiscal_nfe_data_emissao", columnList = "data_emissao"),
     @Index(name = "idx_fiscal_nfe_venda", columnList = "venda_id"),
     @Index(name = "idx_fiscal_nfe_produtor_rural", columnList = "eh_produtor_rural")
 })

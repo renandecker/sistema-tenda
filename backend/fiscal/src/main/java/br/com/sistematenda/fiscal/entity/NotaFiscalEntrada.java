@@ -12,9 +12,9 @@ import java.util.List;
 
 @Entity
 @Table(name = "fiscal_nota_entrada", indexes = {
-    @Index(name = "idx_fiscal_nota_entrada_chave", columnList = "chaveAcesso", unique = true),
+    @Index(name = "idx_fiscal_nota_entrada_chave", columnList = "chave_acesso", unique = true),
     @Index(name = "idx_fiscal_nota_entrada_fornecedor", columnList = "fornecedor_documento"),
-    @Index(name = "idx_fiscal_nota_entrada_data", columnList = "dataEmissao"),
+    @Index(name = "idx_fiscal_nota_entrada_data", columnList = "data_emissao"),
     @Index(name = "idx_fiscal_nota_entrada_status", columnList = "status")
 })
 public class NotaFiscalEntrada extends BaseEntity {

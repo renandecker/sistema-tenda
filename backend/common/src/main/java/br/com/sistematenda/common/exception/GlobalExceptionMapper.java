@@ -24,6 +24,10 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
             return buildValidationErrorResponse(validationException);
         }
 
+        if (exception instanceof jakarta.ws.rs.WebApplicationException webApplicationException) {
+            return webApplicationException.getResponse();
+        }
+
         return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(new ErrorResponse("INTERNAL_ERROR", "Erro interno do servidor"))
                 .build();
