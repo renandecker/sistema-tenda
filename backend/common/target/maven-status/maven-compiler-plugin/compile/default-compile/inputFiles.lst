@@ -7,6 +7,7 @@ C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\co
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\dto\ClienteDTO.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\dto\FornecedorDTO.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\dto\PageResponse.java
+C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\entity\AuditLog.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\entity\BaseEntity.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\entity\Cliente.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\entity\Fornecedor.java
@@ -37,10 +38,13 @@ C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\co
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\pix\PixException.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\pix\PixProviderService.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\pix\PixWebhookNotification.java
+C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\repository\AuditLogRepository.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\repository\ClienteRepository.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\repository\FornecedorRepository.java
+C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\resource\AuditResource.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\resource\AuthResource.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\security\JwtTokenService.java
+C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\service\AuditLogService.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\service\BaseCrudServiceImpl.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\service\ClienteService.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\service\CrudService.java

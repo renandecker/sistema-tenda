@@ -93,7 +93,7 @@ export function VendasPage() {
         icon={<ReceiptLongIcon />}
         action={
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Tooltip title="Atualizar"><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></Tooltip>
+            <Tooltip title="Atualizar"><span><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></span></Tooltip>
             <Button variant="outlined" onClick={carregarTotais}>Total do período{totalPeriodo !== null ? `: ${formatCurrency(totalPeriodo)}` : ''}</Button>
           </Box>
         }

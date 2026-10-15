@@ -112,7 +112,7 @@ export function TabelasPrecoPage() {
         icon={<PriceChangeIcon />}
         action={
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Tooltip title="Atualizar"><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></Tooltip>
+            <Tooltip title="Atualizar"><span><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></span></Tooltip>
             <Button variant="outlined" startIcon={<CheckIcon />} onClick={aplicarTodas}>Aplicar vigentes em lote</Button>
             <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>Nova vigência</Button>
           </Box>

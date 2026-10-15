@@ -4,7 +4,7 @@ import br.com.sistematenda.estoque.entity.MovimentoEstoque;
 import br.com.sistematenda.fruteira.entity.Produto;
 import br.com.sistematenda.buffet.entity.ProdutoBuffet;
 import br.com.sistematenda.common.dto.PageResponse;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
-public class MovimentoEstoqueRepository implements PanacheRepository<MovimentoEstoque> {
+public class MovimentoEstoqueRepository implements PanacheRepositoryBase<MovimentoEstoque, UUID> {
 
     public List<MovimentoEstoque> findByProdutoFruteira(Produto produto) {
         return find("produtoFruteira = ?1 and deleted = false", produto).list();
@@ -38,9 +38,9 @@ public class MovimentoEstoqueRepository implements PanacheRepository<MovimentoEs
     }
 
     public PageResponse<MovimentoEstoque> findPaginated(int page, int size, String sortBy, String sortDirection,
-                                                         MovimentoEstoque.TipoMovimento tipo,
-                                                         UUID produtoFruteiraId, UUID produtoBuffetId,
-                                                         LocalDateTime inicio, LocalDateTime fim) {
+                                                          MovimentoEstoque.TipoMovimento tipo,
+                                                          UUID produtoFruteiraId, UUID produtoBuffetId,
+                                                          LocalDateTime inicio, LocalDateTime fim) {
         StringBuilder query = new StringBuilder("deleted = false");
         var params = new java.util.ArrayList<Object>();
 

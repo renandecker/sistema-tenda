@@ -65,8 +65,10 @@ if not exist "%FRONTEND%\node_modules" (
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 echo.
 
-echo    Liberando porta 3000 ^(caso haja execucao anterior^)...
-powershell -NoProfile -Command "$c=Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if($c){$c.OwningProcess | Sort-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }}" >nul 2>&1
+echo    Liberando portas 3000, 8080 e 8081 ^(caso haja execucao anterior^)...
+for %%p in (3000 8080 8081) do (
+    powershell -NoProfile -Command "$c=Get-NetTCPConnection -LocalPort %%p -State Listen -ErrorAction SilentlyContinue; if($c){$c.OwningProcess | Sort-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }}" >nul 2>&1
+)
 
 echo ============================================================
 echo    Iniciando servicos...

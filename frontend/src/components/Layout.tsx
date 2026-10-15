@@ -74,6 +74,7 @@ const menuItems = [
   { text: 'DRE', icon: <AssessmentIcon />, path: '/fiscal/dre', roles: ['FISCAL', 'ADMIN', 'CONTABIL', 'GERENTE'] },
   { text: 'Ativos Imobilizados', icon: <StoreIcon />, path: '/fiscal/ativos', roles: ['FISCAL', 'ADMIN', 'CONTABIL'] },
   { text: 'Conciliação Cartão', icon: <CreditCardIcon />, path: '/fiscal/conciliacao-cartao', roles: ['FISCAL', 'ADMIN', 'CONTABIL', 'GERENTE'] },
+  { text: 'Auditoria', icon: <AssessmentIcon />, path: '/audit', roles: ['ADMIN', 'GERENTE'] },
 ];
 
 export function Layout() {

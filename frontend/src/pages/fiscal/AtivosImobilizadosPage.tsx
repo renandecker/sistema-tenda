@@ -111,7 +111,7 @@ export function AtivosImobilizadosPage() {
         icon={<StoreIcon />}
         action={
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Tooltip title="Atualizar"><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></Tooltip>
+            <Tooltip title="Atualizar"><span><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></span></Tooltip>
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditingId(null); setForm(emptyForm); setDialog(true); }}>Novo bem</Button>
           </Box>
         }

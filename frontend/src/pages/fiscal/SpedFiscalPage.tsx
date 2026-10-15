@@ -78,7 +78,7 @@ export function SpedFiscalPage() {
         icon={<AccountBalanceIcon />}
         action={
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Tooltip title="Atualizar"><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></Tooltip>
+            <Tooltip title="Atualizar"><span><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></span></Tooltip>
             <Button variant="outlined" startIcon={<CheckIcon />} onClick={validar}>Validar registros</Button>
             <Button variant="contained" startIcon={<DownloadIcon />} onClick={gerarArquivo}>Gerar arquivo</Button>
           </Box>

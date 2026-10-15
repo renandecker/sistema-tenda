@@ -25,6 +25,7 @@ import { SpedFiscalPage } from './pages/fiscal/SpedFiscalPage';
 import { DrePage } from './pages/fiscal/DrePage';
 import { AtivosImobilizadosPage } from './pages/fiscal/AtivosImobilizadosPage';
 import { ConciliacaoCartaoPage } from './pages/fiscal/ConciliacaoCartaoPage';
+import { PerfilPage } from './pages/auth/PerfilPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { useAuth } from './hooks/useAuth';
 
@@ -86,6 +87,7 @@ export function App() {
         <Route path="fiscal/dre" element={<DrePage />} />
         <Route path="fiscal/ativos" element={<AtivosImobilizadosPage />} />
         <Route path="fiscal/conciliacao-cartao" element={<ConciliacaoCartaoPage />} />
+        <Route path="perfil" element={<PerfilPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

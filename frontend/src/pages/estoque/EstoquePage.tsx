@@ -89,7 +89,7 @@ export function EstoquePage() {
         icon={<InventoryIcon />}
         action={
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Tooltip title="Atualizar"><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></Tooltip>
+            <Tooltip title="Atualizar"><span><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></span></Tooltip>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => exportar(filtrados, 'saldos-estoque')}>Exportar saldos</Button>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => exportar(movimentos, 'movimentos-estoque')}>Exportar movimentos</Button>
           </Box>

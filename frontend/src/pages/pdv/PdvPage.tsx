@@ -258,9 +258,7 @@ export function PdvPage() {
                   onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && buscarProdutos()} />
                 <TextField size="small" label="Qtd" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} sx={{ width: 90 }} />
                 <Button variant="contained" onClick={buscarProdutos} disabled={buscando} startIcon={<SearchIcon />}>Buscar</Button>
-                <Tooltip title="Lançar prato por peso (balança)">
-                  <IconButton color="primary" onClick={() => setPesoDialog(true)} disabled={!venda}><ScaleIcon /></IconButton>
-                </Tooltip>
+                <Tooltip title="Lançar prato por peso (balança)"><span><IconButton color="primary" onClick={() => setPesoDialog(true)} disabled={!venda}><ScaleIcon /></IconButton></span></Tooltip>
               </Box>
               {resultados.map((p) => (
                 <Box key={`${p.origem}-${p.id}`} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1, borderBottom: 1, borderColor: 'divider' }}>

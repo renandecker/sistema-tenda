@@ -77,7 +77,7 @@ export function AlertasEstoquePage() {
               <MenuItem value="">Todos</MenuItem>
               {['ESTOQUE_BAIXO', 'VALIDADE', 'RUPTURA', 'EXCESSO'].map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
             </TextField>
-            <Tooltip title="Atualizar"><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></Tooltip>
+            <Tooltip title="Atualizar"><span><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></span></Tooltip>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportar}>Exportar</Button>
           </Box>
         }

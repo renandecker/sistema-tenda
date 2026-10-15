@@ -95,7 +95,7 @@ export function MesasBuffetPage() {
               <MenuItem value="">Todas</MenuItem>
               {['LIVRE', 'OCUPADA', 'RESERVADA', 'MANUTENCAO'].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
             </TextField>
-            <Tooltip title="Atualizar"><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></Tooltip>
+            <Tooltip title="Atualizar"><span><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></span></Tooltip>
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditing(null); setForm(emptyForm); setDialog(true); }}>Nova mesa</Button>
           </Box>
         }

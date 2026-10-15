@@ -13,13 +13,16 @@ br\com\sistematenda\common\pix\PixException.class
 br\com\sistematenda\common\pix\PixChargeRequest.class
 br\com\sistematenda\common\entity\Fornecedor.class
 br\com\sistematenda\common\mapper\FornecedorMapperImpl.class
+br\com\sistematenda\common\resource\AuditResource.class
 br\com\sistematenda\common\config\PixConfig$ItauConfig.class
+br\com\sistematenda\common\service\AuditLogService.class
 br\com\sistematenda\common\enums\OrigemProduto.class
 br\com\sistematenda\common\pix\PixChargeResponse.class
 br\com\sistematenda\common\config\PixConfig$BradescoConfig.class
 br\com\sistematenda\common\exception\GlobalExceptionMapper.class
 br\com\sistematenda\common\repository\FornecedorRepository.class
 br\com\sistematenda\common\enums\RegimeTributario.class
+br\com\sistematenda\common\resource\AuditResource$AuditStats.class
 br\com\sistematenda\common\enums\TipoPessoa.class
 br\com\sistematenda\common\entity\BaseEntity.class
 br\com\sistematenda\common\dto\AuthDTO$ResetPasswordRequest.class
@@ -34,6 +37,7 @@ br\com\sistematenda\common\enums\CstIcms.class
 br\com\sistematenda\common\enums\ModalidadeBuffet.class
 br\com\sistematenda\common\pix\PixChargeResponse$PixInfoAdicional.class
 br\com\sistematenda\common\dto\AuthDTO$LoginResponse.class
+br\com\sistematenda\common\entity\AuditLog.class
 br\com\sistematenda\common\enums\PixProvider.class
 br\com\sistematenda\common\pix\PixChargeResponse$PixPagador.class
 br\com\sistematenda\common\util\PasswordUtils.class
@@ -73,3 +77,4 @@ br\com\sistematenda\common\repository\ClienteRepository.class
 br\com\sistematenda\common\dto\AuthDTO$MessageResponse.class
 br\com\sistematenda\common\mapper\ClienteMapperImpl.class
 br\com\sistematenda\common\mapper\FornecedorMapper.class
+br\com\sistematenda\common\repository\AuditLogRepository.class

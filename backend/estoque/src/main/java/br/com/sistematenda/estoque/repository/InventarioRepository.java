@@ -2,16 +2,17 @@ package br.com.sistematenda.estoque.repository;
 
 import br.com.sistematenda.estoque.entity.Inventario;
 import br.com.sistematenda.common.dto.PageResponse;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @ApplicationScoped
-public class InventarioRepository implements PanacheRepository<Inventario> {
+public class InventarioRepository implements PanacheRepositoryBase<Inventario, UUID> {
 
     public List<Inventario> findByStatus(Inventario.StatusInventario status) {
         return find("status = ?1 and deleted = false", status).list();
@@ -22,8 +23,8 @@ public class InventarioRepository implements PanacheRepository<Inventario> {
     }
 
     public PageResponse<Inventario> findPaginated(int page, int size, String sortBy, String sortDirection,
-                                                   Inventario.StatusInventario status,
-                                                   LocalDateTime inicio, LocalDateTime fim) {
+                                                    Inventario.StatusInventario status,
+                                                    LocalDateTime inicio, LocalDateTime fim) {
         StringBuilder query = new StringBuilder("deleted = false");
         var params = new java.util.ArrayList<Object>();
 

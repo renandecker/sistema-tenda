@@ -85,6 +85,15 @@ echo
 
 mkdir -p "$LOG_DIR"
 
+info "Liberando portas 3000, 8080 e 8081 (caso haja execucao anterior)..."
+for port in 3000 8080 8081; do
+  if command_exists fuser; then
+    fuser -k "${port}/tcp" >/dev/null 2>&1 || true
+  elif command_exists lsof; then
+    lsof -t -i:"$port" | xargs -r kill -9 >/dev/null 2>&1 || true
+  fi
+done
+
 info "Iniciando backend Quarkus (http://localhost:8080)..."
 ( cd "$BACKEND/pdv" && mvn "io.quarkus:quarkus-maven-plugin:${QUARKUS_VERSION}:dev" ) > "$LOG_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
