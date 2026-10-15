@@ -103,8 +103,8 @@ public class PerdaService extends BaseCrudServiceImpl<Perda, PerdaDTO, UUID> {
         // Baixa automática do estoque via event
         ProdutoDTO produto = produtoService.findById(entity.produto.id);
         fireStockMovementEventPerda(entity.produto.id, entity.quantidade, produto.getCustoMedio(), 
-                                    entity.getTipo() != null ? entity.getTipo().name() : "PERDA", 
-                                    entity.getMotivo(), entity.getResponsavel());
+                                    entity.tipo != null ? entity.tipo.name() : "PERDA", 
+                                    entity.motivo, entity.responsavel);
         
         entity.baixaEstoqueRealizada = true;
         entity.dataBaixaEstoque = LocalDateTime.now();
@@ -141,7 +141,7 @@ public class PerdaService extends BaseCrudServiceImpl<Perda, PerdaDTO, UUID> {
         StockMovementEvent event = new StockMovementEvent();
         event.setProdutoFruteiraId(produtoId);
         event.setTipo(StockMovementEvent.MovementType.SAIDA_PERDA);
-        event.setOrigem(StockMovementEvent.OriginDest.FRITEIRA);
+        event.setOrigem(StockMovementEvent.OriginDest.FRUTEIRA);
         event.setDestino(StockMovementEvent.OriginDest.PERDA);
         event.setQuantidade(quantidade);
         event.setCustoUnitario(custoUnitario);

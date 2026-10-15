@@ -71,7 +71,9 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
             params.add(destino);
         }
         if (produto != null) {
-            query.append(" and produtoFruteira.id = ?").append(params.size() + 1);
+            query.append(" and (produtoFruteira.id = ?").append(params.size() + 1)
+                 .append(" or produtoBuffet.id = ?").append(params.size() + 2).append(")");
+            params.add(produto);
             params.add(produto);
         }
         if (dataInicio != null) {
@@ -86,6 +88,65 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
         Sort sort = Sort.by(sortBy != null ? sortBy : "data",
             "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.Descending : Sort.Direction.Ascending);
 
+        Page pageable = Page.of(page, size);
+
+        var panacheQuery = repository.find(query.toString(), sort, params.toArray());
+        panacheQuery.page(pageable);
+
+        List<MovimentoEstoque> content = panacheQuery.list();
+        long totalElements = repository.count(query.toString(), params.toArray());
+
+        return toDtoPage(PageResponse.of(content, totalElements, page, size));
+    }
+
+    public PageResponse<MovimentoEstoqueDTO> findDefeitos(int page, int size, String dataInicio, String dataFim) {
+        StringBuilder query = new StringBuilder("deleted = false and tipo like '%DEFEITO%'");
+        var params = new java.util.ArrayList<Object>();
+
+        if (dataInicio != null) {
+            query.append(" and data >= ?").append(params.size() + 1);
+            params.add(dataInicio);
+        }
+        if (dataFim != null) {
+            query.append(" and data <= ?").append(params.size() + 1);
+            params.add(dataFim);
+        }
+
+        Sort sort = Sort.by("data", Sort.Direction.Descending);
+        Page pageable = Page.of(page, size);
+
+        var panacheQuery = repository.find(query.toString(), sort, params.toArray());
+        panacheQuery.page(pageable);
+
+        List<MovimentoEstoque> content = panacheQuery.list();
+        long totalElements = repository.count(query.toString(), params.toArray());
+
+        return toDtoPage(PageResponse.of(content, totalElements, page, size));
+    }
+
+    public PageResponse<MovimentoEstoqueDTO> findEntradas(int page, int size, String dataInicio, String dataFim) {
+        return findByTipoPrefix("ENTRADA", page, size, dataInicio, dataFim);
+    }
+
+    public PageResponse<MovimentoEstoqueDTO> findSaidas(int page, int size, String dataInicio, String dataFim) {
+        return findByTipoPrefix("SAIDA", page, size, dataInicio, dataFim);
+    }
+
+    private PageResponse<MovimentoEstoqueDTO> findByTipoPrefix(String prefix, int page, int size, String dataInicio, String dataFim) {
+        StringBuilder query = new StringBuilder("deleted = false and tipo like ?1");
+        var params = new java.util.ArrayList<Object>();
+        params.add(prefix + "%");
+
+        if (dataInicio != null) {
+            query.append(" and data >= ?").append(params.size() + 1);
+            params.add(dataInicio);
+        }
+        if (dataFim != null) {
+            query.append(" and data <= ?").append(params.size() + 1);
+            params.add(dataFim);
+        }
+
+        Sort sort = Sort.by("data", Sort.Direction.Descending);
         Page pageable = Page.of(page, size);
 
         var panacheQuery = repository.find(query.toString(), sort, params.toArray());
@@ -119,10 +180,10 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
             Produto produto = produtoRepository.findById(dto.getProdutoFruteiraId());
             if (produto != null) {
                 estoqueAnterior = produto.estoqueAtual;
-                
+
                 // Determine if it's an entry or exit
-                boolean isEntrada = dto.getTipo() != null && dto.getTipo().name().startsWith("ENTRADA");
-                
+                boolean isEntrada = dto.getTipo() != null && dto.getTipo().isEntrada();
+
                 if (isEntrada) {
                     estoquePosterior = estoqueAnterior.add(dto.getQuantidade());
                 } else {
@@ -131,7 +192,7 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
                         estoquePosterior = BigDecimal.ZERO;
                     }
                 }
-                
+
                 produto.estoqueAtual = estoquePosterior;
                 produtoRepository.persist(produto);
             }
@@ -139,9 +200,9 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
             ProdutoBuffet produto = produtoBuffetRepository.findById(dto.getProdutoBuffetId());
             if (produto != null && produto.controlaEstoque) {
                 estoqueAnterior = produto.estoqueAtual;
-                
-                boolean isEntrada = dto.getTipo() != null && dto.getTipo().name().startsWith("ENTRADA");
-                
+
+                boolean isEntrada = dto.getTipo() != null && dto.getTipo().isEntrada();
+
                 if (isEntrada) {
                     estoquePosterior = estoqueAnterior.add(dto.getQuantidade());
                 } else {
@@ -150,7 +211,7 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
                         estoquePosterior = BigDecimal.ZERO;
                     }
                 }
-                
+
                 produto.estoqueAtual = estoquePosterior;
                 produtoBuffetRepository.persist(produto);
             }
@@ -169,8 +230,114 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
         if (entity.valorTotal == null && entity.custoUnitario != null && entity.quantidade != null) {
             entity.valorTotal = entity.quantidade.multiply(entity.custoUnitario);
         }
-        
+
+        // For defect entries from reprocessing, add recoverable quantity to stock
+        if (entity.tipo == MovimentoEstoque.TipoMovimento.ENTRADA_DEFEITO_REPROCESSO && entity.quantidadeRecuperavel != null) {
+            // The recoverable quantity is already added via the normal entry logic above
+            // This field is for tracking purposes
+        }
+
         repository.persist(entity);
         return mapper.toDTO(entity);
+    }
+
+    @Transactional
+    public MovimentoEstoqueDTO registrarDefeito(UUID produtoFruteiraId, UUID produtoBuffetId,
+                                                 MovimentoEstoque.TipoMovimento tipoDefeito,
+                                                 BigDecimal quantidade, BigDecimal custoUnitario,
+                                                 String motivo, String tipoDefeitoDesc,
+                                                 String lote, String responsavel,
+                                                 BigDecimal quantidadeRecuperavel) {
+        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
+        dto.setProdutoFruteiraId(produtoFruteiraId);
+        dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setTipo(tipoDefeito);
+        dto.setOrigem(MovimentoEstoque.OrigemDestino.DEFEITO);
+        dto.setDestino(MovimentoEstoque.OrigemDestino.PERDA);
+        dto.setQuantidade(quantidade);
+        dto.setCustoUnitario(custoUnitario);
+        dto.setMotivoDefeito(motivo);
+        dto.setTipoDefeito(tipoDefeitoDesc);
+        dto.setLoteDefeituoso(lote);
+        dto.setQuantidadeRecuperavel(quantidadeRecuperavel);
+        dto.setResponsavel(responsavel);
+        dto.setData(LocalDateTime.now());
+        return createMovement(dto);
+    }
+
+    @Transactional
+    public MovimentoEstoqueDTO registrarEntradaCompra(UUID produtoFruteiraId, UUID produtoBuffetId,
+                                                       BigDecimal quantidade, BigDecimal custoUnitario,
+                                                       String documentoReferencia, String numeroDocumento,
+                                                       String lote, LocalDateTime dataValidade,
+                                                       String responsavel) {
+        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
+        dto.setProdutoFruteiraId(produtoFruteiraId);
+        dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setTipo(MovimentoEstoque.TipoMovimento.ENTRADA_COMPRA);
+        dto.setOrigem(MovimentoEstoque.OrigemDestino.FORNECEDOR);
+        dto.setDestino(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setQuantidade(quantidade);
+        dto.setCustoUnitario(custoUnitario);
+        dto.setDocumentoReferencia(documentoReferencia);
+        dto.setNumeroDocumento(numeroDocumento);
+        dto.setLote(lote);
+        dto.setDataValidade(dataValidade);
+        dto.setResponsavel(responsavel);
+        dto.setData(LocalDateTime.now());
+        return createMovement(dto);
+    }
+
+    @Transactional
+    public MovimentoEstoqueDTO registrarEntradaTransferencia(UUID produtoFruteiraId, UUID produtoBuffetId,
+                                                              BigDecimal quantidade, BigDecimal custoUnitario,
+                                                              MovimentoEstoque.OrigemDestino origem,
+                                                              String responsavel) {
+        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
+        dto.setProdutoFruteiraId(produtoFruteiraId);
+        dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setTipo(MovimentoEstoque.TipoMovimento.ENTRADA_TRANSFERENCIA);
+        dto.setOrigem(origem);
+        dto.setDestino(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setQuantidade(quantidade);
+        dto.setCustoUnitario(custoUnitario);
+        dto.setResponsavel(responsavel);
+        dto.setData(LocalDateTime.now());
+        return createMovement(dto);
+    }
+
+    @Transactional
+    public MovimentoEstoqueDTO registrarSaidaVenda(UUID produtoFruteiraId, UUID produtoBuffetId,
+                                                    BigDecimal quantidade, BigDecimal custoUnitario,
+                                                    String responsavel) {
+        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
+        dto.setProdutoFruteiraId(produtoFruteiraId);
+        dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setTipo(MovimentoEstoque.TipoMovimento.SAIDA_VENDA);
+        dto.setOrigem(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setDestino(MovimentoEstoque.OrigemDestino.CLIENTE);
+        dto.setQuantidade(quantidade);
+        dto.setCustoUnitario(custoUnitario);
+        dto.setResponsavel(responsavel);
+        dto.setData(LocalDateTime.now());
+        return createMovement(dto);
+    }
+
+    @Transactional
+    public MovimentoEstoqueDTO registrarAjuste(UUID produtoFruteiraId, UUID produtoBuffetId,
+                                                BigDecimal quantidade, BigDecimal custoUnitario,
+                                                boolean isEntrada, String observacoes, String responsavel) {
+        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
+        dto.setProdutoFruteiraId(produtoFruteiraId);
+        dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setTipo(isEntrada ? MovimentoEstoque.TipoMovimento.ENTRADA_AJUSTE : MovimentoEstoque.TipoMovimento.SAIDA_AJUSTE);
+        dto.setOrigem(isEntrada ? MovimentoEstoque.OrigemDestino.AJUSTE : (produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET));
+        dto.setDestino(isEntrada ? (produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET) : MovimentoEstoque.OrigemDestino.AJUSTE);
+        dto.setQuantidade(quantidade);
+        dto.setCustoUnitario(custoUnitario);
+        dto.setObservacoes(observacoes);
+        dto.setResponsavel(responsavel);
+        dto.setData(LocalDateTime.now());
+        return createMovement(dto);
     }
 }

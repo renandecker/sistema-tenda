@@ -18,7 +18,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.12.0</quarkus.platform.version>
+        <quarkus.platform.version>3.12.1</quarkus.platform.version>
         <surefire-plugin.version>3.2.5</surefire-plugin.version>
     </properties>
 
@@ -99,6 +99,22 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${surefire-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.flywaydb</groupId>
+                    <artifactId>flyway-maven-plugin</artifactId>
+                    <version>10.17.0</version>
+                    <configuration>
+                        <url>${flyway.url:jdbc:postgresql://localhost:5432/sistematenda}</url>
+                        <user>${flyway.user:sistematenda}</user>
+                        <password>${flyway.password:sistematenda}</password>
+                        <locations>
+                            <location>filesystem:${project.basedir}/pdv/src/main/resources/db/migration</location>
+                        </locations>
+                        <baselineOnMigrate>true</baselineOnMigrate>
+                        <baselineVersion>0</baselineVersion>
+                        <validateOnMigrate>true</validateOnMigrate>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>

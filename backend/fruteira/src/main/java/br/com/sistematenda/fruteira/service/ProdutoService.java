@@ -143,7 +143,7 @@ public class ProdutoService extends BaseCrudServiceImpl<Produto, ProdutoDTO, UUI
             ? StockMovementEvent.MovementType.ENTRADA_AJUSTE 
             : StockMovementEvent.MovementType.SAIDA_AJUSTE);
         event.setOrigem(StockMovementEvent.OriginDest.AJUSTE);
-        event.setDestino(StockMovementEvent.OriginDest.FRITEIRA);
+        event.setDestino(StockMovementEvent.OriginDest.FRUTEIRA);
         event.setQuantidade(quantidade.abs());
         event.setCustoUnitario(custoUnitario);
         event.setData(LocalDateTime.now());
@@ -154,9 +154,6 @@ public class ProdutoService extends BaseCrudServiceImpl<Produto, ProdutoDTO, UUI
     }
 
     private void validateCreate(ProdutoDTO dto) {
-        if (repository.findByCodigo(dto.getCodigo()).isPresent()) {
-            throw new ValidationException("Já existe um produto com este código: " + dto.getCodigo());
-        }
         if (dto.getCodigoBarras() != null && repository.findByCodigoBarras(dto.getCodigoBarras()).isPresent()) {
             throw new ValidationException("Já existe um produto com este código de barras: " + dto.getCodigoBarras());
         }
@@ -166,11 +163,6 @@ public class ProdutoService extends BaseCrudServiceImpl<Produto, ProdutoDTO, UUI
     }
 
     private void validateUpdate(UUID id, ProdutoDTO dto) {
-        repository.findByCodigo(dto.getCodigo()).ifPresent(p -> {
-            if (!p.id.equals(id)) {
-                throw new ValidationException("Já existe um produto com este código: " + dto.getCodigo());
-            }
-        });
         if (dto.getCodigoBarras() != null) {
             repository.findByCodigoBarras(dto.getCodigoBarras()).ifPresent(p -> {
                 if (!p.id.equals(id)) {

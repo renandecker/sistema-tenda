@@ -8,11 +8,13 @@ br\com\sistematenda\common\pix\PixChargeRequest$PixPagador.class
 br\com\sistematenda\common\dto\FornecedorDTO.class
 br\com\sistematenda\common\pix\PixWebhookNotification$PixEndereco.class
 br\com\sistematenda\common\dto\AuthDTO$RefreshRequest.class
+br\com\sistematenda\common\event\StockMovementEvent.class
 br\com\sistematenda\common\pix\PixWebhookNotification.class
 br\com\sistematenda\common\pix\PixException.class
 br\com\sistematenda\common\pix\PixChargeRequest.class
 br\com\sistematenda\common\entity\Fornecedor.class
 br\com\sistematenda\common\mapper\FornecedorMapperImpl.class
+br\com\sistematenda\common\event\StockMovementEvent$MovementType.class
 br\com\sistematenda\common\resource\AuditResource.class
 br\com\sistematenda\common\config\PixConfig$ItauConfig.class
 br\com\sistematenda\common\service\AuditLogService.class
@@ -53,6 +55,7 @@ br\com\sistematenda\common\service\ClienteService.class
 br\com\sistematenda\common\exception\NotFoundException.class
 br\com\sistematenda\common\config\ScaleConfig.class
 br\com\sistematenda\common\pix\PixWebhookNotification$PixPagador.class
+br\com\sistematenda\common\event\StockMovementEvent$OriginDest.class
 br\com\sistematenda\common\mapper\ClienteMapper.class
 br\com\sistematenda\common\enums\StatusVenda.class
 br\com\sistematenda\common\enums\CstPisCofins.class

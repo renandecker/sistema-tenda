@@ -23,6 +23,7 @@ public interface ProdutoMapper extends BaseMapper<Produto, ProdutoDTO> {
     @Mapping(target = "cstIcms", source = "cstIcms")
     @Mapping(target = "cstPis", source = "cstPis")
     @Mapping(target = "cstCofins", source = "cstCofins")
+    @Mapping(target = "codigo", ignore = true)
     Produto toEntity(ProdutoDTO dto);
 
     @Mapping(target = "id", ignore = true)
@@ -30,5 +31,6 @@ public interface ProdutoMapper extends BaseMapper<Produto, ProdutoDTO> {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "codigo", ignore = true)
     void updateEntityFromDTO(ProdutoDTO dto, @org.mapstruct.MappingTarget Produto entity);
 }

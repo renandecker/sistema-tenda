@@ -17,6 +17,7 @@ import { toast } from 'react-toastify';
 import { apiBuffet, apiFruteira, apiPdv } from '@/services/api';
 import { PageHeader } from '@/components/PageHeader';
 import { formatCurrency } from '@/utils/formatters';
+import { maskCurrency, maskQuantity, parseCurrency, parseDecimal } from '@/utils/masks';
 
 interface ItemResumo {
   id?: string;
@@ -126,7 +127,7 @@ export function PdvPage() {
 
   const adicionarItem = async (p: ProdutoBusca) => {
     if (!venda) { toast.warning('Inicie uma venda primeiro'); return; }
-    const qtd = parseFloat(quantidade.replace(',', '.')) || 1;
+    const qtd = parseDecimal(quantidade, 3) || 1;
     if (venda.id.startsWith('local-')) {
       const item: ItemResumo = { id: `i-${Date.now()}`, codigoProduto: p.codigo ?? p.codigoBarras, nomeProduto: p.nome, quantidade: qtd, precoUnitario: p.precoVenda ?? 0, valorTotal: (p.precoVenda ?? 0) * qtd, origem: p.origem };
       setVenda((v) => {
@@ -149,7 +150,7 @@ export function PdvPage() {
 
   const lancarPeso = async () => {
     if (!venda) return;
-    const peso = parseFloat(pesoBruto.replace(',', '.'));
+    const peso = parseDecimal(pesoBruto, 3);
     if (!peso || peso <= 0) { toast.warning('Informe o peso válido'); return; }
     if (venda.id.startsWith('local-')) { toast.info('Balança disponível apenas com backend conectado'); setPesoDialog(false); return; }
     try {
@@ -165,7 +166,7 @@ export function PdvPage() {
 
   const aplicarDesconto = async () => {
     if (!venda) return;
-    const v = parseFloat(desconto.replace(',', '.')) || 0;
+    const v = parseCurrency(desconto);
     if (venda.id.startsWith('local-')) {
       setVenda((s) => s ? { ...s, desconto: v, valorTotal: (s.subtotal ?? 0) - v } : s);
       setDesconto('');
@@ -183,7 +184,7 @@ export function PdvPage() {
 
   const confirmarPagamento = async () => {
     if (!venda) return;
-    const valor = parseFloat(valorPagamento.replace(',', '.')) || 0;
+    const valor = parseCurrency(valorPagamento);
     if (valor <= 0) { toast.warning('Informe o valor recebido'); return; }
     if (venda.id.startsWith('local-')) {
       setVenda((s) => s ? { ...s, valorPago: (s.valorPago ?? 0) + valor, pagamentos: [...(s.pagamentos ?? []), { formaPagamento, valor }] } : s);
@@ -256,7 +257,7 @@ export function PdvPage() {
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <TextField fullWidth size="small" placeholder="Código, código de barras ou nome + Enter" value={busca}
                   onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && buscarProdutos()} />
-                <TextField size="small" label="Qtd" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} sx={{ width: 90 }} />
+                <TextField size="small" label="Qtd" value={maskQuantity(quantidade)} onChange={(e) => setQuantidade(maskQuantity(e.target.value))} sx={{ width: 90 }} inputMode="decimal" />
                 <Button variant="contained" onClick={buscarProdutos} disabled={buscando} startIcon={<SearchIcon />}>Buscar</Button>
                 <Tooltip title="Lançar prato por peso (balança)"><span><IconButton color="primary" onClick={() => setPesoDialog(true)} disabled={!venda}><ScaleIcon /></IconButton></span></Tooltip>
               </Box>
@@ -300,11 +301,11 @@ export function PdvPage() {
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}><Typography variant="h6">Total</Typography><Typography variant="h6" color="primary">{formatCurrency(venda?.valorTotal ?? 0)}</Typography></Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}><Typography variant="body2">Saldo devedor</Typography><Chip size="small" label={formatCurrency(saldo)} color={saldo <= 0 ? 'success' : 'warning'} /></Box>
               <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                <TextField size="small" label="Desconto R$" value={desconto} onChange={(e) => setDesconto(e.target.value)} sx={{ flex: 1 }} />
+                <TextField size="small" label="Desconto (R$)" value={maskCurrency(desconto)} onChange={(e) => setDesconto(maskCurrency(e.target.value))} placeholder="0,00" sx={{ flex: 1 }} inputMode="decimal" />
                 <Button variant="outlined" onClick={aplicarDesconto} disabled={!venda}>Aplicar</Button>
               </Box>
               <Grid container spacing={1}>
-                <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={() => { setValorPagamento(saldo > 0 ? String(saldo.toFixed(2)) : ''); setPagDialog(true); }} disabled={!venda}>Pagamento</Button></Grid>
+                <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={() => { setValorPagamento(saldo > 0 ? maskCurrency(saldo) : ''); setPagDialog(true); }} disabled={!venda}>Pagamento</Button></Grid>
                 <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={!venda}>Finalizar</Button></Grid>
                 <Grid item xs={12}><Button fullWidth color="error" startIcon={<CancelIcon />} onClick={cancelar} disabled={!venda}>Cancelar venda</Button></Grid>
               </Grid>
@@ -333,7 +334,7 @@ export function PdvPage() {
           <TextField select fullWidth label="Forma de pagamento" value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)} sx={{ mt: 1, mb: 2 }}>
             {FORMAS_PAGAMENTO.map((f) => <MenuItem key={f} value={f}>{f}</MenuItem>)}
           </TextField>
-          <TextField fullWidth label="Valor recebido" value={valorPagamento} onChange={(e) => setValorPagamento(e.target.value)} placeholder="0,00" />
+          <TextField fullWidth label="Valor recebido (R$)" value={maskCurrency(valorPagamento)} onChange={(e) => setValorPagamento(maskCurrency(e.target.value))} placeholder="0,00" inputMode="decimal" />
         </DialogContent>
         <DialogActions><Button onClick={() => setPagDialog(false)}>Fechar</Button><Button variant="contained" onClick={confirmarPagamento}>Confirmar</Button></DialogActions>
       </Dialog>
@@ -341,7 +342,7 @@ export function PdvPage() {
       <Dialog open={pesoDialog} onClose={() => setPesoDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Lançar prato por peso</DialogTitle>
         <DialogContent>
-          <TextField fullWidth label="Peso bruto (kg)" value={pesoBruto} onChange={(e) => setPesoBruto(e.target.value)} placeholder="Ex: 0,532" sx={{ mt: 1 }} />
+          <TextField fullWidth label="Peso bruto (kg)" value={maskQuantity(pesoBruto)} onChange={(e) => setPesoBruto(maskQuantity(e.target.value))} placeholder="Ex: 0,532" sx={{ mt: 1 }} inputMode="decimal" />
           <Typography variant="caption" color="text.secondary">Integração com balanças Toledo/Filizola via leitura do peso.</Typography>
         </DialogContent>
         <DialogActions><Button onClick={() => setPesoDialog(false)}>Fechar</Button><Button variant="contained" onClick={lancarPeso}>Lançar</Button></DialogActions>

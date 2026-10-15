@@ -18,6 +18,7 @@ import { TransferenciasEstoquePage } from './pages/buffet/TransferenciasEstoqueP
 import { EstoquePage } from './pages/estoque/EstoquePage';
 import { InventarioPage } from './pages/estoque/InventarioPage';
 import { AlertasEstoquePage } from './pages/estoque/AlertasEstoquePage';
+import { DefeitosPage } from './pages/estoque/DefeitosPage';
 import { VendasPage } from './pages/pdv/VendasPage';
 import { SessoesCaixaPage } from './pages/pdv/SessoesCaixaPage';
 import { NfePage } from './pages/fiscal/NfePage';
@@ -81,6 +82,7 @@ export function App() {
         <Route path="estoque" element={<EstoquePage />} />
         <Route path="estoque/inventario" element={<InventarioPage />} />
         <Route path="estoque/alertas" element={<AlertasEstoquePage />} />
+        <Route path="estoque/defeitos" element={<DefeitosPage />} />
         
         {/* Fiscal */}
         <Route path="fiscal/nfe" element={<NfePage />} />

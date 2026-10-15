@@ -32,6 +32,10 @@ public class MovimentoEstoqueDTO {
     private String documentoReferencia;
     private String numeroDocumento;
     private String observacoes;
+    private String motivoDefeito;
+    private String tipoDefeito;
+    private String loteDefeituoso;
+    private BigDecimal quantidadeRecuperavel;
     private String responsavel;
     private LocalDateTime data;
 
@@ -82,6 +86,18 @@ public class MovimentoEstoqueDTO {
 
     public String getObservacoes() { return observacoes; }
     public void setObservacoes(String observacoes) { this.observacoes = observacoes; }
+
+    public String getMotivoDefeito() { return motivoDefeito; }
+    public void setMotivoDefeito(String motivoDefeito) { this.motivoDefeito = motivoDefeito; }
+
+    public String getTipoDefeito() { return tipoDefeito; }
+    public void setTipoDefeito(String tipoDefeito) { this.tipoDefeito = tipoDefeito; }
+
+    public String getLoteDefeituoso() { return loteDefeituoso; }
+    public void setLoteDefeituoso(String loteDefeituoso) { this.loteDefeituoso = loteDefeituoso; }
+
+    public BigDecimal getQuantidadeRecuperavel() { return quantidadeRecuperavel; }
+    public void setQuantidadeRecuperavel(BigDecimal quantidadeRecuperavel) { this.quantidadeRecuperavel = quantidadeRecuperavel; }
 
     public String getResponsavel() { return responsavel; }
     public void setResponsavel(String responsavel) { this.responsavel = responsavel; }

@@ -6,6 +6,7 @@ import { apiFiscal } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { maskCurrency, maskInteger, parseCurrency, parseDecimal } from '@/utils/masks';
 
 interface Ativo {
   id: string;
@@ -71,11 +72,11 @@ export function AtivosImobilizadosPage() {
       descricao: form.descricao,
       categoria: form.categoria,
       dataAquisicao: form.dataAquisicao,
-      valorAquisicao: Number(form.valorAquisicao),
-      vidaUtilAnos: Number(form.vidaUtilAnos) || 10,
-      valorResidual: Number(form.valorResidual) || 0,
+      valorAquisicao: parseCurrency(form.valorAquisicao),
+      vidaUtilAnos: parseDecimal(form.vidaUtilAnos, 0) || 10,
+      valorResidual: parseCurrency(form.valorResidual),
       depreciacaoAcumulada: 0,
-      valorContabil: Number(form.valorAquisicao),
+      valorContabil: parseCurrency(form.valorAquisicao),
       status: 'ATIVO',
       localizacao: form.localizacao,
     };
@@ -132,7 +133,7 @@ export function AtivosImobilizadosPage() {
             field: 'acoes', headerName: 'Ações', width: 150, align: 'center',
             render: (_: any, row: Ativo) => (
               <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                <Tooltip title="Editar"><IconButton size="small" onClick={() => { setEditingId(row.id); setForm({ codigo: row.codigo ?? '', descricao: row.descricao ?? '', categoria: row.categoria ?? 'MAQUINAS_EQUIPAMENTOS', dataAquisicao: (row.dataAquisicao ?? '').slice(0, 10), valorAquisicao: String(row.valorAquisicao ?? ''), vidaUtilAnos: String(row.vidaUtilAnos ?? 10), valorResidual: String(row.valorResidual ?? 0), localizacao: row.localizacao ?? '' }); setDialog(true); }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                <Tooltip title="Editar"><IconButton size="small" onClick={() => { setEditingId(row.id); setForm({ codigo: row.codigo ?? '', descricao: row.descricao ?? '', categoria: row.categoria ?? 'MAQUINAS_EQUIPAMENTOS', dataAquisicao: (row.dataAquisicao ?? '').slice(0, 10), valorAquisicao: maskCurrency(row.valorAquisicao ?? ''), vidaUtilAnos: String(row.vidaUtilAnos ?? 10), valorResidual: maskCurrency(row.valorResidual ?? 0), localizacao: row.localizacao ?? '' }); setDialog(true); }}><EditIcon fontSize="small" /></IconButton></Tooltip>
                 <Tooltip title="Baixar"><Button size="small" variant="outlined" onClick={() => baixar(row.id)}>Baixar</Button></Tooltip>
                 <Tooltip title="Excluir"><IconButton size="small" color="error" onClick={() => excluir(row.id)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
               </Box>
@@ -155,9 +156,9 @@ export function AtivosImobilizadosPage() {
             </Grid>
             <Grid item xs={6}><TextField fullWidth size="small" label="Localização" value={form.localizacao} onChange={(e) => setForm({ ...form, localizacao: e.target.value })} /></Grid>
             <Grid item xs={6}><TextField fullWidth size="small" type="date" label="Aquisição" InputLabelProps={{ shrink: true }} value={form.dataAquisicao} onChange={(e) => setForm({ ...form, dataAquisicao: e.target.value })} /></Grid>
-            <Grid item xs={6}><TextField fullWidth size="small" label="Valor de aquisição" value={form.valorAquisicao} onChange={(e) => setForm({ ...form, valorAquisicao: e.target.value })} /></Grid>
-            <Grid item xs={6}><TextField fullWidth size="small" label="Vida útil (anos)" value={form.vidaUtilAnos} onChange={(e) => setForm({ ...form, vidaUtilAnos: e.target.value })} /></Grid>
-            <Grid item xs={6}><TextField fullWidth size="small" label="Valor residual" value={form.valorResidual} onChange={(e) => setForm({ ...form, valorResidual: e.target.value })} /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Valor de aquisição (R$)" value={maskCurrency(form.valorAquisicao)} onChange={(e) => setForm({ ...form, valorAquisicao: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Vida útil (anos)" value={maskInteger(form.vidaUtilAnos)} onChange={(e) => setForm({ ...form, vidaUtilAnos: maskInteger(e.target.value) })} placeholder="10" inputMode="numeric" /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Valor residual (R$)" value={maskCurrency(form.valorResidual)} onChange={(e) => setForm({ ...form, valorResidual: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>
           </Grid>
         </DialogContent>
         <DialogActions><Button onClick={() => setDialog(false)}>Cancelar</Button><Button variant="contained" onClick={salvar}>Salvar</Button></DialogActions>

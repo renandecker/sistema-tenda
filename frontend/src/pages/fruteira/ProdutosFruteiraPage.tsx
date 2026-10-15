@@ -12,6 +12,7 @@ import { apiFruteira } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
 import { formatCurrency, formatNumber } from '@/utils/formatters';
+import { maskCurrency, maskQuantity, parseCurrency, parseDecimal } from '@/utils/masks';
 
 interface Produto {
   id: string;
@@ -29,7 +30,6 @@ interface Produto {
 }
 
 const emptyForm = {
-  codigo: '',
   codigoBarras: '',
   nome: '',
   categoria: 'HORTIFRUTI',
@@ -72,10 +72,9 @@ export function ProdutosFruteiraPage() {
     setDialog(true);
   };
 
-  const openEdit = (p: Produto) => {
+const openEdit = (p: Produto) => {
     setEditing(p);
     setForm({
-      codigo: p.codigo ?? '',
       codigoBarras: p.codigoBarras ?? '',
       nome: p.nome,
       categoria: p.categoria ?? 'HORTIFRUTI',
@@ -95,15 +94,14 @@ export function ProdutosFruteiraPage() {
     }
     try {
       const payload = {
-        codigo: form.codigo || undefined,
         codigoBarras: form.codigoBarras || undefined,
         nome: form.nome,
         categoria: form.categoria,
         unidadeMedida: form.unidadeMedida,
-        precoVenda: Number(form.precoVenda) || 0,
-        custoMedio: form.custoMedio ? Number(form.custoMedio) : 0,
-        estoqueAtual: form.estoqueAtual ? Number(form.estoqueAtual) : 0,
-        estoqueMinimo: Number(form.estoqueMinimo) || 5,
+        precoVenda: parseCurrency(form.precoVenda),
+        custoMedio: form.custoMedio ? parseCurrency(form.custoMedio) : 0,
+        estoqueAtual: form.estoqueAtual ? parseDecimal(form.estoqueAtual, 3) : 0,
+        estoqueMinimo: parseDecimal(form.estoqueMinimo, 3) || 5,
         ativo: true,
       };
 
@@ -226,17 +224,7 @@ export function ProdutosFruteiraPage() {
         <DialogTitle>{editing ? 'Editar Produto — Fruteira' : 'Novo Produto — Fruteira'}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={4}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Código"
-                value={form.codigo}
-                onChange={(e) => setForm({ ...form, codigo: e.target.value })}
-                placeholder="Ex: 101"
-              />
-            </Grid>
-            <Grid item xs={8}>
+            <Grid item xs={12}>
               <TextField
                 fullWidth
                 size="small"
@@ -279,9 +267,10 @@ export function ProdutosFruteiraPage() {
                 fullWidth
                 size="small"
                 label="Preço de Venda (R$)"
-                value={form.precoVenda}
-                onChange={(e) => setForm({ ...form, precoVenda: e.target.value })}
+                value={maskCurrency(form.precoVenda)}
+                onChange={(e) => setForm({ ...form, precoVenda: maskCurrency(e.target.value) })}
                 placeholder="0,00"
+                inputMode="decimal"
               />
             </Grid>
             <Grid item xs={6}>
@@ -289,9 +278,10 @@ export function ProdutosFruteiraPage() {
                 fullWidth
                 size="small"
                 label="Custo Médio (R$)"
-                value={form.custoMedio}
-                onChange={(e) => setForm({ ...form, custoMedio: e.target.value })}
+                value={maskCurrency(form.custoMedio)}
+                onChange={(e) => setForm({ ...form, custoMedio: maskCurrency(e.target.value) })}
                 placeholder="0,00"
+                inputMode="decimal"
               />
             </Grid>
             <Grid item xs={6}>
@@ -299,9 +289,10 @@ export function ProdutosFruteiraPage() {
                 fullWidth
                 size="small"
                 label="Estoque Atual"
-                value={form.estoqueAtual}
-                onChange={(e) => setForm({ ...form, estoqueAtual: e.target.value })}
+                value={maskQuantity(form.estoqueAtual)}
+                onChange={(e) => setForm({ ...form, estoqueAtual: maskQuantity(e.target.value) })}
                 placeholder="0"
+                inputMode="decimal"
               />
             </Grid>
             <Grid item xs={6}>
@@ -309,9 +300,10 @@ export function ProdutosFruteiraPage() {
                 fullWidth
                 size="small"
                 label="Estoque Mínimo"
-                value={form.estoqueMinimo}
-                onChange={(e) => setForm({ ...form, estoqueMinimo: e.target.value })}
+                value={maskQuantity(form.estoqueMinimo)}
+                onChange={(e) => setForm({ ...form, estoqueMinimo: maskQuantity(e.target.value) })}
                 placeholder="5"
+                inputMode="decimal"
               />
             </Grid>
             <Grid item xs={12}>

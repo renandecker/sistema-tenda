@@ -6,6 +6,7 @@ import { apiBuffet } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
 import { formatCurrency, formatNumber } from '@/utils/formatters';
+import { maskCurrency, maskQuantity, parseCurrency, parseDecimal } from '@/utils/masks';
 
 interface Produto {
   id: string;
@@ -48,14 +49,14 @@ export function ProdutosBuffetPage() {
   const openNew = () => { setEditing(null); setForm(emptyForm); setDialog(true); };
   const openEdit = (p: Produto) => {
     setEditing(p);
-    setForm({ codigo: p.codigo ?? '', nome: p.nome, categoria: p.categoria ?? 'PRATO_FEITO', unidadeMedida: p.unidadeMedida ?? 'KG', precoVenda: String(p.precoVenda ?? ''), estoqueAtual: String(p.estoqueAtual ?? ''), descricao: '', disponivelBalcao: p.disponivelBalcao ?? true });
+    setForm({ codigo: p.codigo ?? '', nome: p.nome, categoria: p.categoria ?? 'PRATO_FEITO', unidadeMedida: p.unidadeMedida ?? 'KG', precoVenda: maskCurrency(p.precoVenda ?? ''), estoqueAtual: maskQuantity(p.estoqueAtual ?? ''), descricao: '', disponivelBalcao: p.disponivelBalcao ?? true });
     setDialog(true);
   };
 
   const salvar = async () => {
     if (!form.nome || !form.precoVenda) { toast.warning('Informe nome e preço'); return; }
     try {
-      const payload = { codigo: form.codigo || undefined, nome: form.nome, categoria: form.categoria, unidadeMedida: form.unidadeMedida, precoVenda: Number(form.precoVenda), estoqueAtual: form.estoqueAtual ? Number(form.estoqueAtual) : 0, descricao: form.descricao, disponivelBalcao: form.disponivelBalcao, ativo: true, controlaEstoque: true };
+      const payload = { codigo: form.codigo || undefined, nome: form.nome, categoria: form.categoria, unidadeMedida: form.unidadeMedida, precoVenda: parseCurrency(form.precoVenda), estoqueAtual: form.estoqueAtual ? parseDecimal(form.estoqueAtual, 3) : 0, descricao: form.descricao, disponivelBalcao: form.disponivelBalcao, ativo: true, controlaEstoque: true };
       if (editing) await apiBuffet.updateProduto(editing.id, payload);
       else await apiBuffet.createProduto(payload);
       toast.success('Produto salvo!');
@@ -128,8 +129,8 @@ export function ProdutosBuffetPage() {
                 {['KG', 'G', 'UN', 'PORCAO', 'L', 'ML'].map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid item xs={6}><TextField fullWidth size="small" label="Preço de venda" value={form.precoVenda} onChange={(e) => setForm({ ...form, precoVenda: e.target.value })} /></Grid>
-            <Grid item xs={6}><TextField fullWidth size="small" label="Estoque inicial" value={form.estoqueAtual} onChange={(e) => setForm({ ...form, estoqueAtual: e.target.value })} /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Preço de venda" value={maskCurrency(form.precoVenda)} onChange={(e) => setForm({ ...form, precoVenda: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Estoque inicial" value={maskQuantity(form.estoqueAtual)} onChange={(e) => setForm({ ...form, estoqueAtual: maskQuantity(e.target.value) })} placeholder="0" inputMode="decimal" /></Grid>
             <Grid item xs={12}><TextField fullWidth size="small" label="Descrição" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} multiline rows={2} /></Grid>
             <Grid item xs={12}>
               <TextField select fullWidth size="small" label="Disponível no balcão" value={form.disponivelBalcao ? 'S' : 'N'} onChange={(e) => setForm({ ...form, disponivelBalcao: e.target.value === 'S' })}>

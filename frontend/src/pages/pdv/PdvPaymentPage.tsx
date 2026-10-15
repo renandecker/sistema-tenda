@@ -42,6 +42,7 @@ import { apiPdv } from '@/services/api';
 import { PixPaymentModal, PixQrCode } from '@/components/pix';
 import { TefPaymentModal } from '@/components/tef';
 import { BandeiraCartao } from '@/constants/bandeiras';
+import { maskCurrency, parseCurrency } from '@/utils/masks';
 
 interface Venda {
   id: string;
@@ -318,7 +319,7 @@ export function PdvPaymentPage() {
                         size="small"
                         onClick={() => {
                           setSelectedVenda(venda);
-                          setPaymentForm({ formaPagamento: 'PIX', valor: getSaldoDevedor(venda), parcelas: 1 });
+                          setPaymentForm({ ...paymentForm, formaPagamento: 'PIX', valor: getSaldoDevedor(venda), parcelas: 1 });
                           setPaymentDialogOpen(true);
                         }}
                         disabled={getSaldoDevedor(venda) <= 0}
@@ -389,15 +390,14 @@ export function PdvPaymentPage() {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  type="number"
-                  label="Valor"
-                  value={paymentForm.valor}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, valor: parseFloat(e.target.value) || 0 })}
+                  label="Valor (R$)"
+                  value={maskCurrency(paymentForm.valor)}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, valor: parseCurrency(e.target.value) })}
                   InputProps={{
                     startAdornment: <InputAdornment position="start">R$</InputAdornment>,
                   }}
                   fullWidth
-                  inputProps={{ step: 0.01, min: 0.01 }}
+                  inputMode="decimal"
                 />
               </Grid>
               <Grid item xs={12} sm={6}>

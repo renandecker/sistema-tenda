@@ -6,6 +6,7 @@ import { apiPdv } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
 import { formatCurrency, formatDateTime, getStatusColor, getStatusLabel } from '@/utils/formatters';
+import { maskCurrency, parseCurrency } from '@/utils/masks';
 
 interface Sessao {
   id: string;
@@ -60,7 +61,7 @@ export function SessoesCaixaPage() {
   const confirmarAbertura = async () => {
     if (!formAbrir.pdvId || !formAbrir.operadorAbertura) { toast.warning('Informe PDV e operador'); return; }
     try {
-      await apiPdv.abrirCaixa({ pdvId: formAbrir.pdvId, operadorAbertura: formAbrir.operadorAbertura, valorInicial: Number(formAbrir.valorInicial) || 0, observacoesAbertura: formAbrir.observacoesAbertura });
+      await apiPdv.abrirCaixa({ pdvId: formAbrir.pdvId, operadorAbertura: formAbrir.operadorAbertura, valorInicial: parseCurrency(formAbrir.valorInicial), observacoesAbertura: formAbrir.observacoesAbertura });
       toast.success('Caixa aberto!');
       setAbrirOpen(false);
       setFormAbrir({ pdvId: '', operadorAbertura: '', valorInicial: '', observacoesAbertura: '' });
@@ -73,7 +74,7 @@ export function SessoesCaixaPage() {
   const confirmarFechamento = async () => {
     if (!fecharId) return;
     try {
-      await apiPdv.fecharCaixa(fecharId, { operadorFechamento: formFechar.operadorFechamento, valorFinalContado: Number(formFechar.valorFinalContado) || 0, observacoesFechamento: formFechar.observacoesFechamento });
+      await apiPdv.fecharCaixa(fecharId, { operadorFechamento: formFechar.operadorFechamento, valorFinalContado: parseCurrency(formFechar.valorFinalContado), observacoesFechamento: formFechar.observacoesFechamento });
       toast.success('Caixa fechado!');
       setFecharId(null);
       setFormFechar({ operadorFechamento: '', valorFinalContado: '', observacoesFechamento: '' });
@@ -86,7 +87,7 @@ export function SessoesCaixaPage() {
   const confirmarMov = async () => {
     if (!movId || !movForm.valor || !movForm.motivo) { toast.warning('Informe valor e motivo'); return; }
     try {
-      const payload = { valor: Number(movForm.valor), motivo: movForm.motivo, operador: movForm.operador };
+      const payload = { valor: parseCurrency(movForm.valor), motivo: movForm.motivo, operador: movForm.operador };
       if (movTipo === 'sangria') await apiPdv.sangria(movId, payload);
       else await apiPdv.reforco(movId, payload);
       toast.success(`${movTipo === 'sangria' ? 'Sangria' : 'Reforço'} registrada!`);
@@ -155,7 +156,7 @@ export function SessoesCaixaPage() {
               </TextField>
             </Grid>
             <Grid item xs={12}><TextField fullWidth size="small" label="Operador de abertura" value={formAbrir.operadorAbertura} onChange={(e) => setFormAbrir({ ...formAbrir, operadorAbertura: e.target.value })} /></Grid>
-            <Grid item xs={12}><TextField fullWidth size="small" label="Valor inicial (fundo de troco)" value={formAbrir.valorInicial} onChange={(e) => setFormAbrir({ ...formAbrir, valorInicial: e.target.value })} /></Grid>
+            <Grid item xs={12}><TextField fullWidth size="small" label="Valor inicial (fundo de troco) (R$)" value={maskCurrency(formAbrir.valorInicial)} onChange={(e) => setFormAbrir({ ...formAbrir, valorInicial: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>
             <Grid item xs={12}><TextField fullWidth size="small" label="Observações" value={formAbrir.observacoesAbertura} onChange={(e) => setFormAbrir({ ...formAbrir, observacoesAbertura: e.target.value })} /></Grid>
           </Grid>
         </DialogContent>
@@ -167,7 +168,7 @@ export function SessoesCaixaPage() {
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={12}><TextField fullWidth size="small" label="Operador de fechamento" value={formFechar.operadorFechamento} onChange={(e) => setFormFechar({ ...formFechar, operadorFechamento: e.target.value })} /></Grid>
-            <Grid item xs={12}><TextField fullWidth size="small" label="Valor contado no gavetão" value={formFechar.valorFinalContado} onChange={(e) => setFormFechar({ ...formFechar, valorFinalContado: e.target.value })} /></Grid>
+            <Grid item xs={12}><TextField fullWidth size="small" label="Valor contado no gavetão (R$)" value={maskCurrency(formFechar.valorFinalContado)} onChange={(e) => setFormFechar({ ...formFechar, valorFinalContado: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>
             <Grid item xs={12}><TextField fullWidth size="small" label="Observações / divergências" value={formFechar.observacoesFechamento} onChange={(e) => setFormFechar({ ...formFechar, observacoesFechamento: e.target.value })} /></Grid>
           </Grid>
         </DialogContent>
@@ -178,7 +179,7 @@ export function SessoesCaixaPage() {
         <DialogTitle>{movTipo === 'sangria' ? 'Sangria' : 'Reforço'} de caixa</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12}><TextField fullWidth size="small" label="Valor" value={movForm.valor} onChange={(e) => setMovForm({ ...movForm, valor: e.target.value })} /></Grid>
+            <Grid item xs={12}><TextField fullWidth size="small" label="Valor (R$)" value={maskCurrency(movForm.valor)} onChange={(e) => setMovForm({ ...movForm, valor: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>
             <Grid item xs={12}><TextField fullWidth size="small" label="Operador" value={movForm.operador} onChange={(e) => setMovForm({ ...movForm, operador: e.target.value })} /></Grid>
             <Grid item xs={12}><TextField fullWidth size="small" label="Justificativa" value={movForm.motivo} onChange={(e) => setMovForm({ ...movForm, motivo: e.target.value })} multiline rows={2} /></Grid>
           </Grid>

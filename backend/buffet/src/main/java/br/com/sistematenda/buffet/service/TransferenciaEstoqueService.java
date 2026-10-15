@@ -7,16 +7,15 @@ import br.com.sistematenda.buffet.mapper.TransferenciaEstoqueMapper;
 import br.com.sistematenda.buffet.repository.TransferenciaEstoqueRepository;
 import br.com.sistematenda.fruteira.entity.Produto;
 import br.com.sistematenda.fruteira.service.ProdutoService;
-import br.com.sistematenda.estoque.dto.MovimentoEstoqueDTO;
-import br.com.sistematenda.estoque.entity.MovimentoEstoque;
-import br.com.sistematenda.estoque.service.MovimentoEstoqueService;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.enums.OrigemProduto;
+import br.com.sistematenda.common.event.StockMovementEvent;
 import br.com.sistematenda.common.exception.BusinessException;
 import br.com.sistematenda.common.exception.NotFoundException;
 import br.com.sistematenda.common.exception.ValidationException;
 import br.com.sistematenda.common.service.BaseCrudServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -36,7 +35,7 @@ public class TransferenciaEstoqueService extends BaseCrudServiceImpl<Transferenc
     ProdutoService produtoService;
 
     @Inject
-    MovimentoEstoqueService movimentoEstoqueService;
+    Event<StockMovementEvent> stockMovementEvent;
 
     @Override
     protected TransferenciaEstoqueRepository getRepository() {
@@ -153,11 +152,11 @@ public class TransferenciaEstoqueService extends BaseCrudServiceImpl<Transferenc
         ProdutoDTO produtoFruteira = produtoService.findById(entity.produto.id);
         BigDecimal custoUnitario = produtoFruteira.getCustoMedio();
         
-        // Create SAIDA movement from origin (fruteira)
-        createMovimentoEstoqueSaida(entity, custoUnitario, recebidoPor);
+        // Fire SAIDA movement from origin (fruteira)
+        fireStockMovementEventSaida(entity, custoUnitario, recebidoPor);
         
-        // Create ENTRADA movement to destination (buffet/estoque)
-        createMovimentoEstoqueEntrada(entity, custoUnitario, recebidoPor);
+        // Fire ENTRADA movement to destination (buffet/estoque)
+        fireStockMovementEventEntrada(entity, custoUnitario, recebidoPor);
         
         entity.status = TransferenciaEstoque.StatusTransferencia.CONCLUIDA;
         entity.dataConclusao = LocalDateTime.now();
@@ -167,60 +166,59 @@ public class TransferenciaEstoqueService extends BaseCrudServiceImpl<Transferenc
         return mapper.toDTO(entity);
     }
 
-    private void createMovimentoEstoqueSaida(TransferenciaEstoque entity, BigDecimal custoUnitario, String responsavel) {
-        MovimentoEstoque.OrigemDestino origem = mapOrigemDestino(entity.origem);
-        MovimentoEstoque.OrigemDestino destino = mapOrigemDestino(entity.destino);
+    private void fireStockMovementEventSaida(TransferenciaEstoque entity, BigDecimal custoUnitario, String responsavel) {
+        StockMovementEvent.OriginDest origem = mapOrigemDestino(entity.origem);
+        StockMovementEvent.OriginDest destino = mapOrigemDestino(entity.destino);
         
-        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
-        dto.setProdutoFruteiraId(entity.produto.id);
-        dto.setTipo(MovimentoEstoque.TipoMovimento.SAIDA_TRANSFERENCIA);
-        dto.setOrigem(origem);
-        dto.setDestino(destino);
-        dto.setQuantidade(entity.quantidade);
-        dto.setCustoUnitario(custoUnitario);
-        dto.setData(LocalDateTime.now());
-        dto.setResponsavel(responsavel);
-        dto.setObservacoes("Transferência para " + entity.destino.name() + " - Transferência ID: " + entity.id);
-        dto.setDocumentoReferencia(entity.id.toString());
+        StockMovementEvent event = new StockMovementEvent();
+        event.setProdutoFruteiraId(entity.produto.id);
+        event.setTipo(StockMovementEvent.MovementType.SAIDA_TRANSFERENCIA);
+        event.setOrigem(origem);
+        event.setDestino(destino);
+        event.setQuantidade(entity.quantidade);
+        event.setCustoUnitario(custoUnitario);
+        event.setData(LocalDateTime.now());
+        event.setResponsavel(responsavel);
+        event.setObservacoes("Transferência para " + entity.destino.name() + " - Transferência ID: " + entity.id);
+        event.setDocumentoReferencia(entity.id.toString());
         
-        movimentoEstoqueService.createMovement(dto);
+        stockMovementEvent.fire(event);
     }
 
-    private void createMovimentoEstoqueEntrada(TransferenciaEstoque entity, BigDecimal custoUnitario, String responsavel) {
-        MovimentoEstoque.OrigemDestino origem = mapOrigemDestino(entity.origem);
-        MovimentoEstoque.OrigemDestino destino = mapOrigemDestino(entity.destino);
+    private void fireStockMovementEventEntrada(TransferenciaEstoque entity, BigDecimal custoUnitario, String responsavel) {
+        StockMovementEvent.OriginDest origem = mapOrigemDestino(entity.origem);
+        StockMovementEvent.OriginDest destino = mapOrigemDestino(entity.destino);
         
-        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
+        StockMovementEvent event = new StockMovementEvent();
         
         // Check if destination is buffet (has ProdutoBuffet)
-        if (entity.destino == TransferenciaEstoque.OrigemDestino.BUFFET) {
+        if (entity.destino == OrigemProduto.BUFFET) {
             // TODO: Find corresponding ProdutoBuffet ID - for now use fruteira ID
-            // This would need a mapping between fruteira and buffet products
-            dto.setProdutoFruteiraId(entity.produto.id);
+            event.setProdutoFruteiraId(entity.produto.id);
         } else {
-            dto.setProdutoFruteiraId(entity.produto.id);
+            event.setProdutoFruteiraId(entity.produto.id);
         }
         
-        dto.setTipo(MovimentoEstoque.TipoMovimento.ENTRADA_TRANSFERENCIA);
-        dto.setOrigem(origem);
-        dto.setDestino(destino);
-        dto.setQuantidade(entity.quantidade);
-        dto.setCustoUnitario(custoUnitario);
-        dto.setData(LocalDateTime.now());
-        dto.setResponsavel(responsavel);
-        dto.setObservacoes("Transferência de " + entity.origem.name() + " - Transferência ID: " + entity.id);
-        dto.setDocumentoReferencia(entity.id.toString());
+        event.setTipo(StockMovementEvent.MovementType.ENTRADA_TRANSFERENCIA);
+        event.setOrigem(origem);
+        event.setDestino(destino);
+        event.setQuantidade(entity.quantidade);
+        event.setCustoUnitario(custoUnitario);
+        event.setData(LocalDateTime.now());
+        event.setResponsavel(responsavel);
+        event.setObservacoes("Transferência de " + entity.origem.name() + " - Transferência ID: " + entity.id);
+        event.setDocumentoReferencia(entity.id.toString());
         
-        movimentoEstoqueService.createMovement(dto);
+        stockMovementEvent.fire(event);
     }
 
-    private MovimentoEstoque.OrigemDestino mapOrigemDestino(TransferenciaEstoque.OrigemDestino origem) {
+    private StockMovementEvent.OriginDest mapOrigemDestino(OrigemProduto origem) {
         return switch (origem) {
-            case FRUTEIRA -> MovimentoEstoque.OrigemDestino.FRITEIRA;
-            case BUFFET -> MovimentoEstoque.OrigemDestino.BUFFET;
-            case ESTOQUE -> MovimentoEstoque.OrigemDestino.FRITEIRA; // ESTOQUE maps to FRUTEIRA
-            case FORNECEDOR -> MovimentoEstoque.OrigemDestino.FORNECEDOR;
-            default -> MovimentoEstoque.OrigemDestino.OUTROS;
+            case FRUTEIRA -> StockMovementEvent.OriginDest.FRUTEIRA;
+            case BUFFET -> StockMovementEvent.OriginDest.BUFFET;
+            case FORNECEDOR -> StockMovementEvent.OriginDest.FORNECEDOR;
+            case TRANSFERENCIA -> StockMovementEvent.OriginDest.OUTROS;
+            default -> StockMovementEvent.OriginDest.OUTROS;
         };
     }
 

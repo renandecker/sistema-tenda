@@ -6,6 +6,7 @@ import { apiFruteira } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { maskCurrency, parseCurrency } from '@/utils/masks';
 
 interface Tabela {
   id: string;
@@ -55,14 +56,14 @@ export function TabelasPrecoPage() {
   const openNew = () => { setEditing(null); setForm(emptyForm); setDialog(true); };
   const openEdit = (t: Tabela) => {
     setEditing(t);
-    setForm({ produtoId: t.produto?.id ?? '', precoVenda: String(t.precoVenda ?? ''), precoAtacado: String(t.precoAtacado ?? ''), quantidadeMinimaAtacado: '', dataInicio: (t.dataInicio ?? '').slice(0, 10), dataFim: (t.dataFim ?? '').slice(0, 10), origem: t.origem ?? 'MANUAL', observacoes: '' });
+    setForm({ produtoId: t.produto?.id ?? '', precoVenda: maskCurrency(t.precoVenda ?? ''), precoAtacado: maskCurrency(t.precoAtacado ?? ''), quantidadeMinimaAtacado: '', dataInicio: (t.dataInicio ?? '').slice(0, 10), dataFim: (t.dataFim ?? '').slice(0, 10), origem: t.origem ?? 'MANUAL', observacoes: '' });
     setDialog(true);
   };
 
   const salvar = async () => {
     if (!form.produtoId || !form.precoVenda || !form.dataInicio) { toast.warning('Informe produto, preço e início da vigência'); return; }
     try {
-      const payload = { produtoId: form.produtoId, precoVenda: Number(form.precoVenda), precoAtacado: form.precoAtacado ? Number(form.precoAtacado) : undefined, dataInicio: form.dataInicio, dataFim: form.dataFim || undefined, origem: form.origem, observacoes: form.observacoes, ativa: true };
+      const payload = { produtoId: form.produtoId, precoVenda: parseCurrency(form.precoVenda), precoAtacado: form.precoAtacado ? parseCurrency(form.precoAtacado) : undefined, dataInicio: form.dataInicio, dataFim: form.dataFim || undefined, origem: form.origem, observacoes: form.observacoes, ativa: true };
       if (editing) await apiFruteira.updateTabela(editing.id, payload);
       else await apiFruteira.createTabela(payload);
       toast.success('Tabela de preço salva!');
@@ -151,8 +152,8 @@ export function TabelasPrecoPage() {
                 {produtos.map((p) => <MenuItem key={p.id} value={p.id}>{p.codigo ? `${p.codigo} — ` : ''}{p.nome}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid item xs={6}><TextField fullWidth size="small" label="Preço venda" value={form.precoVenda} onChange={(e) => setForm({ ...form, precoVenda: e.target.value })} /></Grid>
-            <Grid item xs={6}><TextField fullWidth size="small" label="Preço atacado (opcional)" value={form.precoAtacado} onChange={(e) => setForm({ ...form, precoAtacado: e.target.value })} /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Preço venda (R$)" value={maskCurrency(form.precoVenda)} onChange={(e) => setForm({ ...form, precoVenda: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Preço atacado (opcional)" value={maskCurrency(form.precoAtacado)} onChange={(e) => setForm({ ...form, precoAtacado: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>
             <Grid item xs={6}><TextField fullWidth size="small" type="date" label="Início vigência" InputLabelProps={{ shrink: true }} value={form.dataInicio} onChange={(e) => setForm({ ...form, dataInicio: e.target.value })} /></Grid>
             <Grid item xs={6}><TextField fullWidth size="small" type="date" label="Fim vigência (opcional)" InputLabelProps={{ shrink: true }} value={form.dataFim} onChange={(e) => setForm({ ...form, dataFim: e.target.value })} /></Grid>
             <Grid item xs={6}>

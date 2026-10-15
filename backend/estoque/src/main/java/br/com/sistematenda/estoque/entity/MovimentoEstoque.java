@@ -32,11 +32,29 @@ public class MovimentoEstoque extends BaseEntity {
         SAIDA_PERDA("Saída por Perda"),
         SAIDA_AJUSTE("Saída por Ajuste"),
         SAIDA_CONSUMO_INTERNO("Saída por Consumo Interno"),
+        SAIDA_DEFEITO_AVARIA("Saída por Defeito - Avaria/Quebra"),
+        SAIDA_DEFEITO_DETERIORACAO("Saída por Defeito - Deterioração/Perecível"),
+        SAIDA_DEFEITO_VENCIMENTO("Saída por Defeito - Vencimento"),
+        SAIDA_DEFEITO_QUALIDADE("Saída por Defeito - Qualidade/Reprovação"),
+        SAIDA_DEFEITO_OUTROS("Saída por Defeito - Outros"),
+        ENTRADA_DEFEITO_REPROCESSO("Entrada por Defeito - Reprocessamento"),
         INVENTARIO("Inventário");
 
         private final String descricao;
         TipoMovimento(String descricao) { this.descricao = descricao; }
         public String getDescricao() { return descricao; }
+
+        public boolean isEntrada() {
+            return this.name().startsWith("ENTRADA");
+        }
+
+        public boolean isSaida() {
+            return this.name().startsWith("SAIDA");
+        }
+
+        public boolean isDefeito() {
+            return this.name().contains("DEFEITO");
+        }
     }
 
     public enum OrigemDestino {
@@ -46,6 +64,8 @@ public class MovimentoEstoque extends BaseEntity {
         CLIENTE("Cliente"),
         PERDA("Perda/Descarte"),
         AJUSTE("Ajuste"),
+        DEFEITO("Defeito/Qualidade"),
+        REPROCESSO("Reprocessamento"),
         OUTROS("Outros");
 
         private final String descricao;
@@ -113,6 +133,22 @@ public class MovimentoEstoque extends BaseEntity {
     @Column(name = "observacoes", length = 1000)
     @Size(max = 1000)
     public String observacoes;
+
+    @Column(name = "motivo_defeito", length = 500)
+    @Size(max = 500)
+    public String motivoDefeito;
+
+    @Column(name = "tipo_defeito", length = 50)
+    @Size(max = 50)
+    public String tipoDefeito;
+
+    @Column(name = "lote_defeituoso", length = 50)
+    @Size(max = 50)
+    public String loteDefeituoso;
+
+    @Column(name = "quantidade_recuperavel", precision = 15, scale = 4)
+    @DecimalMin("0.0")
+    public BigDecimal quantidadeRecuperavel;
 
     @Column(name = "responsavel", length = 100)
     @Size(max = 100)

@@ -6,6 +6,7 @@ import { apiFruteira } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { maskCurrency, maskInteger, parseCurrency, parseDecimal } from '@/utils/masks';
 
 interface Etiqueta {
   id: string;
@@ -60,14 +61,14 @@ export function EtiquetasBalancaPage() {
   const openNew = () => { setEditing(null); setForm(emptyForm); setDialog(true); };
   const openEdit = (e: Etiqueta) => {
     setEditing(e);
-    setForm({ produtoId: e.produto?.id ?? '', preco: String(e.preco ?? ''), validadeDias: String(e.validadeDias ?? 3), modeloEtiqueta: e.modeloEtiqueta ?? 'PADRAO', textoLivre1: '', textoLivre2: '' });
+    setForm({ produtoId: e.produto?.id ?? '', preco: maskCurrency(e.preco ?? ''), validadeDias: maskInteger(e.validadeDias ?? 3), modeloEtiqueta: e.modeloEtiqueta ?? 'PADRAO', textoLivre1: '', textoLivre2: '' });
     setDialog(true);
   };
 
   const salvar = async () => {
     if (!form.produtoId) { toast.warning('Selecione o produto'); return; }
     try {
-      const payload = { produtoId: form.produtoId, preco: Number(form.preco) || 0, validadeDias: Number(form.validadeDias) || 3, modeloEtiqueta: form.modeloEtiqueta, textoLivre1: form.textoLivre1, textoLivre2: form.textoLivre2, imprimirCodigoBarras: true, ativa: true };
+      const payload = { produtoId: form.produtoId, preco: parseCurrency(form.preco), validadeDias: parseDecimal(form.validadeDias, 0) || 3, modeloEtiqueta: form.modeloEtiqueta, textoLivre1: form.textoLivre1, textoLivre2: form.textoLivre2, imprimirCodigoBarras: true, ativa: true };
       if (editing) await apiFruteira.updateEtiqueta(editing.id, payload);
       else await apiFruteira.createEtiqueta(payload);
       toast.success('Etiqueta salva!');
@@ -162,13 +163,13 @@ export function EtiquetasBalancaPage() {
             <Grid item xs={12}>
               <TextField select fullWidth size="small" label="Produto" value={form.produtoId} onChange={(e) => {
                 const prod = produtos.find((p) => p.id === e.target.value);
-                setForm({ ...form, produtoId: e.target.value, preco: prod?.precoVenda ? String(prod.precoVenda) : form.preco });
+                setForm({ ...form, produtoId: e.target.value, preco: prod?.precoVenda ? maskCurrency(prod.precoVenda) : form.preco });
               }}>
                 {produtos.map((p) => <MenuItem key={p.id} value={p.id}>{p.codigo ? `${p.codigo} — ` : ''}{p.nome}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid item xs={6}><TextField fullWidth size="small" label="Preço" value={form.preco} onChange={(e) => setForm({ ...form, preco: e.target.value })} /></Grid>
-            <Grid item xs={6}><TextField fullWidth size="small" label="Validade (dias)" value={form.validadeDias} onChange={(e) => setForm({ ...form, validadeDias: e.target.value })} /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Preço (R$)" value={maskCurrency(form.preco)} onChange={(e) => setForm({ ...form, preco: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Validade (dias)" value={maskInteger(form.validadeDias)} onChange={(e) => setForm({ ...form, validadeDias: maskInteger(e.target.value) })} placeholder="3" inputMode="numeric" /></Grid>
             <Grid item xs={6}>
               <TextField select fullWidth size="small" label="Modelo" value={form.modeloEtiqueta} onChange={(e) => setForm({ ...form, modeloEtiqueta: e.target.value })}>
                 {['PADRAO', 'GONDOLA', 'PROMOCAO', 'BALANCA_TOLEDO', 'BALANCA_FILIZOLA'].map((m) => <MenuItem key={m} value={m}>{m}</MenuItem>)}

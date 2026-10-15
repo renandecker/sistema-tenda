@@ -6,6 +6,7 @@ import { apiBuffet } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
 import { formatCurrency, formatNumber } from '@/utils/formatters';
+import { maskCurrency, maskDecimal, parseCurrency, parseDecimal } from '@/utils/masks';
 
 interface Receita {
   id: string;
@@ -56,14 +57,14 @@ export function ReceitasBuffetPage() {
   const openNew = () => { setEditing(null); setForm(emptyForm); setDialog(true); };
   const openEdit = (r: Receita) => {
     setEditing(r);
-    setForm({ produtoId: '', rendimento: String(r.rendimento ?? ''), custoTotal: String(r.custoTotal ?? ''), margemDesejada: String(r.margemDesejada ?? 30), precoSugerido: String(r.precoSugerido ?? ''), instrucoes: r.instrucoes ?? '' });
+    setForm({ produtoId: '', rendimento: maskDecimal(r.rendimento ?? '', 2), custoTotal: maskCurrency(r.custoTotal ?? ''), margemDesejada: maskDecimal(r.margemDesejada ?? 30, 2), precoSugerido: maskCurrency(r.precoSugerido ?? ''), instrucoes: r.instrucoes ?? '' });
     setDialog(true);
   };
 
   const salvar = async () => {
     if (!editing && !form.produtoId) { toast.warning('Selecione o produto do prato'); return; }
     try {
-      const payload = { produtoId: form.produtoId || undefined, rendimento: Number(form.rendimento) || 1, custoTotal: Number(form.custoTotal) || 0, margemDesejada: Number(form.margemDesejada) || 0, precoSugerido: Number(form.precoSugerido) || 0, instrucoes: form.instrucoes, ativa: true, ingredientes: [] };
+      const payload = { produtoId: form.produtoId || undefined, rendimento: parseDecimal(form.rendimento, 2) || 1, custoTotal: parseCurrency(form.custoTotal), margemDesejada: parseDecimal(form.margemDesejada, 2) || 0, precoSugerido: parseCurrency(form.precoSugerido), instrucoes: form.instrucoes, ativa: true, ingredientes: [] };
       if (editing) await apiBuffet.updateReceita(editing.id, payload);
       else await apiBuffet.createReceita({ produto: { id: form.produtoId }, ...payload });
       toast.success('Ficha técnica salva!');
@@ -140,10 +141,10 @@ export function ReceitasBuffetPage() {
                 </TextField>
               </Grid>
             )}
-            <Grid item xs={6}><TextField fullWidth size="small" label="Rendimento (porções/kg)" value={form.rendimento} onChange={(e) => setForm({ ...form, rendimento: e.target.value })} /></Grid>
-            <Grid item xs={6}><TextField fullWidth size="small" label="Custo total" value={form.custoTotal} onChange={(e) => setForm({ ...form, custoTotal: e.target.value })} /></Grid>
-            <Grid item xs={6}><TextField fullWidth size="small" label="Margem desejada %" value={form.margemDesejada} onChange={(e) => setForm({ ...form, margemDesejada: e.target.value })} /></Grid>
-            <Grid item xs={6}><TextField fullWidth size="small" label="Preço sugerido" value={form.precoSugerido} onChange={(e) => setForm({ ...form, precoSugerido: e.target.value })} /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Rendimento (porções/kg)" value={maskDecimal(form.rendimento, 2)} onChange={(e) => setForm({ ...form, rendimento: maskDecimal(e.target.value, 2) })} placeholder="0,00" inputMode="decimal" /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Custo total (R$)" value={maskCurrency(form.custoTotal)} onChange={(e) => setForm({ ...form, custoTotal: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Margem desejada %" value={maskDecimal(form.margemDesejada, 2)} onChange={(e) => setForm({ ...form, margemDesejada: maskDecimal(e.target.value, 2) })} placeholder="0,00" inputMode="decimal" /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Preço sugerido (R$)" value={maskCurrency(form.precoSugerido)} onChange={(e) => setForm({ ...form, precoSugerido: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>
             <Grid item xs={12}><TextField fullWidth size="small" label="Modo de preparo / instruções" value={form.instrucoes} onChange={(e) => setForm({ ...form, instrucoes: e.target.value })} multiline rows={3} /></Grid>
           </Grid>
           <Typography variant="caption" color="text.secondary">Ingredientes detalhados podem ser lançados na edição da receita (ingredientes, quantidades e baixa de insumos por produção).</Typography>

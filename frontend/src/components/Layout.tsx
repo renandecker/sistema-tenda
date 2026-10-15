@@ -68,6 +68,7 @@ const menuItems = [
   { text: 'Movimentação', icon: <InventoryIcon />, path: '/estoque', roles: ['ESTOQUE', 'ADMIN', 'GERENTE'] },
   { text: 'Inventário', icon: <AssessmentIcon />, path: '/estoque/inventario', roles: ['ESTOQUE', 'ADMIN', 'GERENTE'] },
   { text: 'Alertas', icon: <WarningIcon />, path: '/estoque/alertas', roles: ['ESTOQUE', 'ADMIN', 'GERENTE'] },
+  { text: 'Defeitos/Qualidade', icon: <WarningIcon />, path: '/estoque/defeitos', roles: ['ESTOQUE', 'ADMIN', 'GERENTE', 'QUALIDADE'] },
   { divider: true, section: 'Fiscal/Contábil' },
   { text: 'NFC-e/Notas', icon: <ReceiptLongIcon />, path: '/fiscal/nfe', roles: ['FISCAL', 'ADMIN', 'GERENTE', 'CONTABIL'] },
   { text: 'SPED Fiscal', icon: <AccountBalanceIcon />, path: '/fiscal/sped-fiscal', roles: ['FISCAL', 'ADMIN', 'CONTABIL'] },

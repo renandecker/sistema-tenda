@@ -213,6 +213,20 @@ export const apiEstoque = {
   createMovimento: (data: any) => api.post('/estoque/movimentos', data),
   listInventarios: (params?: any) => api.get('/estoque/inventarios', { params }),
   listAlertas: (params?: any) => api.get('/estoque/alertas', { params }),
+
+  // Entradas
+  listEntradas: (params?: any) => api.get('/estoque/movimentos/entradas', { params }),
+  registrarEntradaCompra: (data: any) => api.post('/estoque/movimentos/entrada-compra', data),
+  registrarEntradaTransferencia: (data: any) => api.post('/estoque/movimentos/entrada-transferencia', data),
+
+  // Saídas
+  listSaidas: (params?: any) => api.get('/estoque/movimentos/saidas', { params }),
+  registrarSaidaVenda: (data: any) => api.post('/estoque/movimentos/saida-venda', data),
+  registrarAjuste: (data: any) => api.post('/estoque/movimentos/ajuste', data),
+
+  // Defeitos
+  listDefeitos: (params?: any) => api.get('/estoque/movimentos/defeitos', { params }),
+  registrarDefeito: (data: any) => api.post('/estoque/movimentos/defeito', data),
 };
 
 export const apiFiscal = {
