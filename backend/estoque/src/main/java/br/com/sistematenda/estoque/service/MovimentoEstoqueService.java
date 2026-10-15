@@ -187,10 +187,14 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
                 if (isEntrada) {
                     estoquePosterior = estoqueAnterior.add(dto.getQuantidade());
                 } else {
-                    estoquePosterior = estoqueAnterior.subtract(dto.getQuantidade());
-                    if (estoquePosterior.compareTo(BigDecimal.ZERO) < 0) {
-                        estoquePosterior = BigDecimal.ZERO;
+                    // Validate stock availability for exits
+                    if (estoqueAnterior.compareTo(dto.getQuantidade()) < 0) {
+                        throw new IllegalArgumentException(
+                            "Estoque insuficiente. Estoque atual: " + estoqueAnterior + 
+                            ", Quantidade solicitada: " + dto.getQuantidade()
+                        );
                     }
+                    estoquePosterior = estoqueAnterior.subtract(dto.getQuantidade());
                 }
 
                 produto.estoqueAtual = estoquePosterior;
@@ -206,10 +210,14 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
                 if (isEntrada) {
                     estoquePosterior = estoqueAnterior.add(dto.getQuantidade());
                 } else {
-                    estoquePosterior = estoqueAnterior.subtract(dto.getQuantidade());
-                    if (estoquePosterior.compareTo(BigDecimal.ZERO) < 0) {
-                        estoquePosterior = BigDecimal.ZERO;
+                    // Validate stock availability for exits
+                    if (estoqueAnterior.compareTo(dto.getQuantidade()) < 0) {
+                        throw new IllegalArgumentException(
+                            "Estoque insuficiente. Estoque atual: " + estoqueAnterior + 
+                            ", Quantidade solicitada: " + dto.getQuantidade()
+                        );
                     }
+                    estoquePosterior = estoqueAnterior.subtract(dto.getQuantidade());
                 }
 
                 produto.estoqueAtual = estoquePosterior;
@@ -336,6 +344,106 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
         dto.setQuantidade(quantidade);
         dto.setCustoUnitario(custoUnitario);
         dto.setObservacoes(observacoes);
+        dto.setResponsavel(responsavel);
+        dto.setData(LocalDateTime.now());
+        return createMovement(dto);
+    }
+
+    @Transactional
+    public MovimentoEstoqueDTO registrarEntradaDevolucao(UUID produtoFruteiraId, UUID produtoBuffetId,
+                                                          BigDecimal quantidade, BigDecimal custoUnitario,
+                                                          String documentoReferencia, String numeroDocumento,
+                                                          String lote, LocalDateTime dataValidade,
+                                                          String observacoes, String responsavel) {
+        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
+        dto.setProdutoFruteiraId(produtoFruteiraId);
+        dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setTipo(MovimentoEstoque.TipoMovimento.ENTRADA_DEVOLUCAO);
+        dto.setOrigem(MovimentoEstoque.OrigemDestino.CLIENTE);
+        dto.setDestino(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setQuantidade(quantidade);
+        dto.setCustoUnitario(custoUnitario);
+        dto.setDocumentoReferencia(documentoReferencia);
+        dto.setNumeroDocumento(numeroDocumento);
+        dto.setLote(lote);
+        dto.setDataValidade(dataValidade);
+        dto.setObservacoes(observacoes);
+        dto.setResponsavel(responsavel);
+        dto.setData(LocalDateTime.now());
+        return createMovement(dto);
+    }
+
+    @Transactional
+    public MovimentoEstoqueDTO registrarEntradaReprocessamento(UUID produtoFruteiraId, UUID produtoBuffetId,
+                                                                BigDecimal quantidade, BigDecimal custoUnitario,
+                                                                BigDecimal quantidadeRecuperavel,
+                                                                String lote, String observacoes, String responsavel) {
+        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
+        dto.setProdutoFruteiraId(produtoFruteiraId);
+        dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setTipo(MovimentoEstoque.TipoMovimento.ENTRADA_DEFEITO_REPROCESSO);
+        dto.setOrigem(MovimentoEstoque.OrigemDestino.REPROCESSO);
+        dto.setDestino(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setQuantidade(quantidade);
+        dto.setCustoUnitario(custoUnitario);
+        dto.setQuantidadeRecuperavel(quantidadeRecuperavel);
+        dto.setLote(lote);
+        dto.setObservacoes(observacoes);
+        dto.setResponsavel(responsavel);
+        dto.setData(LocalDateTime.now());
+        return createMovement(dto);
+    }
+
+    @Transactional
+    public MovimentoEstoqueDTO registrarSaidaTransferencia(UUID produtoFruteiraId, UUID produtoBuffetId,
+                                                            BigDecimal quantidade, BigDecimal custoUnitario,
+                                                            MovimentoEstoque.OrigemDestino origem,
+                                                            String responsavel) {
+        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
+        dto.setProdutoFruteiraId(produtoFruteiraId);
+        dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setTipo(MovimentoEstoque.TipoMovimento.SAIDA_TRANSFERENCIA);
+        dto.setOrigem(origem != null ? origem : (produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET));
+        dto.setDestino(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.BUFFET : MovimentoEstoque.OrigemDestino.FRUTEIRA);
+        dto.setQuantidade(quantidade);
+        dto.setCustoUnitario(custoUnitario);
+        dto.setResponsavel(responsavel);
+        dto.setData(LocalDateTime.now());
+        return createMovement(dto);
+    }
+
+    @Transactional
+    public MovimentoEstoqueDTO registrarSaidaConsumoInterno(UUID produtoFruteiraId, UUID produtoBuffetId,
+                                                             BigDecimal quantidade, BigDecimal custoUnitario,
+                                                             String observacoes, String responsavel) {
+        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
+        dto.setProdutoFruteiraId(produtoFruteiraId);
+        dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setTipo(MovimentoEstoque.TipoMovimento.SAIDA_CONSUMO_INTERNO);
+        dto.setOrigem(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setDestino(MovimentoEstoque.OrigemDestino.OUTROS);
+        dto.setQuantidade(quantidade);
+        dto.setCustoUnitario(custoUnitario);
+        dto.setObservacoes(observacoes);
+        dto.setResponsavel(responsavel);
+        dto.setData(LocalDateTime.now());
+        return createMovement(dto);
+    }
+
+    @Transactional
+    public MovimentoEstoqueDTO registrarSaidaPerda(UUID produtoFruteiraId, UUID produtoBuffetId,
+                                                    BigDecimal quantidade, BigDecimal custoUnitario,
+                                                    String motivo, String lote, String responsavel) {
+        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
+        dto.setProdutoFruteiraId(produtoFruteiraId);
+        dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setTipo(MovimentoEstoque.TipoMovimento.SAIDA_PERDA);
+        dto.setOrigem(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setDestino(MovimentoEstoque.OrigemDestino.PERDA);
+        dto.setQuantidade(quantidade);
+        dto.setCustoUnitario(custoUnitario);
+        dto.setMotivoDefeito(motivo);
+        dto.setLote(lote);
         dto.setResponsavel(responsavel);
         dto.setData(LocalDateTime.now());
         return createMovement(dto);

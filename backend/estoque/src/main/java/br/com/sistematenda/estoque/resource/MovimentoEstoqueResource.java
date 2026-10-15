@@ -163,4 +163,86 @@ public class MovimentoEstoqueResource {
         );
         return Response.status(Response.Status.CREATED).entity(created).build();
     }
+
+    @POST
+    @Path("/entrada-devolucao")
+    @Transactional
+    public Response registrarEntradaDevolucao(@Valid MovimentoEstoqueDTO dto) {
+        MovimentoEstoqueDTO created = service.registrarEntradaDevolucao(
+                dto.getProdutoFruteiraId(),
+                dto.getProdutoBuffetId(),
+                dto.getQuantidade(),
+                dto.getCustoUnitario(),
+                dto.getDocumentoReferencia(),
+                dto.getNumeroDocumento(),
+                dto.getLote(),
+                dto.getDataValidade(),
+                dto.getObservacoes(),
+                dto.getResponsavel()
+        );
+        return Response.status(Response.Status.CREATED).entity(created).build();
+    }
+
+    @POST
+    @Path("/entrada-reprocessamento")
+    @Transactional
+    public Response registrarEntradaReprocessamento(@Valid MovimentoEstoqueDTO dto) {
+        MovimentoEstoqueDTO created = service.registrarEntradaReprocessamento(
+                dto.getProdutoFruteiraId(),
+                dto.getProdutoBuffetId(),
+                dto.getQuantidade(),
+                dto.getCustoUnitario(),
+                dto.getQuantidadeRecuperavel(),
+                dto.getLote(),
+                dto.getObservacoes(),
+                dto.getResponsavel()
+        );
+        return Response.status(Response.Status.CREATED).entity(created).build();
+    }
+
+    @POST
+    @Path("/saida-transferencia")
+    @Transactional
+    public Response registrarSaidaTransferencia(@Valid MovimentoEstoqueDTO dto) {
+        MovimentoEstoqueDTO created = service.registrarSaidaTransferencia(
+                dto.getProdutoFruteiraId(),
+                dto.getProdutoBuffetId(),
+                dto.getQuantidade(),
+                dto.getCustoUnitario(),
+                dto.getOrigem(),
+                dto.getResponsavel()
+        );
+        return Response.status(Response.Status.CREATED).entity(created).build();
+    }
+
+    @POST
+    @Path("/saida-consumo-interno")
+    @Transactional
+    public Response registrarSaidaConsumoInterno(@Valid MovimentoEstoqueDTO dto) {
+        MovimentoEstoqueDTO created = service.registrarSaidaConsumoInterno(
+                dto.getProdutoFruteiraId(),
+                dto.getProdutoBuffetId(),
+                dto.getQuantidade(),
+                dto.getCustoUnitario(),
+                dto.getObservacoes(),
+                dto.getResponsavel()
+        );
+        return Response.status(Response.Status.CREATED).entity(created).build();
+    }
+
+    @POST
+    @Path("/saida-perda")
+    @Transactional
+    public Response registrarSaidaPerda(@Valid MovimentoEstoqueDTO dto) {
+        MovimentoEstoqueDTO created = service.registrarSaidaPerda(
+                dto.getProdutoFruteiraId(),
+                dto.getProdutoBuffetId(),
+                dto.getQuantidade(),
+                dto.getCustoUnitario(),
+                dto.getMotivoDefeito(),
+                dto.getLote(),
+                dto.getResponsavel()
+        );
+        return Response.status(Response.Status.CREATED).entity(created).build();
+    }
 }

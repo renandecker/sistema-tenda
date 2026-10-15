@@ -39,6 +39,10 @@ public class MovimentoEstoqueMapper implements BaseMapper<MovimentoEstoque, Movi
         dto.setDocumentoReferencia(entity.documentoReferencia);
         dto.setNumeroDocumento(entity.numeroDocumento);
         dto.setObservacoes(entity.observacoes);
+        dto.setMotivoDefeito(entity.motivoDefeito);
+        dto.setTipoDefeito(entity.tipoDefeito);
+        dto.setLoteDefeituoso(entity.loteDefeituoso);
+        dto.setQuantidadeRecuperavel(entity.quantidadeRecuperavel);
         dto.setResponsavel(entity.responsavel);
         dto.setData(entity.data);
         return dto;
@@ -70,6 +74,10 @@ public class MovimentoEstoqueMapper implements BaseMapper<MovimentoEstoque, Movi
         entity.documentoReferencia = dto.getDocumentoReferencia();
         entity.numeroDocumento = dto.getNumeroDocumento();
         entity.observacoes = dto.getObservacoes();
+        entity.motivoDefeito = dto.getMotivoDefeito();
+        entity.tipoDefeito = dto.getTipoDefeito();
+        entity.loteDefeituoso = dto.getLoteDefeituoso();
+        entity.quantidadeRecuperavel = dto.getQuantidadeRecuperavel();
         entity.responsavel = dto.getResponsavel();
         entity.data = dto.getData();
         return entity;
@@ -99,6 +107,10 @@ public class MovimentoEstoqueMapper implements BaseMapper<MovimentoEstoque, Movi
         entity.documentoReferencia = dto.getDocumentoReferencia();
         entity.numeroDocumento = dto.getNumeroDocumento();
         entity.observacoes = dto.getObservacoes();
+        entity.motivoDefeito = dto.getMotivoDefeito();
+        entity.tipoDefeito = dto.getTipoDefeito();
+        entity.loteDefeituoso = dto.getLoteDefeituoso();
+        entity.quantidadeRecuperavel = dto.getQuantidadeRecuperavel();
         entity.responsavel = dto.getResponsavel();
         entity.data = dto.getData();
     }
