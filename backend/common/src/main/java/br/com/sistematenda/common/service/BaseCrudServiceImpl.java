@@ -2,6 +2,7 @@ package br.com.sistematenda.common.service;
 
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.entity.BaseEntity;
+import br.com.sistematenda.common.enums.TipoAcaoAuditoria;
 import br.com.sistematenda.common.exception.NotFoundException;
 import br.com.sistematenda.common.mapper.BaseMapper;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
@@ -22,7 +23,12 @@ public abstract class BaseCrudServiceImpl<E extends BaseEntity, D, ID> implement
     @Inject
     protected BaseMapper<E, D> mapper;
 
+    @Inject
+    protected AuditLogService auditLogService;
+
     protected abstract PanacheRepositoryBase<E, ID> getRepository();
+
+    protected abstract String getEntidadeNome();
 
     @Override
     public D findById(ID id) {
@@ -78,6 +84,7 @@ public abstract class BaseCrudServiceImpl<E extends BaseEntity, D, ID> implement
             entity.id = generateId();
         }
         getRepository().persist(entity);
+        logAuditoria(TipoAcaoAuditoria.CRIAR, entity.id, "Criado: " + getDescricaoEntidade(entity));
         return mapper.toDTO(entity);
     }
 
@@ -90,6 +97,7 @@ public abstract class BaseCrudServiceImpl<E extends BaseEntity, D, ID> implement
         }
         mapper.updateEntityFromDTO(dto, entity);
         getRepository().persist(entity);
+        logAuditoria(TipoAcaoAuditoria.EDITAR, entity.id, "Atualizado: " + getDescricaoEntidade(entity));
         return mapper.toDTO(entity);
     }
 
@@ -102,6 +110,7 @@ public abstract class BaseCrudServiceImpl<E extends BaseEntity, D, ID> implement
         }
         entity.deleted = true;
         getRepository().persist(entity);
+        logAuditoria(TipoAcaoAuditoria.EXCLUIR, entity.id, "Excluído: " + getDescricaoEntidade(entity));
     }
 
     @Override
@@ -126,4 +135,22 @@ public abstract class BaseCrudServiceImpl<E extends BaseEntity, D, ID> implement
     }
 
     protected abstract Class<E> getEntityClass();
+
+    protected String getDescricaoEntidade(E entity) {
+        return entity.getClass().getSimpleName() + " ID: " + entity.id;
+    }
+
+    protected void logAuditoria(TipoAcaoAuditoria acao, UUID registroId, String descricao) {
+        try {
+            UUID usuarioId = getCurrentUserId();
+            if (usuarioId != null) {
+                auditLogService.logActionWithStatus(usuarioId, acao, getEntidadeNome(), registroId, descricao, null, null, true);
+            }
+        } catch (Exception e) {
+        }
+    }
+
+    protected UUID getCurrentUserId() {
+        return null;
+    }
 }

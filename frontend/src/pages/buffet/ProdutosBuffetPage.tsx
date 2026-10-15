@@ -11,6 +11,7 @@ import { maskCurrency, maskQuantity, parseCurrency, parseDecimal } from '@/utils
 interface Produto {
   id: string;
   codigo?: string;
+  codigoBarras?: string;
   nome: string;
   categoria?: string;
   precoVenda?: number;
@@ -21,7 +22,7 @@ interface Produto {
   controlaEstoque?: boolean;
 }
 
-const emptyForm = { codigo: '', nome: '', categoria: 'PRATO_FEITO', unidadeMedida: 'KG', precoVenda: '', estoqueAtual: '', descricao: '', disponivelBalcao: true };
+const emptyForm = { nome: '', codigoBarras: '', categoria: 'PRATO_FEITO', unidadeMedida: 'KG', precoVenda: '', estoqueAtual: '', descricao: '', disponivelBalcao: true };
 
 export function ProdutosBuffetPage() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -49,14 +50,14 @@ export function ProdutosBuffetPage() {
   const openNew = () => { setEditing(null); setForm(emptyForm); setDialog(true); };
   const openEdit = (p: Produto) => {
     setEditing(p);
-    setForm({ codigo: p.codigo ?? '', nome: p.nome, categoria: p.categoria ?? 'PRATO_FEITO', unidadeMedida: p.unidadeMedida ?? 'KG', precoVenda: maskCurrency(p.precoVenda ?? ''), estoqueAtual: maskQuantity(p.estoqueAtual ?? ''), descricao: '', disponivelBalcao: p.disponivelBalcao ?? true });
+    setForm({ nome: p.nome, codigoBarras: p.codigoBarras ?? '', categoria: p.categoria ?? 'PRATO_FEITO', unidadeMedida: p.unidadeMedida ?? 'KG', precoVenda: maskCurrency(p.precoVenda ?? ''), estoqueAtual: maskQuantity(p.estoqueAtual ?? ''), descricao: '', disponivelBalcao: p.disponivelBalcao ?? true });
     setDialog(true);
   };
 
   const salvar = async () => {
     if (!form.nome || !form.precoVenda) { toast.warning('Informe nome e preço'); return; }
     try {
-      const payload = { codigo: form.codigo || undefined, nome: form.nome, categoria: form.categoria, unidadeMedida: form.unidadeMedida, precoVenda: parseCurrency(form.precoVenda), estoqueAtual: form.estoqueAtual ? parseDecimal(form.estoqueAtual, 3) : 0, descricao: form.descricao, disponivelBalcao: form.disponivelBalcao, ativo: true, controlaEstoque: true };
+      const payload = { nome: form.nome, codigoBarras: form.codigoBarras || undefined, categoria: form.categoria, unidadeMedida: form.unidadeMedida, precoVenda: parseCurrency(form.precoVenda), estoqueAtual: form.estoqueAtual ? parseDecimal(form.estoqueAtual, 3) : 0, descricao: form.descricao, disponivelBalcao: form.disponivelBalcao, ativo: true, controlaEstoque: true };
       if (editing) await apiBuffet.updateProduto(editing.id, payload);
       else await apiBuffet.createProduto(payload);
       toast.success('Produto salvo!');
@@ -96,6 +97,7 @@ export function ProdutosBuffetPage() {
         searchPlaceholder="Buscar pratos e produtos..." emptyMessage="Nenhum produto cadastrado"
         columns={[
           { field: 'codigo', headerName: 'Código', width: 110 },
+          { field: 'codigoBarras', headerName: 'Código Barras', width: 150 },
           { field: 'nome', headerName: 'Produto', flex: 1 },
           { field: 'categoria', headerName: 'Categoria', width: 150 },
           { field: 'precoVenda', headerName: 'Preço', width: 120, align: 'right', render: (v: number) => formatCurrency(v) },
@@ -117,8 +119,8 @@ export function ProdutosBuffetPage() {
         <DialogTitle>{editing ? 'Editar produto' : 'Novo produto do buffet'}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={4}><TextField fullWidth size="small" label="Código" value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} /></Grid>
-            <Grid item xs={8}><TextField fullWidth size="small" label="Nome do prato/produto" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></Grid>
+            <Grid item xs={12}><TextField fullWidth size="small" label="Nome do prato/produto" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></Grid>
+            <Grid item xs={6}><TextField fullWidth size="small" label="Código de barras" value={form.codigoBarras} onChange={(e) => setForm({ ...form, codigoBarras: e.target.value })} placeholder="Ex: 7891234567890" /></Grid>
             <Grid item xs={6}>
               <TextField select fullWidth size="small" label="Categoria" value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })}>
                 {['PRATO_FEITO', 'SELF_SERVICE', 'BEBIDA', 'SOBREMESA', 'PORCAO', 'SALADA', 'CHURRASCO', 'OUTROS'].map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}

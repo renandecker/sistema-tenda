@@ -31,6 +31,17 @@ public class ClienteService extends BaseCrudServiceImpl<Cliente, ClienteDTO, UUI
         return Cliente.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return "Cliente";
+    }
+
+    @Override
+    protected UUID getCurrentUserId() {
+        // TODO: Implementar obtenção do usuário atual do contexto de segurança
+        return null;
+    }
+
     public ClienteDTO findByEmail(String email) {
         return repository.findByEmail(email)
             .map(mapper::toDTO)

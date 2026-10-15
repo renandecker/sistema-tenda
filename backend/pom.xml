@@ -103,7 +103,7 @@
                 <plugin>
                     <groupId>org.flywaydb</groupId>
                     <artifactId>flyway-maven-plugin</artifactId>
-                    <version>10.17.0</version>
+                    <version>11.1.0</version>
                     <configuration>
                         <url>${flyway.url:jdbc:postgresql://localhost:5432/sistematenda}</url>
                         <user>${flyway.user:sistematenda}</user>
@@ -114,6 +114,7 @@
                         <baselineOnMigrate>true</baselineOnMigrate>
                         <baselineVersion>0</baselineVersion>
                         <validateOnMigrate>true</validateOnMigrate>
+                        <sqlDialect>postgres</sqlDialect>
                     </configuration>
                 </plugin>
             </plugins>

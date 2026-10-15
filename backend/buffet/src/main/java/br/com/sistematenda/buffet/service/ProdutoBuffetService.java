@@ -137,20 +137,12 @@ public class ProdutoBuffetService extends BaseCrudServiceImpl<ProdutoBuffet, Pro
     }
 
     private void validateCreate(ProdutoBuffetDTO dto) {
-        if (repository.findByCodigo(dto.getCodigo()).isPresent()) {
-            throw new ValidationException("Já existe um produto com este código: " + dto.getCodigo());
-        }
         if (dto.getCodigoBarras() != null && repository.findByCodigoBarras(dto.getCodigoBarras()).isPresent()) {
             throw new ValidationException("Já existe um produto com este código de barras: " + dto.getCodigoBarras());
         }
     }
 
     private void validateUpdate(UUID id, ProdutoBuffetDTO dto) {
-        repository.findByCodigo(dto.getCodigo()).ifPresent(p -> {
-            if (!p.id.equals(id)) {
-                throw new ValidationException("Já existe um produto com este código: " + dto.getCodigo());
-            }
-        });
         if (dto.getCodigoBarras() != null) {
             repository.findByCodigoBarras(dto.getCodigoBarras()).ifPresent(p -> {
                 if (!p.id.equals(id)) {

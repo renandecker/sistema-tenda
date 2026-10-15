@@ -12,6 +12,8 @@ import org.mapstruct.factory.Mappers;
 public interface ProdutoBuffetMapper extends BaseMapper<ProdutoBuffet, ProdutoBuffetDTO> {
 
     ProdutoBuffetDTO toDTO(ProdutoBuffet entity);
+
+    @Mapping(target = "codigo", ignore = true)
     ProdutoBuffet toEntity(ProdutoBuffetDTO dto);
 
     @Mapping(target = "id", ignore = true)
@@ -19,5 +21,6 @@ public interface ProdutoBuffetMapper extends BaseMapper<ProdutoBuffet, ProdutoBu
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "codigo", ignore = true)
     void updateEntityFromDTO(ProdutoBuffetDTO dto, @org.mapstruct.MappingTarget ProdutoBuffet entity);
 }

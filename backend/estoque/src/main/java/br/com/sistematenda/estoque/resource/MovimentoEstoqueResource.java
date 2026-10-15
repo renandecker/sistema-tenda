@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Path("/estoque/movimentos")
@@ -244,5 +245,30 @@ public class MovimentoEstoqueResource {
                 dto.getResponsavel()
         );
         return Response.status(Response.Status.CREATED).entity(created).build();
+    }
+
+    @GET
+    @Path("/saldo/{produtoId}")
+    public Response getSaldoEstoque(
+            @PathParam("produtoId") UUID produtoId,
+            @QueryParam("tipo") @DefaultValue("fruteira") String tipo) {
+        UUID fruteiraId = "fruteira".equals(tipo) ? produtoId : null;
+        UUID buffetId = "buffet".equals(tipo) ? produtoId : null;
+        BigDecimal saldo = service.getEstoqueAtual(fruteiraId, buffetId);
+        return Response.ok(saldo).build();
+    }
+
+    @GET
+    @Path("/resumo/{produtoId}")
+    public Response getEstoqueResumo(
+            @PathParam("produtoId") UUID produtoId,
+            @QueryParam("tipo") @DefaultValue("fruteira") String tipo) {
+        UUID fruteiraId = "fruteira".equals(tipo) ? produtoId : null;
+        UUID buffetId = "buffet".equals(tipo) ? produtoId : null;
+        MovimentoEstoqueService.EstoqueResumoDTO resumo = service.getEstoqueResumo(fruteiraId, buffetId);
+        if (resumo == null) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        return Response.ok(resumo).build();
     }
 }

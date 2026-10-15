@@ -1,6 +1,7 @@
 package br.com.sistematenda.common.service;
 
 import br.com.sistematenda.common.entity.AuditLog;
+import br.com.sistematenda.common.enums.TipoAcaoAuditoria;
 import br.com.sistematenda.common.repository.AuditLogRepository;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -27,6 +28,26 @@ public class AuditLogService {
         log.dataAcao = LocalDateTime.now();
         log.sucesso = sucesso;
         log.persist();
+    }
+
+    public void logCriar(UUID usuarioId, String entidade, UUID registroId, String descricao, String ipAddress, String userAgent) {
+        logAction(usuarioId, TipoAcaoAuditoria.CRIAR.getValor(), entidade, registroId, descricao, ipAddress, userAgent, true);
+    }
+
+    public void logEditar(UUID usuarioId, String entidade, UUID registroId, String descricao, String ipAddress, String userAgent) {
+        logAction(usuarioId, TipoAcaoAuditoria.EDITAR.getValor(), entidade, registroId, descricao, ipAddress, userAgent, true);
+    }
+
+    public void logExcluir(UUID usuarioId, String entidade, UUID registroId, String descricao, String ipAddress, String userAgent) {
+        logAction(usuarioId, TipoAcaoAuditoria.EXCLUIR.getValor(), entidade, registroId, descricao, ipAddress, userAgent, true);
+    }
+
+    public void logVisualizar(UUID usuarioId, String entidade, UUID registroId, String descricao, String ipAddress, String userAgent) {
+        logAction(usuarioId, TipoAcaoAuditoria.VISUALIZAR.getValor(), entidade, registroId, descricao, ipAddress, userAgent, true);
+    }
+
+    public void logActionWithStatus(UUID usuarioId, TipoAcaoAuditoria tipoAcao, String entidade, UUID registroId, String descricao, String ipAddress, String userAgent, Boolean sucesso) {
+        logAction(usuarioId, tipoAcao.getValor(), entidade, registroId, descricao, ipAddress, userAgent, sucesso);
     }
 
     public List<AuditLog> listRecent(int limit) {

@@ -67,6 +67,7 @@ br\com\sistematenda\common\entity\Usuario.class
 br\com\sistematenda\common\pix\PixChargeRequest$PixInfoAdicional.class
 br\com\sistematenda\common\enums\PixStatus.class
 br\com\sistematenda\common\enums\UnidadeMedida.class
+br\com\sistematenda\common\enums\TipoAcaoAuditoria.class
 br\com\sistematenda\common\security\JwtTokenService.class
 br\com\sistematenda\common\config\PixConfig.class
 br\com\sistematenda\common\pix\PixProviderService.class

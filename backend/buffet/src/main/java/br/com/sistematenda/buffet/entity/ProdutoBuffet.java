@@ -40,8 +40,7 @@ public class ProdutoBuffet extends BaseEntity {
         public String getDescricao() { return descricao; }
     }
 
-    @Column(name = "codigo", unique = true, nullable = false, length = 50)
-    @NotBlank
+    @Column(name = "codigo", unique = true, nullable = false, length = 50, insertable = false, updatable = false)
     @Size(max = 50)
     public String codigo;
 

@@ -170,6 +170,57 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
         return toDtoPage(PageResponse.of(content, totalElements, page, size));
     }
 
+    public BigDecimal getEstoqueAtual(UUID produtoFruteiraId, UUID produtoBuffetId) {
+        if (produtoFruteiraId != null) {
+            Produto produto = produtoRepository.findById(produtoFruteiraId);
+            return produto != null ? produto.estoqueAtual : BigDecimal.ZERO;
+        } else if (produtoBuffetId != null) {
+            ProdutoBuffet produto = produtoBuffetRepository.findById(produtoBuffetId);
+            return (produto != null && produto.controlaEstoque) ? produto.estoqueAtual : BigDecimal.ZERO;
+        }
+        return BigDecimal.ZERO;
+    }
+
+    public record EstoqueResumoDTO(
+        UUID produtoId,
+        String produtoNome,
+        String produtoCodigo,
+        BigDecimal estoqueAtual,
+        BigDecimal estoqueMinimo,
+        BigDecimal estoqueMaximo,
+        String unidadeMedida,
+        boolean estoqueBaixo
+    ) {}
+
+    public EstoqueResumoDTO getEstoqueResumo(UUID produtoFruteiraId, UUID produtoBuffetId) {
+        if (produtoFruteiraId != null) {
+            Produto produto = produtoRepository.findById(produtoFruteiraId);
+            if (produto != null) {
+                boolean estoqueBaixo = produto.estoqueMinimo != null && 
+                    produto.estoqueAtual.compareTo(produto.estoqueMinimo) <= 0;
+                return new EstoqueResumoDTO(
+                    produto.id, produto.nome, produto.codigo,
+                    produto.estoqueAtual, produto.estoqueMinimo, produto.estoqueMaximo,
+                    produto.unidadeMedida != null ? produto.unidadeMedida.name() : "UN",
+                    estoqueBaixo
+                );
+            }
+        } else if (produtoBuffetId != null) {
+            ProdutoBuffet produto = produtoBuffetRepository.findById(produtoBuffetId);
+            if (produto != null && produto.controlaEstoque) {
+                boolean estoqueBaixo = produto.estoqueMinimo != null && 
+                    produto.estoqueAtual.compareTo(produto.estoqueMinimo) <= 0;
+                return new EstoqueResumoDTO(
+                    produto.id, produto.nome, produto.codigo,
+                    produto.estoqueAtual, produto.estoqueMinimo, null,
+                    produto.unidadeMedida != null ? produto.unidadeMedida.name() : "UN",
+                    estoqueBaixo
+                );
+            }
+        }
+        return null;
+    }
+
     @Transactional
     public MovimentoEstoqueDTO createMovement(MovimentoEstoqueDTO dto) {
         BigDecimal estoqueAnterior = BigDecimal.ZERO;

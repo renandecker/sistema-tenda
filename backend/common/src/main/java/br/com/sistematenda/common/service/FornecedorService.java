@@ -30,6 +30,16 @@ public class FornecedorService extends BaseCrudServiceImpl<Fornecedor, Fornecedo
         return Fornecedor.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return "Fornecedor";
+    }
+
+    @Override
+    protected UUID getCurrentUserId() {
+        return null;
+    }
+
     public FornecedorDTO findByCnpjCpf(String cnpjCpf) {
         return repository.findByCnpjCpf(cnpjCpf)
             .map(mapper::toDTO)
