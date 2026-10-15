@@ -2,11 +2,22 @@ package br.com.sistematenda.estoque.mapper;
 
 import br.com.sistematenda.estoque.dto.MovimentoEstoqueDTO;
 import br.com.sistematenda.estoque.entity.MovimentoEstoque;
+import br.com.sistematenda.fruteira.entity.Produto;
+import br.com.sistematenda.fruteira.repository.ProdutoRepository;
+import br.com.sistematenda.buffet.entity.ProdutoBuffet;
+import br.com.sistematenda.buffet.repository.ProdutoBuffetRepository;
 import br.com.sistematenda.common.mapper.BaseMapper;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 @ApplicationScoped
 public class MovimentoEstoqueMapper implements BaseMapper<MovimentoEstoque, MovimentoEstoqueDTO> {
+
+    @Inject
+    ProdutoRepository produtoRepository;
+
+    @Inject
+    ProdutoBuffetRepository produtoBuffetRepository;
 
     @Override
     public MovimentoEstoqueDTO toDTO(MovimentoEstoque entity) {
@@ -38,6 +49,14 @@ public class MovimentoEstoqueMapper implements BaseMapper<MovimentoEstoque, Movi
         if (dto == null) return null;
         MovimentoEstoque entity = new MovimentoEstoque();
         entity.id = dto.getId();
+        
+        if (dto.getProdutoFruteiraId() != null) {
+            entity.produtoFruteira = produtoRepository.findById(dto.getProdutoFruteiraId());
+        }
+        if (dto.getProdutoBuffetId() != null) {
+            entity.produtoBuffet = produtoBuffetRepository.findById(dto.getProdutoBuffetId());
+        }
+        
         entity.tipo = dto.getTipo();
         entity.origem = dto.getOrigem();
         entity.destino = dto.getDestino();
@@ -59,6 +78,14 @@ public class MovimentoEstoqueMapper implements BaseMapper<MovimentoEstoque, Movi
     @Override
     public void updateEntityFromDTO(MovimentoEstoqueDTO dto, MovimentoEstoque entity) {
         if (dto == null || entity == null) return;
+        
+        if (dto.getProdutoFruteiraId() != null) {
+            entity.produtoFruteira = produtoRepository.findById(dto.getProdutoFruteiraId());
+        }
+        if (dto.getProdutoBuffetId() != null) {
+            entity.produtoBuffet = produtoBuffetRepository.findById(dto.getProdutoBuffetId());
+        }
+        
         entity.tipo = dto.getTipo();
         entity.origem = dto.getOrigem();
         entity.destino = dto.getDestino();

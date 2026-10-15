@@ -6,11 +6,13 @@ import br.com.sistematenda.fruteira.entity.Perda;
 import br.com.sistematenda.fruteira.entity.Produto;
 import br.com.sistematenda.fruteira.repository.PerdaRepository;
 import br.com.sistematenda.common.dto.PageResponse;
+import br.com.sistematenda.common.event.StockMovementEvent;
 import br.com.sistematenda.common.exception.BusinessException;
 import br.com.sistematenda.common.exception.NotFoundException;
 import br.com.sistematenda.common.exception.ValidationException;
 import br.com.sistematenda.common.service.BaseCrudServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -29,6 +31,9 @@ public class PerdaService extends BaseCrudServiceImpl<Perda, PerdaDTO, UUID> {
 
     @Inject
     ProdutoService produtoService;
+
+    @Inject
+    Event<StockMovementEvent> stockMovementEvent;
 
     @Override
     protected PerdaRepository getRepository() {
@@ -95,8 +100,11 @@ public class PerdaService extends BaseCrudServiceImpl<Perda, PerdaDTO, UUID> {
         
         getRepository().persist(entity);
         
-        // Baixa automática do estoque
-        produtoService.atualizarEstoque(entity.produto.id, entity.quantidade.negate());
+        // Baixa automática do estoque via event
+        ProdutoDTO produto = produtoService.findById(entity.produto.id);
+        fireStockMovementEventPerda(entity.produto.id, entity.quantidade, produto.getCustoMedio(), 
+                                    entity.getTipo() != null ? entity.getTipo().name() : "PERDA", 
+                                    entity.getMotivo(), entity.getResponsavel());
         
         entity.baixaEstoqueRealizada = true;
         entity.dataBaixaEstoque = LocalDateTime.now();
@@ -126,6 +134,22 @@ public class PerdaService extends BaseCrudServiceImpl<Perda, PerdaDTO, UUID> {
         dto.setData(LocalDate.now());
         
         return create(dto);
+    }
+
+    private void fireStockMovementEventPerda(UUID produtoId, BigDecimal quantidade, BigDecimal custoUnitario,
+                                              String tipoPerda, String motivo, String responsavel) {
+        StockMovementEvent event = new StockMovementEvent();
+        event.setProdutoFruteiraId(produtoId);
+        event.setTipo(StockMovementEvent.MovementType.SAIDA_PERDA);
+        event.setOrigem(StockMovementEvent.OriginDest.FRITEIRA);
+        event.setDestino(StockMovementEvent.OriginDest.PERDA);
+        event.setQuantidade(quantidade);
+        event.setCustoUnitario(custoUnitario);
+        event.setData(LocalDateTime.now());
+        event.setResponsavel(responsavel != null ? responsavel : "SISTEMA");
+        event.setObservacoes("Perda: " + tipoPerda + (motivo != null ? " - " + motivo : ""));
+        
+        stockMovementEvent.fire(event);
     }
 
     private void validateCreate(PerdaDTO dto) {

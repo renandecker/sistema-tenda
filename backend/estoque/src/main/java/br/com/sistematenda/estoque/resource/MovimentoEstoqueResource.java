@@ -7,8 +7,11 @@ import br.com.sistematenda.estoque.entity.MovimentoEstoque.OrigemDestino;
 import br.com.sistematenda.estoque.service.MovimentoEstoqueService;
 import br.com.sistematenda.common.dto.PageResponse;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.UUID;
 
 @Path("/estoque/movimentos")
@@ -40,5 +43,12 @@ public class MovimentoEstoqueResource {
             @QueryParam("page") @DefaultValue("0") int page,
             @QueryParam("size") @DefaultValue("20") int size) {
         return service.findEstoqueBaixo(page, size);
+    }
+
+    @POST
+    @Transactional
+    public Response criar(@Valid MovimentoEstoqueDTO dto) {
+        MovimentoEstoqueDTO created = service.createMovement(dto);
+        return Response.status(Response.Status.CREATED).entity(created).build();
     }
 }

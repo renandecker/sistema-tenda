@@ -210,6 +210,7 @@ export const apiPdv = {
 
 export const apiEstoque = {
   listMovimentos: (params?: any) => api.get('/estoque/movimentos', { params }),
+  createMovimento: (data: any) => api.post('/estoque/movimentos', data),
   listInventarios: (params?: any) => api.get('/estoque/inventarios', { params }),
   listAlertas: (params?: any) => api.get('/estoque/alertas', { params }),
 };

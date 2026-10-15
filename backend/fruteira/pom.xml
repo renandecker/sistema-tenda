@@ -20,6 +20,12 @@
             <version>${project.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>br.com.sistematenda</groupId>
+            <artifactId>sistema-tenda-estoque</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Serial communication for scales -->
         <dependency>
             <groupId>com.fazecast</groupId>

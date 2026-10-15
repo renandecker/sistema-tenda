@@ -6,16 +6,19 @@ import br.com.sistematenda.fruteira.repository.ProdutoRepository;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.enums.TipoProduto;
 import br.com.sistematenda.common.enums.UnidadeMedida;
+import br.com.sistematenda.common.event.StockMovementEvent;
 import br.com.sistematenda.common.exception.BusinessException;
 import br.com.sistematenda.common.exception.NotFoundException;
 import br.com.sistematenda.common.exception.ValidationException;
 import br.com.sistematenda.common.service.BaseCrudServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,6 +27,9 @@ public class ProdutoService extends BaseCrudServiceImpl<Produto, ProdutoDTO, UUI
 
     @Inject
     ProdutoRepository repository;
+
+    @Inject
+    Event<StockMovementEvent> stockMovementEvent;
 
     @Override
     public ProdutoRepository getRepository() {
@@ -114,6 +120,10 @@ public class ProdutoService extends BaseCrudServiceImpl<Produto, ProdutoDTO, UUI
                 "Estoque insuficiente. Atual: " + produto.getEstoqueAtual() + ", Tentativa: " + quantidade);
         }
         repository.updateEstoque(produtoId, quantidade);
+        
+        // Fire stock movement event
+        fireStockMovementEvent(produtoId, quantidade, produto.getCustoMedio());
+        
         return findById(produtoId);
     }
 
@@ -124,6 +134,23 @@ public class ProdutoService extends BaseCrudServiceImpl<Produto, ProdutoDTO, UUI
         }
         repository.updatePrecoVenda(produtoId, novoPreco);
         return findById(produtoId);
+    }
+
+    private void fireStockMovementEvent(UUID produtoId, BigDecimal quantidade, BigDecimal custoUnitario) {
+        StockMovementEvent event = new StockMovementEvent();
+        event.setProdutoFruteiraId(produtoId);
+        event.setTipo(quantidade.compareTo(BigDecimal.ZERO) > 0 
+            ? StockMovementEvent.MovementType.ENTRADA_AJUSTE 
+            : StockMovementEvent.MovementType.SAIDA_AJUSTE);
+        event.setOrigem(StockMovementEvent.OriginDest.AJUSTE);
+        event.setDestino(StockMovementEvent.OriginDest.FRITEIRA);
+        event.setQuantidade(quantidade.abs());
+        event.setCustoUnitario(custoUnitario);
+        event.setData(LocalDateTime.now());
+        event.setResponsavel("SISTEMA");
+        event.setObservacoes("Ajuste de estoque via atualização direta");
+        
+        stockMovementEvent.fire(event);
     }
 
     private void validateCreate(ProdutoDTO dto) {

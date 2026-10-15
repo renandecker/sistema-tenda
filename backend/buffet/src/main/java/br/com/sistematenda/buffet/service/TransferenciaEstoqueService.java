@@ -7,6 +7,9 @@ import br.com.sistematenda.buffet.mapper.TransferenciaEstoqueMapper;
 import br.com.sistematenda.buffet.repository.TransferenciaEstoqueRepository;
 import br.com.sistematenda.fruteira.entity.Produto;
 import br.com.sistematenda.fruteira.service.ProdutoService;
+import br.com.sistematenda.estoque.dto.MovimentoEstoqueDTO;
+import br.com.sistematenda.estoque.entity.MovimentoEstoque;
+import br.com.sistematenda.estoque.service.MovimentoEstoqueService;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.enums.OrigemProduto;
 import br.com.sistematenda.common.exception.BusinessException;
@@ -31,6 +34,9 @@ public class TransferenciaEstoqueService extends BaseCrudServiceImpl<Transferenc
 
     @Inject
     ProdutoService produtoService;
+
+    @Inject
+    MovimentoEstoqueService movimentoEstoqueService;
 
     @Override
     protected TransferenciaEstoqueRepository getRepository() {
@@ -64,8 +70,8 @@ public class TransferenciaEstoqueService extends BaseCrudServiceImpl<Transferenc
     }
 
     public PageResponse<TransferenciaEstoqueDTO> findAll(int page, int size, String sortBy, String sortDirection,
-                                                          TransferenciaEstoque.StatusTransferencia status,
-                                                          UUID produtoId, LocalDateTime inicio, LocalDateTime fim) {
+                                                         TransferenciaEstoque.StatusTransferencia status,
+                                                         UUID produtoId, LocalDateTime inicio, LocalDateTime fim) {
         return toDtoPage(repository.findPaginated(page, size, sortBy, sortDirection, status, produtoId, inicio, fim));
     }
 
@@ -143,10 +149,15 @@ public class TransferenciaEstoqueService extends BaseCrudServiceImpl<Transferenc
             throw new BusinessException("STATUS_INVALIDO", "Apenas transferências aprovadas podem ser concluídas");
         }
         
-        // Baixar estoque da fruteira
-        produtoService.atualizarEstoque(entity.produto.id, entity.quantidade.negate());
+        // Get custo unitario
+        ProdutoDTO produtoFruteira = produtoService.findById(entity.produto.id);
+        BigDecimal custoUnitario = produtoFruteira.getCustoMedio();
         
-        // TODO: Adicionar estoque no buffet (quando houver controle de estoque separado)
+        // Create SAIDA movement from origin (fruteira)
+        createMovimentoEstoqueSaida(entity, custoUnitario, recebidoPor);
+        
+        // Create ENTRADA movement to destination (buffet/estoque)
+        createMovimentoEstoqueEntrada(entity, custoUnitario, recebidoPor);
         
         entity.status = TransferenciaEstoque.StatusTransferencia.CONCLUIDA;
         entity.dataConclusao = LocalDateTime.now();
@@ -154,6 +165,63 @@ public class TransferenciaEstoqueService extends BaseCrudServiceImpl<Transferenc
         getRepository().persist(entity);
         
         return mapper.toDTO(entity);
+    }
+
+    private void createMovimentoEstoqueSaida(TransferenciaEstoque entity, BigDecimal custoUnitario, String responsavel) {
+        MovimentoEstoque.OrigemDestino origem = mapOrigemDestino(entity.origem);
+        MovimentoEstoque.OrigemDestino destino = mapOrigemDestino(entity.destino);
+        
+        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
+        dto.setProdutoFruteiraId(entity.produto.id);
+        dto.setTipo(MovimentoEstoque.TipoMovimento.SAIDA_TRANSFERENCIA);
+        dto.setOrigem(origem);
+        dto.setDestino(destino);
+        dto.setQuantidade(entity.quantidade);
+        dto.setCustoUnitario(custoUnitario);
+        dto.setData(LocalDateTime.now());
+        dto.setResponsavel(responsavel);
+        dto.setObservacoes("Transferência para " + entity.destino.name() + " - Transferência ID: " + entity.id);
+        dto.setDocumentoReferencia(entity.id.toString());
+        
+        movimentoEstoqueService.createMovement(dto);
+    }
+
+    private void createMovimentoEstoqueEntrada(TransferenciaEstoque entity, BigDecimal custoUnitario, String responsavel) {
+        MovimentoEstoque.OrigemDestino origem = mapOrigemDestino(entity.origem);
+        MovimentoEstoque.OrigemDestino destino = mapOrigemDestino(entity.destino);
+        
+        MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
+        
+        // Check if destination is buffet (has ProdutoBuffet)
+        if (entity.destino == TransferenciaEstoque.OrigemDestino.BUFFET) {
+            // TODO: Find corresponding ProdutoBuffet ID - for now use fruteira ID
+            // This would need a mapping between fruteira and buffet products
+            dto.setProdutoFruteiraId(entity.produto.id);
+        } else {
+            dto.setProdutoFruteiraId(entity.produto.id);
+        }
+        
+        dto.setTipo(MovimentoEstoque.TipoMovimento.ENTRADA_TRANSFERENCIA);
+        dto.setOrigem(origem);
+        dto.setDestino(destino);
+        dto.setQuantidade(entity.quantidade);
+        dto.setCustoUnitario(custoUnitario);
+        dto.setData(LocalDateTime.now());
+        dto.setResponsavel(responsavel);
+        dto.setObservacoes("Transferência de " + entity.origem.name() + " - Transferência ID: " + entity.id);
+        dto.setDocumentoReferencia(entity.id.toString());
+        
+        movimentoEstoqueService.createMovement(dto);
+    }
+
+    private MovimentoEstoque.OrigemDestino mapOrigemDestino(TransferenciaEstoque.OrigemDestino origem) {
+        return switch (origem) {
+            case FRUTEIRA -> MovimentoEstoque.OrigemDestino.FRITEIRA;
+            case BUFFET -> MovimentoEstoque.OrigemDestino.BUFFET;
+            case ESTOQUE -> MovimentoEstoque.OrigemDestino.FRITEIRA; // ESTOQUE maps to FRUTEIRA
+            case FORNECEDOR -> MovimentoEstoque.OrigemDestino.FORNECEDOR;
+            default -> MovimentoEstoque.OrigemDestino.OUTROS;
+        };
     }
 
     @Transactional

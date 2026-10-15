@@ -11,16 +11,16 @@ import {
   Skeleton,
   Alert,
   InputLabel,
-  Select,
-  MenuItem as SelectMenuItem,
+  Select as MuiSelect,
+  MenuItem as MuiMenuItem,
   Button,
   Toolbar,
-  ToolbarTitle,
+  CssBaseline,
   Grid,
+  TableBody,
 } from '@mui/material';
 import AssessmentIcon from '@mui/icons-material/Assessment';
-import { useAuth } from '@/hooks/useAuth';
-import { apiPdv } from '@/services/api';
+import { api } from '@/services/api';
 import { formatDateTime } from '@/utils/formatters';
 import { PageHeader } from '@/components/PageHeader';
 
@@ -38,7 +38,6 @@ interface AuditLog {
 }
 
 export function AuditScreen() {
-  const { user, hasPermission } = useAuth();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +59,7 @@ export function AuditScreen() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiPdv.get('/audit/logs', {
+      const response: any = await api.get('/audit/logs', {
         params: {
           usuarioId: filters.usuarioId || undefined,
           acao: filters.acao || undefined,
@@ -79,17 +78,13 @@ export function AuditScreen() {
     }
   };
 
-  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value as any }));
-  };
-
   useEffect(() => {
     fetchLogs();
   }, []);
 
   return (
     <Box sx={{ p: 3 }}>
+      <CssBaseline />
       <PageHeader
         title="Auditoria do Sistema"
         subtitle="Registro de todas as ações do sistema"
@@ -98,10 +93,10 @@ export function AuditScreen() {
 
       <Paper sx={{ p: 3, mb: 3 }}>
         <Toolbar>
-          <ToolbarTitle>Filtros</ToolbarTitle>
-          <Box sx={{ flexGrow: 1 }} />
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>Filtros</Typography>
+          <Box />
           <Button variant="outlined" onClick={fetchLogs}>
-            <span style={{ mr: 1 }}>Atualizar</span>
+            <span style={{ marginRight: 1 }}>Atualizar</span>
           </Button>
         </Toolbar>
 
@@ -109,45 +104,57 @@ export function AuditScreen() {
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={3}>
               <InputLabel shrink>Usuário</InputLabel>
-              <Select
+              <MuiSelect
                 name="usuarioId"
                 value={filters.usuarioId}
-                onChange={handleFilterChange}
+                onChange={(e) => {
+                  const val = (e.target as HTMLSelectElement).value;
+                  setFilters((prev) => ({ ...prev, usuarioId: val }));
+                }}
                 sx={{ width: '100%' }}
               >
-                <SelectMenuItem value="">Todos</SelectMenuItem>
-              </Select>
+                <MuiMenuItem value="">Todos</MuiMenuItem>
+                <MuiMenuItem value="admin">Admin</MuiMenuItem>
+                <MuiMenuItem value="gerente">Gerente</MuiMenuItem>
+                <MuiMenuItem value="caixa">Caixa</MuiMenuItem>
+              </MuiSelect>
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
               <InputLabel shrink>Ação</InputLabel>
-              <Select
+              <MuiSelect
                 name="acao"
                 value={filters.acao}
-                onChange={handleFilterChange}
+                onChange={(e) => {
+                  const val = (e.target as HTMLSelectElement).value;
+                  setFilters((prev) => ({ ...prev, acao: val }));
+                }}
                 sx={{ width: '100%' }}
               >
-                <SelectMenuItem value="">Todas</SelectMenuItem>
-                <SelectMenuItem value="login">Login</SelectMenuItem>
-                <SelectMenuItem value="logout">Logout</SelectMenuItem>
-                <SelectMenuItem value="abrir_caixa">Abrir Caixa</SelectMenuItem>
-                <SelectMenuItem value="fechar_caixa">Fechar Caixa</SelectMenuItem>
-              </Select>
+                <MuiMenuItem value="">Todas</MuiMenuItem>
+                <MuiMenuItem value="login">Login</MuiMenuItem>
+                <MuiMenuItem value="logout">Logout</MuiMenuItem>
+                <MuiMenuItem value="abrir_caixa">Abrir Caixa</MuiMenuItem>
+                <MuiMenuItem value="fechar_caixa">Fechar Caixa</MuiMenuItem>
+              </MuiSelect>
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
               <InputLabel shrink>Entidade</InputLabel>
-              <Select
+              <MuiSelect
                 name="entidade"
                 value={filters.entidade}
-                onChange={handleFilterChange}
+                onChange={(e) => {
+                  const val = (e.target as HTMLSelectElement).value;
+                  setFilters((prev) => ({ ...prev, entidade: val }));
+                }}
                 sx={{ width: '100%' }}
               >
-                <SelectMenuItem value="">Todas</SelectMenuItem>
-                <SelectMenuItem value="venda">Venda</SelectMenuItem>
-                <SelectMenuItem value="comanda">Comanda</SelectMenuItem>
-                <SelectMenuItem value="produto">Produto</SelectMenuItem>
-              </Select>
+                <MuiMenuItem value="">Todas</MuiMenuItem>
+                <MuiMenuItem value="venda">Venda</MuiMenuItem>
+                <MuiMenuItem value="comanda">Comanda</MuiMenuItem>
+                <MuiMenuItem value="produto">Produto</MuiMenuItem>
+              </MuiSelect>
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
@@ -156,7 +163,9 @@ export function AuditScreen() {
                 type="date"
                 name="dataInicio"
                 value={filters.dataInicio}
-                onChange={handleFilterChange}
+                onChange={(e) => {
+                  setFilters((prev) => ({ ...prev, dataInicio: e.target.value }));
+                }}
                 style={{ width: '100%' }}
               />
               <InputLabel shrink>Ate</InputLabel>
@@ -164,7 +173,9 @@ export function AuditScreen() {
                 type="date"
                 name="dataFim"
                 value={filters.dataFim}
-                onChange={handleFilterChange}
+                onChange={(e) => {
+                  setFilters((prev) => ({ ...prev, dataFim: e.target.value }));
+                }}
                 style={{ width: '100%' }}
               />
             </Grid>
@@ -176,14 +187,14 @@ export function AuditScreen() {
         <Box sx={{ pt: 2 }}>
           <Grid container>
             <Grid item xs={12}>
-              <Skeleton variant="text" paragraph={true} />
+              <Skeleton variant="text" />
             </Grid>
           </Grid>
         </Box>
       )}
 
       {!loading && logs.length === 0 && !error && (
-        <Alert variant="info">
+        <Alert variant="filled">
           <Typography variant="body1">Nenhum log de auditoria encontrado com os filtros aplicados.</Typography>
         </Alert>
       )}
@@ -203,23 +214,42 @@ export function AuditScreen() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {logs.map((log) => (
-                <TableRow key={log.id} sx={{ bgcolor: log.sucesso ? 'background.success.light' : 'background.error.light' }}>
-                  <TableCell component="td">{formatDateTime(log.dataAcao)}</TableCell>
-                  <TableCell>{log.usuarioId ? 'Usuário ' + log.usuarioId.substring(0, 8) : 'System'}</TableCell>
-                  <TableCell>{log.acao}</TableCell>
-                  <TableCell>{log.entidade || '-'}</TableCell>
-                  <TableCell>{log.registroId ? log.registroId.substring(0, 8) + '...' : '-'}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={log.sucesso ? 'Sucesso' : 'Falha'}
-                      color={log.sucesso ? 'success' : 'error'}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>{log.ipAddress || '-'}</TableCell>
-                </TableRow>
-              ))}
+              {logs.map((log) => {
+                return (
+                  <TableRow
+                    key={log.id}
+                    sx={{
+                      bgcolor: log.sucesso
+                        ? 'background.success.light'
+                        : 'background.error.light',
+                    }}
+                  >
+                    <TableCell component="td">
+                      {formatDateTime(log.dataAcao)}
+                    </TableCell>
+                    <TableCell>
+                      {log.usuarioId
+                        ? 'Usuário ' + log.usuarioId.substring(0, 8)
+                        : 'System'}
+                    </TableCell>
+                    <TableCell>{log.acao}</TableCell>
+                    <TableCell>{log.entidade || '-'}</TableCell>
+                    <TableCell>
+                      {log.registroId
+                        ? log.registroId.substring(0, 8) + '...'
+                        : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={log.sucesso ? 'Sucesso' : 'Falha'}
+                        color={log.sucesso ? 'success' : 'error'}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>{log.ipAddress || '-'}</TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </Box>
