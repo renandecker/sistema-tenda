@@ -68,6 +68,11 @@ public class ItemVendaService extends BaseCrudServiceImpl<ItemVenda, ItemVendaDT
         return ItemVenda.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public List<ItemVendaDTO> findByVenda(UUID vendaId) {
         Venda venda = vendaRepository.findById(vendaId);
         if (venda == null || venda.deleted) {

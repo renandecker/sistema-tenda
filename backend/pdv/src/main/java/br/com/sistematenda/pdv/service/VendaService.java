@@ -81,6 +81,11 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
         return Venda.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public VendaDTO findByNumero(String numero) {
         return repository.findByNumero(numero)
             .map(mapper::toDTO)

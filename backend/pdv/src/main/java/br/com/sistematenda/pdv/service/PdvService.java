@@ -39,6 +39,11 @@ public class PdvService extends BaseCrudServiceImpl<Pdv, PdvDTO, UUID> {
         return Pdv.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public PdvDTO findByCodigo(String codigo) {
         return repository.findByCodigo(codigo)
             .map(mapper::toDTO)

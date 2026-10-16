@@ -63,6 +63,11 @@ public class PagamentoService extends BaseCrudServiceImpl<Pagamento, PagamentoDT
         return Pagamento.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public List<PagamentoDTO> findByVenda(UUID vendaId) {
         Venda venda = vendaRepository.findById(vendaId);
         if (venda == null) {
