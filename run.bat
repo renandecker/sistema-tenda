@@ -9,6 +9,7 @@ set "FRONTEND=%ROOT%frontend"
 set "LOG_DIR=%ROOT%.logs"
 set "QUARKUS_VERSION=3.12.0"
 set "DB_CONTAINER=sistematenda-postgres"
+set "DB_PORT=5433"
 
 echo ============================================================
 echo    SISTEMA TENDA - AMBIENTE LOCAL
@@ -27,8 +28,8 @@ if errorlevel 1 (echo    [ERRO] npm nao encontrado no PATH. & goto :fail)
 echo    Java, Maven, Node e npm: OK
 echo.
 
-echo [2/4] Verificando PostgreSQL em localhost:5432...
-call :check_port 5432
+echo [2/4] Verificando PostgreSQL em localhost:%DB_PORT%...
+call :check_port %DB_PORT%
 if "!PORT_OK!"=="1" (
     echo    PostgreSQL ativo.
 ) else (
@@ -108,17 +109,17 @@ goto :eof
 where docker >nul 2>&1
 if !errorlevel! neq 0 (
     echo    [AVISO] PostgreSQL inativo e Docker ausente.
-    echo            Inicie o banco manualmente ^(localhost:5432, db/user/senha = sistematenda^).
+    echo            Inicie o banco manualmente ^(localhost:%DB_PORT%, db/user/senha = sistematenda^).
     goto :eof
 )
 echo    Subindo PostgreSQL via Docker...
 docker start %DB_CONTAINER% >nul 2>&1
 if !errorlevel! neq 0 (
-    docker run -d --name %DB_CONTAINER% -e POSTGRES_USER=sistematenda -e POSTGRES_PASSWORD=sistematenda -e POSTGRES_DB=sistematenda -p 5432:5432 postgres:16 >nul
+    docker run -d --name %DB_CONTAINER% -e POSTGRES_USER=sistematenda -e POSTGRES_PASSWORD=sistematenda -e POSTGRES_DB=sistematenda -p %DB_PORT%:5432 postgres:16 >nul
 )
 echo    Aguardando o banco ficar pronto...
 for /l %%i in (1,1,30) do (
-    call :check_port 5432
+    call :check_port %DB_PORT%
     if "!PORT_OK!"=="1" (
         echo    PostgreSQL pronto.
         goto :eof

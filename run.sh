@@ -7,6 +7,7 @@ FRONTEND="$ROOT/frontend"
 LOG_DIR="$ROOT/.logs"
 QUARKUS_VERSION="3.12.0"
 DB_CONTAINER="sistematenda-postgres"
+DB_PORT="5433"
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 info(){ printf "${GREEN}%s${NC}\n" "$*"; }
@@ -47,8 +48,8 @@ done
 info "  Java, Maven, Node e npm: OK"
 echo
 
-info "[2/4] Verificando PostgreSQL em localhost:5432..."
-if port_open localhost 5432; then
+info "[2/4] Verificando PostgreSQL em localhost:${DB_PORT}..."
+if port_open localhost "$DB_PORT"; then
   info "  PostgreSQL ativo."
 else
   if command_exists docker; then
@@ -56,8 +57,8 @@ else
     docker start "$DB_CONTAINER" >/dev/null 2>&1 || \
       docker run -d --name "$DB_CONTAINER" \
         -e POSTGRES_USER=sistematenda -e POSTGRES_PASSWORD=sistematenda \
-        -e POSTGRES_DB=sistematenda -p 5432:5432 postgres:16 >/dev/null
-    if wait_for_port localhost 5432 30; then
+        -e POSTGRES_DB=sistematenda -p "${DB_PORT}:5432" postgres:16 >/dev/null
+    if wait_for_port localhost "$DB_PORT" 30; then
       info "  PostgreSQL pronto."
     else
       warn "  [AVISO] Nao foi possivel confirmar o banco apos 30s."
