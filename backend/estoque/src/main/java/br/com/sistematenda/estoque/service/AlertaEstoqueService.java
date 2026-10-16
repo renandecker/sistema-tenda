@@ -28,6 +28,11 @@ public class AlertaEstoqueService extends BaseCrudServiceImpl<AlertaEstoque, Ale
         return AlertaEstoque.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public PageResponse<AlertaEstoqueDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                                   String tipo, String status, UUID produto) {
         StringBuilder query = new StringBuilder("deleted = false");

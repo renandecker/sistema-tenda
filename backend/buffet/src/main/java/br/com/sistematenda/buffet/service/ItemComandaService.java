@@ -45,6 +45,11 @@ public class ItemComandaService extends BaseCrudServiceImpl<ItemComanda, ItemCom
         return ItemComanda.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public List<ItemComandaDTO> findByComanda(UUID comandaId) {
         Comanda comanda = comandaRepository.findById(comandaId);
         if (comanda == null) {

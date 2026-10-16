@@ -40,6 +40,11 @@ public class ProdutoBuffetService extends BaseCrudServiceImpl<ProdutoBuffet, Pro
         return ProdutoBuffet.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public ProdutoBuffetDTO findByCodigo(String codigo) {
         return repository.findByCodigo(codigo)
             .map(mapper::toDTO)

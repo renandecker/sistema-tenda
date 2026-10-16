@@ -49,6 +49,11 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
         return MovimentoEstoque.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public PageResponse<MovimentoEstoqueDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                                      MovimentoEstoque.TipoMovimento tipo,
                                                      MovimentoEstoque.OrigemDestino origem,

@@ -28,6 +28,11 @@ public class InventarioService extends BaseCrudServiceImpl<Inventario, Inventari
         return Inventario.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public PageResponse<InventarioDTO> findAll(int page, int size, String sortBy, String sortDirection,
                                                String status, String dataInicio, String dataFim) {
         StringBuilder query = new StringBuilder("deleted = false");

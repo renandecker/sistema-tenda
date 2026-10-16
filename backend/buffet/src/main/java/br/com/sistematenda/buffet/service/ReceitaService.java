@@ -46,6 +46,11 @@ public class ReceitaService extends BaseCrudServiceImpl<Receita, ReceitaDTO, UUI
         return Receita.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public ReceitaDTO findByProduto(UUID produtoId) {
         ProdutoBuffet produto = produtoBuffetRepository.findById(produtoId);
         if (produto == null) {

@@ -32,6 +32,11 @@ public class MesaService extends BaseCrudServiceImpl<Mesa, MesaDTO, UUID> {
         return Mesa.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public MesaDTO findByNumero(String numero) {
         return repository.findByNumero(numero)
             .map(mapper::toDTO)

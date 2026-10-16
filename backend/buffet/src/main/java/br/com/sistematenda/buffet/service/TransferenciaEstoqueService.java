@@ -47,6 +47,11 @@ public class TransferenciaEstoqueService extends BaseCrudServiceImpl<Transferenc
         return TransferenciaEstoque.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public List<TransferenciaEstoqueDTO> findByStatus(TransferenciaEstoque.StatusTransferencia status) {
         return repository.findByStatus(status).stream().map(mapper::toDTO).toList();
     }

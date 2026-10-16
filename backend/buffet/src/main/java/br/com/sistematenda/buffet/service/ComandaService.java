@@ -46,6 +46,11 @@ public class ComandaService extends BaseCrudServiceImpl<Comanda, ComandaDTO, UUI
         return Comanda.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public ComandaDTO findByNumero(String numero) {
         return repository.findByNumero(numero)
             .map(mapper::toDTO)

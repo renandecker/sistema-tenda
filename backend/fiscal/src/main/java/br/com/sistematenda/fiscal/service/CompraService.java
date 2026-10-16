@@ -45,6 +45,11 @@ public class CompraService extends BaseCrudServiceImpl<Compra, CompraDTO, UUID> 
         return Compra.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public CompraDTO findByNumero(String numero) {
         return repository.findByNumero(numero)
             .map(mapper::toDTO)
