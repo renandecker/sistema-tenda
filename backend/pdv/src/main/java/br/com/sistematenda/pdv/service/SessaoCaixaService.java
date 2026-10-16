@@ -62,6 +62,11 @@ public class SessaoCaixaService extends BaseCrudServiceImpl<SessaoCaixa, SessaoC
         return SessaoCaixa.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return getEntityClass().getSimpleName();
+    }
+
     public SessaoCaixaDTO findAbertaByPdv(UUID pdvId) {
         Pdv pdv = pdvService.getRepository().findById(pdvId);
         if (pdv == null) {
