@@ -41,6 +41,11 @@ public class ProdutoService extends BaseCrudServiceImpl<Produto, ProdutoDTO, UUI
         return Produto.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return "Produto";
+    }
+
     public Produto buscarEntidade(UUID id) {
         return repository.findById(id);
     }

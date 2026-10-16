@@ -45,6 +45,11 @@ public class PerdaService extends BaseCrudServiceImpl<Perda, PerdaDTO, UUID> {
         return Perda.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return "Perda";
+    }
+
     public List<PerdaDTO> findByProduto(UUID produtoId) {
         Produto produto = new Produto();
         produto.id = produtoId;

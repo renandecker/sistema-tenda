@@ -38,6 +38,11 @@ public class TabelaPrecoService extends BaseCrudServiceImpl<TabelaPreco, TabelaP
         return TabelaPreco.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return "TabelaPreco";
+    }
+
     public List<TabelaPrecoDTO> findByProduto(UUID produtoId) {
         Produto produto = new Produto();
         produto.id = produtoId;

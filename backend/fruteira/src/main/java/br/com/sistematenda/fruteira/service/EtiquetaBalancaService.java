@@ -38,6 +38,11 @@ public class EtiquetaBalancaService extends BaseCrudServiceImpl<EtiquetaBalanca,
         return EtiquetaBalanca.class;
     }
 
+    @Override
+    protected String getEntidadeNome() {
+        return "EtiquetaBalanca";
+    }
+
     public EtiquetaBalancaDTO findByCodigo(String codigo) {
         return repository.findByCodigo(codigo)
             .map(mapper::toDTO)
