@@ -104,25 +104,84 @@ public class SessaoCaixaService extends BaseCrudServiceImpl<SessaoCaixa, SessaoC
     @Transactional
     public SessaoCaixaDTO abrirCaixa(UUID pdvId, String operador, BigDecimal valorInicial) {
         Pdv pdv = pdvService.getRepository().findById(pdvId);
-        if (pdv == null) {
+        if (pdv == null || pdv.deleted) {
             throw new NotFoundException("PDV", pdvId);
         }
-        
+        if (!pdv.ativo) {
+            throw new BusinessException("PDV_INATIVO", "PDV inativo: " + pdv.codigo);
+        }
+        // Verifica se já existe sessão aberta para este PDV (evita duplicidade)
+        java.util.Optional<SessaoCaixa> existente = repository.findAbertaByPdv(pdv);
+        if (existente.isPresent()) {
+            throw new BusinessException("CAIXA_JA_ABERTO", "Já existe caixa aberto para o PDV: " + pdv.codigo);
+        }
+
         SessaoCaixa entity = new SessaoCaixa();
         entity.pdv = pdv;
-        entity.operadorAbertura = operador;
+        entity.operadorAbertura = operador != null && !operador.isBlank() ? operador : "SISTEMA";
         entity.valorInicial = valorInicial != null ? valorInicial : BigDecimal.ZERO;
         entity.status = SessaoCaixa.StatusSessao.ABERTA;
         entity.dataAbertura = LocalDateTime.now();
         entity.numeroUltimaVenda = pdv.numeroUltimaVenda != null ? pdv.numeroUltimaVenda : 0L;
-        
+
         getRepository().persist(entity);
-        
+
         pdv.status = Pdv.StatusPdv.EM_USO;
         pdv.ultimaAbertura = LocalDateTime.now();
         pdvService.getRepository().persist(pdv);
-        
+
         return mapper.toDTO(entity);
+    }
+
+    /**
+     * Abertura automática (idempotente): se já existe sessão aberta para o PDV,
+     * retorna a existente; caso contrário cria uma nova.
+     * Verifica vínculo entre o PDV da sessão e o caixa (terminal) utilizado.
+     */
+    @Transactional
+    public SessaoCaixaDTO abrirCaixaAutomatico(UUID pdvId, String operador, BigDecimal valorInicial) {
+        Pdv pdv = pdvService.getRepository().findById(pdvId);
+        if (pdv == null || pdv.deleted) {
+            throw new NotFoundException("PDV", pdvId);
+        }
+        if (!pdv.ativo) {
+            throw new BusinessException("PDV_INATIVO", "PDV inativo: " + pdv.codigo);
+        }
+        java.util.Optional<SessaoCaixa> existente = repository.findAbertaByPdv(pdv);
+        if (existente.isPresent()) {
+            return mapper.toDTO(existente.get());
+        }
+        return abrirCaixa(pdvId, operador, valorInicial);
+    }
+
+    /**
+     * Verifica se o PDV da sessão é o mesmo vinculado ao caixa (terminal) informado.
+     */
+    public boolean validarVinculoPdv(UUID sessaoId, UUID pdvId) {
+        SessaoCaixa entity = getRepository().findById(sessaoId);
+        if (entity == null || entity.deleted) {
+            return false;
+        }
+        return entity.pdv != null && entity.pdv.id.equals(pdvId);
+    }
+
+    /**
+     * Fecha todos os caixas abertos (usado no fechamento automático às 23:30).
+     */
+    @Transactional
+    public int fecharTodosCaixasAbertos(String operador) {
+        List<SessaoCaixa> abertas = repository.findAllAbertas();
+        int fechados = 0;
+        for (SessaoCaixa entity : abertas) {
+            try {
+                fecharCaixa(entity.id, operador != null ? operador : "SISTEMA_AUTO",
+                        entity.valorFinalContado != null ? entity.valorFinalContado : BigDecimal.ZERO);
+                fechados++;
+            } catch (Exception e) {
+                // Log and continue
+            }
+        }
+        return fechados;
     }
 
     @Transactional

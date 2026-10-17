@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-  Divider, Grid, IconButton, MenuItem, TextField, Tooltip, Typography,
+  Alert, Autocomplete, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
+  Divider, Grid, IconButton, MenuItem, Paper, Tabs, Tab, TextField, Tooltip, Typography,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -12,9 +12,13 @@ import {
   Payments as PaymentsIcon,
   Cancel as CancelIcon,
   CheckCircle as CheckIcon,
+  TableRestaurant as TableRestaurantIcon,
+  MenuBook as MenuBookIcon,
+  Warning as WarningIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { apiBuffet, apiFruteira, apiPdv } from '@/services/api';
+import { apiBuffet, apiClientes, apiCaderno, apiFruteira, apiPdv } from '@/services/api';
 import { PageHeader } from '@/components/PageHeader';
 import { formatCurrency } from '@/utils/formatters';
 import { maskCurrency, maskQuantity, parseCurrency, parseDecimal } from '@/utils/masks';
@@ -53,6 +57,15 @@ interface ProdutoBusca {
   origem?: 'FRUTEIRA' | 'BUFFET';
 }
 
+interface SituacaoCliente {
+  clienteId?: string;
+  clienteNome?: string;
+  clienteDocumento?: string;
+  totalDivida?: number;
+  quantidadeLancamentos?: number;
+  possuiAtraso?: boolean;
+}
+
 const FORMAS_PAGAMENTO = ['DINHEIRO', 'PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'VALE_ALIMENTACAO', 'VALE_REFEICAO', 'VALE_CULTURA'];
 
 export function PdvPage() {
@@ -68,6 +81,112 @@ export function PdvPage() {
   const [desconto, setDesconto] = useState('');
   const [pesoDialog, setPesoDialog] = useState(false);
   const [pesoBruto, setPesoBruto] = useState('');
+  const [tabValue, setTabValue] = useState<'buffet' | 'fruteira'>('buffet');
+  const [contadorItens, setContadorItens] = useState({ BUFFET: 0, FRUTEIRA: 0 });
+  const [mesaDialog, setMesaDialog] = useState(false);
+  const [mesasComComanda, setMesasComComanda] = useState<any[]>([]);
+  const navigate = useNavigate();
+
+  const [cliente, setCliente] = useState<any>(null);
+  const [opcoesClientes, setOpcoesClientes] = useState<any[]>([]);
+  const [situacao, setSituacao] = useState<SituacaoCliente | null>(null);
+  const [fiadoDialog, setFiadoDialog] = useState(false);
+  const [fiadoValor, setFiadoValor] = useState('');
+  const [fiadoVencimento, setFiadoVencimento] = useState('');
+  const [fiadoDescricao, setFiadoDescricao] = useState('');
+
+  const buscarClientes = async (termo: string) => {
+    if (!termo || termo.trim().length < 2) { setOpcoesClientes([]); return; }
+    try {
+      const { data } = await apiClientes.search(termo);
+      setOpcoesClientes(Array.isArray(data) ? data : []);
+    } catch {
+      setOpcoesClientes([]);
+    }
+  };
+
+  const carregarSituacao = async (c: any) => {
+    if (!c) { setSituacao(null); return; }
+    try {
+      if (c.id) {
+        const { data } = await apiCaderno.situacaoCliente(c.id);
+        setSituacao(data ?? null);
+      } else if (c.cpfCnpj) {
+        const { data } = await apiCaderno.situacaoPorDocumento(String(c.cpfCnpj).replace(/\D/g, ''));
+        setSituacao(data ?? null);
+      } else {
+        setSituacao(null);
+      }
+    } catch {
+      setSituacao(null);
+    }
+  };
+
+  const selecionarCliente = (c: any) => {
+    setCliente(c);
+    carregarSituacao(c);
+  };
+
+  const abrirFiado = () => {
+    if (!cliente) { toast.warning('Selecione o cliente para lançar a dívida'); return; }
+    setFiadoValor(''); setFiadoVencimento(''); setFiadoDescricao('');
+    setFiadoDialog(true);
+  };
+
+  const lancarFiado = async () => {
+    if (!cliente) return;
+    const valor = parseCurrency(fiadoValor);
+    if (valor <= 0) { toast.warning('Informe o valor da dívida'); return; }
+    try {
+      await apiCaderno.lancar({
+        clienteId: cliente?.id,
+        clienteNome: cliente?.nome,
+        clienteDocumento: cliente?.cpfCnpj,
+        clienteTelefone: cliente?.telefone,
+        valor,
+        dataVencimento: fiadoVencimento || undefined,
+        descricao: fiadoDescricao || 'Fiado lançado no PDV',
+        vendaId: venda && !venda.id.startsWith('local-') ? venda.id : undefined,
+        numeroVenda: venda?.numero,
+        observacoes: 'Lançado via PDV',
+      });
+      toast.success('Dívida lançada no caderno');
+      setFiadoDialog(false);
+      carregarSituacao(cliente);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao lançar dívida');
+    }
+  };
+
+  const abrirMesaDialog = async () => {
+    try {
+      const { data } = await apiBuffet.listMesas({ size: 200 });
+      const list = data?.content ?? (Array.isArray(data) ? data : []);
+      const comComanda = list.filter((m: any) => m.comandaAtiva);
+      setMesasComComanda(comComanda);
+      setMesaDialog(true);
+    } catch {
+      toast.error('Erro ao listar mesas com comanda');
+    }
+  };
+
+  const carregarMesaPdv = async (comandaId: string, mesaNumero: string) => {
+    let vendaAtualId = venda?.id;
+    try {
+      if (!vendaAtualId || vendaAtualId.startsWith('local-')) {
+        const { data: novaV } = await apiPdv.createVenda({ observacoes: `Venda Mesa ${mesaNumero}` });
+        vendaAtualId = novaV.id;
+        setVenda(novaV);
+      }
+      const idToUse = vendaAtualId || 'local-temp';
+      const { data } = await apiPdv.addItemComanda(idToUse, comandaId);
+      setVenda(data);
+      setMesaDialog(false);
+      toast.success(`Consumo da Mesa ${mesaNumero} carregado para pagamento!`);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao carregar comanda da mesa');
+    }
+  };
 
   const recarregarVenda = useCallback(async (id: string) => {
     try {
@@ -125,11 +244,20 @@ export function PdvPage() {
     }
   };
 
+  const obterCodigoProduto = (origem: string, contador: number) => {
+    return origem === 'BUFFET' ? `B${contador + 1}` : `F${contador + 1}`;
+  };
+
   const adicionarItem = async (p: ProdutoBusca) => {
     if (!venda) { toast.warning('Inicie uma venda primeiro'); return; }
     const qtd = parseDecimal(quantidade, 3) || 1;
+    const novoContador = { ...contadorItens } as { BUFFET: number; FRUTEIRA: number };
+    const origem = p.origem ?? 'FRUTEIRA';
+    novoContador[origem] = (novoContador[origem] ?? 0) + 1;
+    setContadorItens(novoContador);
+    const codigoProd = obterCodigoProduto(origem, (contadorItens[origem] ?? 0) as number);
     if (venda.id.startsWith('local-')) {
-      const item: ItemResumo = { id: `i-${Date.now()}`, codigoProduto: p.codigo ?? p.codigoBarras, nomeProduto: p.nome, quantidade: qtd, precoUnitario: p.precoVenda ?? 0, valorTotal: (p.precoVenda ?? 0) * qtd, origem: p.origem };
+      const item: ItemResumo = { id: `i-${Date.now()}`, codigoProduto: codigoProd, nomeProduto: p.nome, quantidade: qtd, precoUnitario: p.precoVenda ?? 0, valorTotal: (p.precoVenda ?? 0) * qtd, origem: p.origem };
       setVenda((v) => {
         if (!v) return v;
         const itens = [...(v.itens ?? []), item];
@@ -232,7 +360,30 @@ export function PdvPage() {
     }
   };
 
-  useEffect(() => { /* sessão inicial não cria venda automaticamente */ }, []);
+  useEffect(() => {
+    const handler = (_e: KeyboardEvent) => {
+      // Alt+1: trocar para aba buffet
+      if (_e.altKey && _e.key === '1') {
+        setTabValue('buffet');
+        _e.preventDefault();
+      }
+      // Alt+2: trocar para aba fruteira
+      if (_e.altKey && _e.key === '2') {
+        setTabValue('fruteira');
+        _e.preventDefault();
+      }
+      // Alt+N: adicionar produto da busca (N=1..9 corresponde ao índice)
+      if (_e.altKey && _e.key >= '1' && _e.key <= '9' && venda) {
+        const idx = parseInt(_e.key, 10) - 1;
+        if (resultados[idx]) {
+          adicionarItem(resultados[idx]);
+          _e.preventDefault();
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [tabValue, resultados, venda, adicionarItem]);
 
   const saldo = (venda?.valorTotal ?? 0) - (venda?.valorPago ?? 0);
 
@@ -242,12 +393,14 @@ export function PdvPage() {
         title="PDV — Frente de Caixa"
         subtitle="Venda de produtos da fruteira e buffet por código de barras, peso e múltiplos pagamentos"
         icon={<PointOfSaleIcon />}
-        action={
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => venda && recarregarVenda(venda.id)} disabled={!venda || venda.id.startsWith('local-')}>Atualizar</Button>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={novaVenda} disabled={loading}>Nova venda</Button>
-          </Box>
-        }
+         action={
+           <Box sx={{ display: 'flex', gap: 1 }}>
+             <Button variant="outlined" startIcon={<TableRestaurantIcon />} onClick={abrirMesaDialog}>Selecionar Mesa</Button>
+             <Button variant="outlined" color="warning" startIcon={<MenuBookIcon />} onClick={abrirFiado}>Caderno (fiado)</Button>
+             <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => venda && recarregarVenda(venda.id)} disabled={!venda || venda.id.startsWith('local-')}>Atualizar</Button>
+             <Button variant="contained" startIcon={<AddIcon />} onClick={novaVenda} disabled={loading}>Nova venda</Button>
+           </Box>
+         }
       />
       <Grid container spacing={2}>
         <Grid item xs={12} md={7}>
@@ -256,7 +409,7 @@ export function PdvPage() {
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Buscar produto</Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <TextField fullWidth size="small" placeholder="Código, código de barras ou nome + Enter" value={busca}
-                  onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && buscarProdutos()} />
+                  onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' || (e.altKey && e.key === 'Enter')) && buscarProdutos()} />
                 <TextField size="small" label="Qtd" value={maskQuantity(quantidade)} onChange={(e) => setQuantidade(maskQuantity(e.target.value))} sx={{ width: 90 }} inputMode="decimal" />
                 <Button variant="contained" onClick={buscarProdutos} disabled={buscando} startIcon={<SearchIcon />}>Buscar</Button>
                 <Tooltip title="Lançar prato por peso (balança)"><span><IconButton color="primary" onClick={() => setPesoDialog(true)} disabled={!venda}><ScaleIcon /></IconButton></span></Tooltip>
@@ -273,24 +426,101 @@ export function PdvPage() {
               {resultados.length === 0 && <Typography variant="caption" color="text.secondary">Busque por nome, código ou código de barras. Produtos da fruteira e do buffet aparecem aqui.</Typography>}
             </CardContent>
           </Card>
-          <Card>
+<Card>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Itens da venda {venda?.numero ? `#${venda.numero}` : ''}</Typography>
-              {!venda && <Typography variant="body2" color="text.secondary">Nenhuma venda aberta. Clique em “Nova venda”.</Typography>}
-              {venda?.itens?.map((it) => (
-                <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
+              {!venda && <Typography variant="body2" color="text.secondary">Nenhuma venda aberta. Clique em "Nova venda".</Typography>}
+              <Box sx={{ mt: 1 }}>
+                <Tabs value={tabValue} onChange={(_, value) => setTabValue(value)} sx={{ mb: 1 }}>
+                  <Tab label="Buffet" value="buffet" />
+                  <Tab label="Fruteira" value="fruteira" />
+                </Tabs>
+                {tabValue === 'buffet' && (
                   <Box>
-                    <Typography variant="body2">{it.quantidade}x {it.nomeProduto}</Typography>
-                    <Typography variant="caption" color="text.secondary">{it.codigoProduto} · {formatCurrency(it.precoUnitario ?? 0)} un.</Typography>
+                    {venda?.itens?.filter((it) => it.origem === 'BUFFET')?.map((it) => (
+                      <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
+                        <Box>
+                          <Typography variant="body2">{it.quantidade}x {it.nomeProduto}</Typography>
+                          <Typography variant="caption" color="text.secondary">{it.codigoProduto} · {formatCurrency(it.precoUnitario ?? 0)} un.</Typography>
+                        </Box>
+                        <Typography variant="body2" fontWeight={700}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
+                      </Box>
+                    ))}
+                    {venda?.itens?.filter((it) => it.origem !== 'BUFFET')?.length === 0 && <Typography variant="caption" color="text.secondary">Nenhum item de buffet.</Typography>}
                   </Box>
-                  <Typography variant="body2" fontWeight={700}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
-                </Box>
-              ))}
-              {venda && (venda.itens?.length ?? 0) === 0 && <Typography variant="caption" color="text.secondary">Venda sem itens.</Typography>}
+                )}
+                {tabValue === 'fruteira' && (
+                  <Box>
+                    {venda?.itens?.filter((it) => it.origem === 'FRUTEIRA')?.map((it) => (
+                      <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
+                        <Box>
+                          <Typography variant="body2">{it.quantidade}x {it.nomeProduto}</Typography>
+                          <Typography variant="caption" color="text.secondary">{it.codigoProduto} · {formatCurrency(it.precoUnitario ?? 0)} un.</Typography>
+                        </Box>
+                        <Typography variant="body2" fontWeight={700}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
+                      </Box>
+                    ))}
+                    {venda?.itens?.filter((it) => it.origem !== 'FRUTEIRA')?.length === 0 && <Typography variant="caption" color="text.secondary">Nenhum item de fruteira.</Typography>}
+                  </Box>
+                )}
+              </Box>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} md={5}>
+          <Card sx={{ mb: 2 }}>
+            <CardContent>
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Cliente</Typography>
+              <Autocomplete
+                size="small"
+                options={opcoesClientes}
+                getOptionLabel={(o: any) => `${o.nome ?? ''}${o.cpfCnpj ? ` — ${o.cpfCnpj}` : ''}`}
+                isOptionEqualToValue={(o: any, v: any) => o.id === v?.id}
+                value={cliente}
+                onChange={(_, v) => selecionarCliente(v)}
+                onInputChange={(_, v, reason) => { if (reason === 'input') buscarClientes(v); }}
+                renderInput={(params) => (
+                  <TextField {...params} placeholder="Buscar cliente por nome ou CPF/CNPJ" />
+                )}
+              />
+
+              {situacao && Number(situacao.totalDivida ?? 0) > 0 && (
+                <Alert
+                  severity={situacao.possuiAtraso ? 'error' : 'warning'}
+                  icon={<WarningIcon fontSize="inherit" />}
+                  sx={{ mt: 1.5 }}
+                  action={
+                    <Button color="inherit" size="small" onClick={() => navigate('/caderno')}>
+                      Ver caderno
+                    </Button>
+                  }
+                >
+                  <Typography variant="body2" fontWeight={700}>
+                    Cliente está devendo {formatCurrency(Number(situacao.totalDivida ?? 0))}
+                  </Typography>
+                  <Typography variant="caption" display="block">
+                    {situacao.quantidadeLancamentos ?? 0} lançamento(s) em aberto
+                    {situacao.possuiAtraso ? ' · HÁ DÍVIDAS VENCIDAS' : ''}
+                  </Typography>
+                </Alert>
+              )}
+
+              {situacao && Number(situacao.totalDivida ?? 0) === 0 && cliente && (
+                <Alert severity="success" sx={{ mt: 1.5 }}>
+                  Cliente sem dívidas em aberto.
+                </Alert>
+              )}
+
+              <Box sx={{ display: 'flex', gap: 1, mt: 1.5 }}>
+                <Button fullWidth variant="outlined" color="warning" startIcon={<MenuBookIcon />} onClick={abrirFiado}>
+                  Lançar fiado
+                </Button>
+                {cliente && (
+                  <Button fullWidth variant="text" onClick={() => selecionarCliente(null)}>Limpar</Button>
+                )}
+              </Box>
+            </CardContent>
+          </Card>
           <Card>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700}>Resumo</Typography>
@@ -306,14 +536,14 @@ export function PdvPage() {
               </Box>
               <Grid container spacing={1}>
                 <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={() => { setValorPagamento(saldo > 0 ? maskCurrency(saldo) : ''); setPagDialog(true); }} disabled={!venda}>Pagamento</Button></Grid>
-                <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={!venda}>Finalizar</Button></Grid>
+                <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={venda == null || (venda?.pagamentos?.length === 0 && venda?.valorPago === 0)}>Finalizar</Button></Grid>
                 <Grid item xs={12}><Button fullWidth color="error" startIcon={<CancelIcon />} onClick={cancelar} disabled={!venda}>Cancelar venda</Button></Grid>
               </Grid>
               {venda?.pagamentos && venda.pagamentos.length > 0 && (
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="caption" fontWeight={700}>PAGAMENTOS</Typography>
                   {venda.pagamentos.map((p, i) => (
-                    <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                       <Typography variant="caption">{p.formaPagamento}</Typography>
                       <Typography variant="caption">{formatCurrency(p.valor ?? 0)}</Typography>
                     </Box>
@@ -339,15 +569,72 @@ export function PdvPage() {
         <DialogActions><Button onClick={() => setPagDialog(false)}>Fechar</Button><Button variant="contained" onClick={confirmarPagamento}>Confirmar</Button></DialogActions>
       </Dialog>
 
-      <Dialog open={pesoDialog} onClose={() => setPesoDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Lançar prato por peso</DialogTitle>
-        <DialogContent>
-          <TextField fullWidth label="Peso bruto (kg)" value={maskQuantity(pesoBruto)} onChange={(e) => setPesoBruto(maskQuantity(e.target.value))} placeholder="Ex: 0,532" sx={{ mt: 1 }} inputMode="decimal" />
-          <Typography variant="caption" color="text.secondary">Integração com balanças Toledo/Filizola via leitura do peso.</Typography>
-        </DialogContent>
-        <DialogActions><Button onClick={() => setPesoDialog(false)}>Fechar</Button><Button variant="contained" onClick={lancarPeso}>Lançar</Button></DialogActions>
-      </Dialog>
-    </Box>
+       <Dialog open={pesoDialog} onClose={() => setPesoDialog(false)} maxWidth="xs" fullWidth>
+         <DialogTitle>Lançar prato por peso</DialogTitle>
+         <DialogContent>
+           <TextField fullWidth label="Peso bruto (kg)" value={maskQuantity(pesoBruto)} onChange={(e) => setPesoBruto(maskQuantity(e.target.value))} placeholder="Ex: 0,532" sx={{ mt: 1 }} inputMode="decimal" />
+           <Typography variant="caption" color="text.secondary">Integração com balanças Toledo/Filizola via leitura do peso.</Typography>
+         </DialogContent>
+         <DialogActions><Button onClick={() => setPesoDialog(false)}>Fechar</Button><Button variant="contained" onClick={lancarPeso}>Lançar</Button></DialogActions>
+       </Dialog>
+
+       {/* Dialog Selecionar Mesa para PDV */}
+       <Dialog open={mesaDialog} onClose={() => setMesaDialog(false)} maxWidth="sm" fullWidth>
+         <DialogTitle>Selecionar Mesa / Consumo</DialogTitle>
+         <DialogContent>
+           <Typography variant="body2" color="text.secondary" gutterBottom>
+             Selecione a mesa para carregar os consumos e fechar a conta no caixa:
+           </Typography>
+           <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+             {mesasComComanda.map((m: any) => (
+               <Paper key={m.id} variant="outlined" sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                 <Box>
+                   <Typography variant="subtitle1" fontWeight={600}>Mesa {m.numero} — {m.nome}</Typography>
+                   <Typography variant="body2" color="text.secondary">
+                     Comanda: #{m.comandaAtiva?.numero} · Cliente: {m.comandaAtiva?.clienteNome || 'Cliente'}
+                   </Typography>
+                 </Box>
+                 <Button variant="contained" size="small" onClick={() => carregarMesaPdv(m.comandaAtiva.id, m.numero)}>
+                   Carregar Consumo
+                 </Button>
+               </Paper>
+             ))}
+             {mesasComComanda.length === 0 && (
+               <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+                 Nenhuma mesa com comanda ativa no momento.
+               </Typography>
+             )}
+           </Box>
+         </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setMesaDialog(false)}>Fechar</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Dialog: lançar fiado no caderno */}
+        <Dialog open={fiadoDialog} onClose={() => setFiadoDialog(false)} maxWidth="xs" fullWidth>
+          <DialogTitle>Lançar fiado no caderno</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Cliente: <strong>{cliente?.nome}</strong>
+              {cliente?.cpfCnpj ? ` · ${cliente.cpfCnpj}` : ''}
+              {situacao && Number(situacao.totalDivida ?? 0) > 0 && (
+                <> · já deve {formatCurrency(Number(situacao.totalDivida ?? 0))}</>
+              )}
+            </Typography>
+            <TextField fullWidth label="Valor da dívida (R$)" value={maskCurrency(fiadoValor)}
+              onChange={(e) => setFiadoValor(maskCurrency(e.target.value))} placeholder="0,00" inputMode="decimal" sx={{ mb: 2 }} />
+            <TextField fullWidth type="date" label="Vencimento (opcional)" InputLabelProps={{ shrink: true }}
+              value={fiadoVencimento} onChange={(e) => setFiadoVencimento(e.target.value)} sx={{ mb: 2 }} />
+            <TextField fullWidth label="Descrição" value={fiadoDescricao}
+              onChange={(e) => setFiadoDescricao(e.target.value)} placeholder="Ex.: compra do dia" />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setFiadoDialog(false)}>Cancelar</Button>
+            <Button variant="contained" color="warning" onClick={lancarFiado}>Lançar dívida</Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
   );
 }
 export default PdvPage;

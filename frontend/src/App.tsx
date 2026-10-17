@@ -11,6 +11,7 @@ import { PerdasFruteiraPage } from './pages/fruteira/PerdasFruteiraPage';
 import { EtiquetasBalancaPage } from './pages/fruteira/EtiquetasBalancaPage';
 import { TabelasPrecoPage } from './pages/fruteira/TabelasPrecoPage';
 import { ComandasBuffetPage } from './pages/buffet/ComandasBuffetPage';
+import { ClientesBuffetPage } from './pages/buffet/ClientesBuffetPage';
 import { MesasBuffetPage } from './pages/buffet/MesasBuffetPage';
 import { ProdutosBuffetPage } from './pages/buffet/ProdutosBuffetPage';
 import { ReceitasBuffetPage } from './pages/buffet/ReceitasBuffetPage';
@@ -20,6 +21,7 @@ import { InventarioPage } from './pages/estoque/InventarioPage';
 import { AlertasEstoquePage } from './pages/estoque/AlertasEstoquePage';
 import { DefeitosPage } from './pages/estoque/DefeitosPage';
 import { VendasPage } from './pages/pdv/VendasPage';
+import { CadernoPage } from './pages/pdv/CadernoPage';
 import { SessoesCaixaPage } from './pages/pdv/SessoesCaixaPage';
 import { NfePage } from './pages/fiscal/NfePage';
 import { SpedFiscalPage } from './pages/fiscal/SpedFiscalPage';
@@ -28,6 +30,7 @@ import { AtivosImobilizadosPage } from './pages/fiscal/AtivosImobilizadosPage';
 import { AuditScreen } from './pages/audit/AuditScreen';
 import { ConciliacaoCartaoPage } from './pages/fiscal/ConciliacaoCartaoPage';
 import { PerfilPage } from './pages/auth/PerfilPage';
+import { MesaConsumoPublicPage } from './pages/buffet/MesaConsumoPublicPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { useAuth } from './hooks/useAuth';
 
@@ -49,6 +52,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/mesa-consumo/:mesaId?" element={<MesaConsumoPublicPage />} />
       <Route
         path="/*"
         element={
@@ -63,6 +67,7 @@ export function App() {
         {/* PDV */}
         <Route path="pdv" element={<PdvPage />} />
         <Route path="vendas" element={<VendasPage />} />
+        <Route path="caderno" element={<CadernoPage />} />
         <Route path="sessoes-caixa" element={<SessoesCaixaPage />} />
         
         {/* Fruteira */}
@@ -73,6 +78,7 @@ export function App() {
         
         {/* Buffet */}
         <Route path="buffet/comandas" element={<ComandasBuffetPage />} />
+        <Route path="buffet/clientes" element={<ClientesBuffetPage />} />
         <Route path="buffet/mesas" element={<MesasBuffetPage />} />
         <Route path="buffet/produtos" element={<ProdutosBuffetPage />} />
         <Route path="buffet/receitas" element={<ReceitasBuffetPage />} />

@@ -21,6 +21,10 @@ public class SessaoCaixaRepository implements PanacheRepositoryBase<SessaoCaixa,
         return find("pdv = ?1 and status = 'ABERTA' and deleted = false", pdv).firstResultOptional();
     }
 
+    public List<SessaoCaixa> findAllAbertas() {
+        return find("status = 'ABERTA' and deleted = false").list();
+    }
+
     public List<SessaoCaixa> findByPdv(Pdv pdv) {
         return find("pdv = ?1 and deleted = false order by dataAbertura desc", pdv).list();
     }

@@ -69,6 +69,25 @@ public class SessaoCaixaResource {
     }
 
     @POST
+    @Path("/abrir-automatico")
+    public Response abrirCaixaAutomatico(@Valid AbrirCaixaRequest request) {
+        SessaoCaixaDTO sessao = service.abrirCaixaAutomatico(request.pdvId, request.operador, request.valorInicial);
+        return Response.ok(sessao).build();
+    }
+
+    @GET
+    @Path("/validar-vinculo/{sessaoId}/{pdvId}")
+    public Response validarVinculo(@PathParam("sessaoId") UUID sessaoId, @PathParam("pdvId") UUID pdvId) {
+        boolean vinculado = service.validarVinculoPdv(sessaoId, pdvId);
+        return Response.ok(new VinculoResponse(vinculado)).build();
+    }
+
+    public static class VinculoResponse {
+        public boolean vinculado;
+        public VinculoResponse(boolean vinculado) { this.vinculado = vinculado; }
+    }
+
+    @POST
     @Path("/{id}/fechar")
     public SessaoCaixaDTO fecharCaixa(@PathParam("id") UUID id, @Valid FecharCaixaRequest request) {
         return service.fecharCaixa(id, request.operador, request.valorFinalContado);

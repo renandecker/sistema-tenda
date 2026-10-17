@@ -1,30 +1,35 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, TextField, Tooltip } from '@mui/material';
-import {
-  Add as AddIcon,
-  Refresh as RefreshIcon,
-  ReceiptLong as ReceiptLongIcon,
-} from '@mui/icons-material';
+import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, TextField, Tooltip } from '@mui/material';
+import { Add as AddIcon, Refresh as RefreshIcon, ReceiptLong as ReceiptLongIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { apiBuffet } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
 import { formatCurrency, formatDateTime, getStatusColor, getStatusLabel } from '@/utils/formatters';
 
+interface Mesa {
+  id: string;
+  numero?: string | number;
+  nome?: string;
+  status?: string;
+}
+
 interface Comanda {
   id: string;
   numero: string | number;
-  mesaNumero?: string | number;
+  mesa?: { id?: string; numero?: string | number; nome?: string };
   clienteNome?: string;
+  clienteDocumento?: string;
   status?: string;
   valorTotal?: number;
   dataAbertura?: string;
 }
 
-const emptyForm = { numero: '', mesaNumero: '', clienteNome: '', observacoes: '' };
+const emptyForm = { numero: '', mesaId: '', clienteNome: '', clienteDocumento: '', observacoes: '' };
 
 export function ComandasBuffetPage() {
   const [comandas, setComandas] = useState<Comanda[]>([]);
+  const [mesas, setMesas] = useState<Mesa[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -44,21 +49,36 @@ export function ComandasBuffetPage() {
     }
   }, [page, rowsPerPage]);
 
+  const loadMesas = useCallback(async () => {
+    try {
+      const { data } = await apiBuffet.listMesas({ size: 200 });
+      setMesas(data?.content ?? (Array.isArray(data) ? data : []));
+    } catch {
+      setMesas([]);
+    }
+  }, []);
+
   useEffect(() => {
     load();
   }, [load]);
 
+  useEffect(() => {
+    loadMesas();
+  }, [loadMesas]);
+
   const abrirComanda = async () => {
     if (!form.numero) {
-      toast.warning('Informe o número da comanda');
+      toast.warning('Informe o numero da comanda');
       return;
     }
     try {
       await apiBuffet.createComanda({
         numero: form.numero,
-        mesaNumero: form.mesaNumero || undefined,
+        mesa: form.mesaId ? { id: form.mesaId } : undefined,
         clienteNome: form.clienteNome || 'Consumidor',
+        clienteDocumento: form.clienteDocumento || undefined,
         observacoes: form.observacoes,
+        modalidade: 'POR_PESO',
       });
       toast.success('Comanda aberta com sucesso!');
       setDialog(false);
@@ -83,7 +103,7 @@ export function ComandasBuffetPage() {
     <Box>
       <PageHeader
         title="Comandas - Buffet"
-        subtitle="Gestão das comandas abertas no restaurante"
+        subtitle="Gestao das comandas abertas no restaurante"
         icon={<ReceiptLongIcon />}
         action={
           <Box sx={{ display: 'flex', gap: 1 }}>
@@ -107,8 +127,8 @@ export function ComandasBuffetPage() {
         searchPlaceholder="Buscar comandas..."
         emptyMessage="Nenhuma comanda encontrada"
         columns={[
-          { field: 'numero', headerName: 'Número', width: 110 },
-          { field: 'mesaNumero', headerName: 'Mesa', width: 100, align: 'center' },
+          { field: 'numero', headerName: 'Numero', width: 110 },
+          { field: 'mesa', headerName: 'Mesa', width: 100, align: 'center', render: (value: any) => value?.numero ?? '-' },
           { field: 'clienteNome', headerName: 'Cliente', flex: 1 },
           {
             field: 'valorTotal',
@@ -134,7 +154,7 @@ export function ComandasBuffetPage() {
           },
           {
             field: 'acoes',
-            headerName: 'Ações',
+            headerName: 'Acoes',
             width: 130,
             align: 'center',
             render: (_: any, row: Comanda) => (
@@ -158,7 +178,6 @@ export function ComandasBuffetPage() {
         ]}
       />
 
-      {/* Modal Nova Comanda */}
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Nova Comanda</DialogTitle>
         <DialogContent>
@@ -167,7 +186,7 @@ export function ComandasBuffetPage() {
               <TextField
                 fullWidth
                 size="small"
-                label="Nº da Comanda"
+                label="No da Comanda"
                 value={form.numero}
                 onChange={(e) => setForm({ ...form, numero: e.target.value })}
                 placeholder="Ex: 12"
@@ -175,13 +194,20 @@ export function ComandasBuffetPage() {
             </Grid>
             <Grid item xs={6}>
               <TextField
+                select
                 fullWidth
                 size="small"
-                label="Nº da Mesa"
-                value={form.mesaNumero}
-                onChange={(e) => setForm({ ...form, mesaNumero: e.target.value })}
-                placeholder="Ex: 4"
-              />
+                label="Mesa"
+                value={form.mesaId}
+                onChange={(e) => setForm({ ...form, mesaId: e.target.value })}
+              >
+                <MenuItem value="">Sem mesa</MenuItem>
+                {mesas.map((m) => (
+                  <MenuItem key={m.id} value={m.id}>
+                    Mesa {m.numero} {m.nome ? `- ${m.nome}` : ''}
+                  </MenuItem>
+                ))}
+              </TextField>
             </Grid>
             <Grid item xs={12}>
               <TextField
@@ -190,14 +216,24 @@ export function ComandasBuffetPage() {
                 label="Nome do Cliente"
                 value={form.clienteNome}
                 onChange={(e) => setForm({ ...form, clienteNome: e.target.value })}
-                placeholder="Ex: João da Silva"
+                placeholder="Ex: Joao da Silva"
               />
             </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth
                 size="small"
-                label="Observações"
+                label="CPF do Cliente"
+                value={form.clienteDocumento}
+                onChange={(e) => setForm({ ...form, clienteDocumento: e.target.value })}
+                placeholder="Ex: 000.000.000-00"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Observacoes"
                 value={form.observacoes}
                 onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
                 multiline

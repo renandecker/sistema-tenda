@@ -17,6 +17,7 @@ public interface MesaMapper extends BaseMapper<Mesa, MesaDTO> {
     @Mapping(target = "comandaAtiva.status", source = "comandaAtiva.status")
     MesaDTO toDTO(Mesa entity);
 
+    @Mapping(target = "status", defaultValue = "LIVRE")
     Mesa toEntity(MesaDTO dto);
 
     @Mapping(target = "id", ignore = true)

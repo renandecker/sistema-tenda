@@ -30,6 +30,7 @@ services:
       QUARKUS_DATASOURCE_USERNAME: sistematenda
       QUARKUS_DATASOURCE_PASSWORD: sistematenda
       JWT_SECRET: ${JWT_SECRET:-minha-chave-secreta-super-segura-para-desenvolvimento-local-32-chars-min}
+      CAIXA_AUTO_CLOSE_HORA: ${CAIXA_AUTO_CLOSE_HORA:-23:30}
     ports:
       - "8080:8080"
 

@@ -118,6 +118,15 @@ export const apiBuffet = {
   reservarMesa: (id: string) => api.post(`/buffet/mesas/${id}/reservar`),
   getDisponiveis: () => api.get('/buffet/mesas/disponiveis'),
 
+  // Clientes Buffet
+  listClientes: () => api.get('/buffet/clientes'),
+  getCliente: (id: string) => api.get(`/buffet/clientes/${id}`),
+  createCliente: (data: any) => api.post('/buffet/clientes', data),
+  updateCliente: (id: string, data: any) => api.put(`/buffet/clientes/${id}`, data),
+  rankingFrequentes: (limit?: number) => api.get('/buffet/clientes/ranking/frequentes', { params: { limit } }),
+  rankingConsumo: (limit?: number) => api.get('/buffet/clientes/ranking/consumo', { params: { limit } }),
+  resumoClientes: () => api.get('/buffet/clientes/resumo'),
+
   // Produtos Buffet
   listProdutos: (params?: any) => api.get('/buffet/produtos', { params }),
   getProduto: (id: string) => api.get(`/buffet/produtos/${id}`),
@@ -202,10 +211,37 @@ export const apiPdv = {
   getSessao: (id: string) => api.get(`/pdv/sessoes-caixa/${id}`),
   getAbertaByPdv: (pdvId: string) => api.get(`/pdv/sessoes-caixa/pdv/${pdvId}/aberta`),
   abrirCaixa: (data: any) => api.post('/pdv/sessoes-caixa/abrir', data),
+  abrirCaixaAutomatico: (data: any) => api.post('/pdv/sessoes-caixa/abrir-automatico', data),
+  validarVinculoPdv: (sessaoId: string, pdvId: string) => api.get(`/pdv/sessoes-caixa/validar-vinculo/${sessaoId}/${pdvId}`),
   fecharCaixa: (id: string, data: any) => api.post(`/pdv/sessoes-caixa/${id}/fechar`, data),
   sangria: (id: string, data: any) => api.post(`/pdv/sessoes-caixa/${id}/sangria`, data),
   reforco: (id: string, data: any) => api.post(`/pdv/sessoes-caixa/${id}/reforco`, data),
   getTotalVendasPeriodo: (dataInicio: string, dataFim: string) => api.get('/pdv/sessoes-caixa/total-vendas', { params: { dataInicio, dataFim } }),
+};
+
+export const apiClientes = {
+  list: (params?: any) => api.get('/clientes', { params }),
+  get: (id: string) => api.get(`/clientes/${id}`),
+  ativos: () => api.get('/clientes/ativos'),
+  search: (q: string) => api.get('/clientes/search', { params: { q } }),
+  getByDocumento: (cpfCnpj: string) => api.get(`/clientes/documento/${cpfCnpj}`),
+  create: (data: any) => api.post('/clientes', data),
+  update: (id: string, data: any) => api.put(`/clientes/${id}`, data),
+  toggleStatus: (id: string) => api.post(`/clientes/${id}/status`),
+  remove: (id: string) => api.delete(`/clientes/${id}`),
+};
+
+export const apiCaderno = {
+  listar: (params?: any) => api.get('/pdv/caderno', { params }),
+  clientesComDivida: () => api.get('/pdv/caderno/clientes'),
+  totais: () => api.get('/pdv/caderno/totais'),
+  situacaoCliente: (clienteId: string) => api.get(`/pdv/caderno/clientes/${clienteId}`),
+  situacaoPorDocumento: (documento: string) => api.get(`/pdv/caderno/documento/${documento}`),
+  get: (id: string) => api.get(`/pdv/caderno/${id}`),
+  lancar: (data: any) => api.post('/pdv/caderno', data),
+  registrarPagamento: (id: string, valor: number) => api.post(`/pdv/caderno/${id}/pagamento`, null, { params: { valor } }),
+  cancelar: (id: string, motivo?: string) => api.post(`/pdv/caderno/${id}/cancelar`, null, { params: { motivo } }),
+  excluir: (id: string) => api.delete(`/pdv/caderno/${id}`),
 };
 
 export const apiEstoque = {

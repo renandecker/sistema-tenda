@@ -40,6 +40,12 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Scheduler for auto-close caixa -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-scheduler</artifactId>
+        </dependency>
+
         <!-- WebSocket for real-time updates -->
         <dependency>
             <groupId>io.quarkus</groupId>

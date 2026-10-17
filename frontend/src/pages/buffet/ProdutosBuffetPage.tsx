@@ -15,14 +15,13 @@ interface Produto {
   nome: string;
   categoria?: string;
   precoVenda?: number;
-  estoqueAtual?: number;
   unidadeMedida?: string;
   disponivelBalcao?: boolean;
   ativo?: boolean;
   controlaEstoque?: boolean;
 }
 
-const emptyForm = { nome: '', codigoBarras: '', categoria: 'PRATO_FEITO', unidadeMedida: 'KG', precoVenda: '', estoqueAtual: '', descricao: '', disponivelBalcao: true };
+const emptyForm = { nome: '', codigoBarras: '', categoria: 'PRATO_FEITO', unidadeMedida: 'KG', precoVenda: '', descricao: '', disponivelBalcao: true };
 
 export function ProdutosBuffetPage() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -50,14 +49,14 @@ export function ProdutosBuffetPage() {
   const openNew = () => { setEditing(null); setForm(emptyForm); setDialog(true); };
   const openEdit = (p: Produto) => {
     setEditing(p);
-    setForm({ nome: p.nome, codigoBarras: p.codigoBarras ?? '', categoria: p.categoria ?? 'PRATO_FEITO', unidadeMedida: p.unidadeMedida ?? 'KG', precoVenda: maskCurrency(p.precoVenda ?? ''), estoqueAtual: maskQuantity(p.estoqueAtual ?? ''), descricao: '', disponivelBalcao: p.disponivelBalcao ?? true });
+    setForm({ nome: p.nome, codigoBarras: p.codigoBarras ?? '', categoria: p.categoria ?? 'PRATO_FEITO', unidadeMedida: p.unidadeMedida ?? 'KG', precoVenda: maskCurrency(p.precoVenda ?? ''), descricao: '', disponivelBalcao: p.disponivelBalcao ?? true });
     setDialog(true);
   };
 
   const salvar = async () => {
     if (!form.nome || !form.precoVenda) { toast.warning('Informe nome e preço'); return; }
     try {
-      const payload = { nome: form.nome, codigoBarras: form.codigoBarras || undefined, categoria: form.categoria, unidadeMedida: form.unidadeMedida, precoVenda: parseCurrency(form.precoVenda), estoqueAtual: form.estoqueAtual ? parseDecimal(form.estoqueAtual, 3) : 0, descricao: form.descricao, disponivelBalcao: form.disponivelBalcao, ativo: true, controlaEstoque: true };
+      const payload = { nome: form.nome, codigoBarras: form.codigoBarras || undefined, categoria: form.categoria, unidadeMedida: form.unidadeMedida, precoVenda: parseCurrency(form.precoVenda), descricao: form.descricao, disponivelBalcao: form.disponivelBalcao, ativo: true, controlaEstoque: true };
       if (editing) await apiBuffet.updateProduto(editing.id, payload);
       else await apiBuffet.createProduto(payload);
       toast.success('Produto salvo!');
@@ -101,7 +100,6 @@ export function ProdutosBuffetPage() {
           { field: 'nome', headerName: 'Produto', flex: 1 },
           { field: 'categoria', headerName: 'Categoria', width: 150 },
           { field: 'precoVenda', headerName: 'Preço', width: 120, align: 'right', render: (v: number) => formatCurrency(v) },
-          { field: 'estoqueAtual', headerName: 'Estoque', width: 110, align: 'right', render: (v: number) => formatNumber(v, 3) },
           { field: 'disponivelBalcao', headerName: 'Balcão', width: 110, align: 'center', render: (v: boolean) => <Chip size="small" label={v ? 'Disponível' : 'Indisponível'} color={v ? 'success' : 'default'} /> },
           { field: 'ativo', headerName: 'Status', width: 100, align: 'center', render: (v: boolean) => <Chip size="small" label={v !== false ? 'Ativo' : 'Inativo'} color={v !== false ? 'success' : 'default'} /> },
           {
@@ -132,7 +130,6 @@ export function ProdutosBuffetPage() {
               </TextField>
             </Grid>
             <Grid item xs={6}><TextField fullWidth size="small" label="Preço de venda" value={maskCurrency(form.precoVenda)} onChange={(e) => setForm({ ...form, precoVenda: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>
-            <Grid item xs={6}><TextField fullWidth size="small" label="Estoque inicial" value={maskQuantity(form.estoqueAtual)} onChange={(e) => setForm({ ...form, estoqueAtual: maskQuantity(e.target.value) })} placeholder="0" inputMode="decimal" /></Grid>
             <Grid item xs={12}><TextField fullWidth size="small" label="Descrição" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} multiline rows={2} /></Grid>
             <Grid item xs={12}>
               <TextField select fullWidth size="small" label="Disponível no balcão" value={form.disponivelBalcao ? 'S' : 'N'} onChange={(e) => setForm({ ...form, disponivelBalcao: e.target.value === 'S' })}>

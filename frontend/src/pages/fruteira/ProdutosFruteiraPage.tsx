@@ -22,8 +22,6 @@ interface Produto {
   tipo?: string;
   precoVenda?: number;
   custoMedio?: number;
-  estoqueAtual?: number;
-  estoqueMinimo?: number;
   unidade?: string;
   unidadeMedida?: string;
   ativo?: boolean;
@@ -52,8 +50,6 @@ const emptyForm = {
   unidadeMedida: 'KG',
   precoVenda: '',
   custoMedio: '',
-  estoqueAtual: '',
-  estoqueMinimo: '5',
 };
 
 export function ProdutosFruteiraPage() {
@@ -97,8 +93,6 @@ const openEdit = (p: Produto) => {
       unidadeMedida: p.unidadeMedida ?? p.unidade ?? 'KG',
       precoVenda: String(p.precoVenda ?? ''),
       custoMedio: String(p.custoMedio ?? ''),
-      estoqueAtual: String(p.estoqueAtual ?? ''),
-      estoqueMinimo: String(p.estoqueMinimo ?? 5),
     });
     setDialog(true);
   };
@@ -116,8 +110,6 @@ const openEdit = (p: Produto) => {
         unidadeMedida: form.unidadeMedida,
         precoVenda: parseCurrency(form.precoVenda),
         custoMedio: form.custoMedio ? parseCurrency(form.custoMedio) : 0,
-        estoqueAtual: form.estoqueAtual ? parseDecimal(form.estoqueAtual, 3) : 0,
-        estoqueMinimo: parseDecimal(form.estoqueMinimo, 3) || 5,
         ativo: true,
       };
 
@@ -184,14 +176,6 @@ const openEdit = (p: Produto) => {
             width: 120,
             align: 'right',
             render: (value: number) => formatCurrency(value),
-          },
-          {
-            field: 'estoqueAtual',
-            headerName: 'Estoque',
-            width: 120,
-            align: 'right',
-            render: (value: number, row: Produto) =>
-              `${formatNumber(value, 3)} ${row.unidadeMedida ?? row.unidade ?? ''}`.trim(),
           },
           {
             field: 'ativo',
@@ -297,28 +281,6 @@ const openEdit = (p: Produto) => {
                 value={maskCurrency(form.custoMedio)}
                 onChange={(e) => setForm({ ...form, custoMedio: maskCurrency(e.target.value) })}
                 placeholder="0,00"
-                inputMode="decimal"
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Estoque Atual"
-                value={maskQuantity(form.estoqueAtual)}
-                onChange={(e) => setForm({ ...form, estoqueAtual: maskQuantity(e.target.value) })}
-                placeholder="0"
-                inputMode="decimal"
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Estoque Mínimo"
-                value={maskQuantity(form.estoqueMinimo)}
-                onChange={(e) => setForm({ ...form, estoqueMinimo: maskQuantity(e.target.value) })}
-                placeholder="5"
                 inputMode="decimal"
               />
             </Grid>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, TextField, Tooltip, Typography } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon, Refresh as RefreshIcon, TableRestaurant as TableRestaurantIcon } from '@mui/icons-material';
+import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon, Refresh as RefreshIcon, TableRestaurant as TableRestaurantIcon, QrCode as QrCodeIcon } from '@mui/icons-material';
+import QRCode from 'qrcode.react';
 import { toast } from 'react-toastify';
 import { apiBuffet } from '@/services/api';
 import { PageHeader } from '@/components/PageHeader';
@@ -27,6 +28,9 @@ export function MesasBuffetPage() {
   const [editing, setEditing] = useState<Mesa | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [filtro, setFiltro] = useState('');
+  const [qrDialog, setQrDialog] = useState(false);
+  const [selectedMesaForQr, setSelectedMesaForQr] = useState<Mesa | null>(null);
+  const [printAllDialog, setPrintAllDialog] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,16 +93,17 @@ export function MesasBuffetPage() {
         title="Mesas — Buffet"
         subtitle={`Mapa em tempo real · ${resumo.livres} livres · ${resumo.ocupadas} ocupadas · ${resumo.reservadas} reservadas`}
         icon={<TableRestaurantIcon />}
-        action={
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <TextField select size="small" label="Filtrar" value={filtro} onChange={(e) => setFiltro(e.target.value)} sx={{ minWidth: 140 }}>
-              <MenuItem value="">Todas</MenuItem>
-              {['LIVRE', 'OCUPADA', 'RESERVADA', 'MANUTENCAO'].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-            </TextField>
-            <Tooltip title="Atualizar"><span><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></span></Tooltip>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditing(null); setForm(emptyForm); setDialog(true); }}>Nova mesa</Button>
-          </Box>
-        }
+         action={
+           <Box sx={{ display: 'flex', gap: 1 }}>
+             <Button variant="outlined" startIcon={<QrCodeIcon />} onClick={() => setPrintAllDialog(true)}>Imprimir QR Codes</Button>
+             <TextField select size="small" label="Filtrar" value={filtro} onChange={(e) => setFiltro(e.target.value)} sx={{ minWidth: 140 }}>
+               <MenuItem value="">Todas</MenuItem>
+               {['LIVRE', 'OCUPADA', 'RESERVADA', 'MANUTENCAO'].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+             </TextField>
+             <Tooltip title="Atualizar"><span><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></span></Tooltip>
+             <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditing(null); setForm(emptyForm); setDialog(true); }}>Nova mesa</Button>
+           </Box>
+         }
       />
       {loading && <Typography variant="body2" color="text.secondary">Carregando mapa de mesas...</Typography>}
       {!loading && filtradas.length === 0 && <Typography variant="body2" color="text.secondary">Nenhuma mesa encontrada. Cadastre as mesas do salão.</Typography>}
@@ -116,9 +121,14 @@ export function MesasBuffetPage() {
                 <Box sx={{ display: 'flex', gap: 0.5, mt: 1.5, flexWrap: 'wrap' }}>
                   <Button size="small" variant="outlined" color="warning" onClick={() => acao(m.id, apiBuffet.ocuparMesa, 'ocupada')}>Ocupar</Button>
                   <Button size="small" variant="outlined" color="success" onClick={() => acao(m.id, apiBuffet.liberarMesa, 'liberada')}>Liberar</Button>
-                  <Button size="small" variant="outlined" onClick={() => acao(m.id, apiBuffet.reservarMesa, 'reservada')}>Reservar</Button>
-                  <IconButton size="small" onClick={() => { setEditing(m); setForm({ numero: m.numero ?? '', nome: m.nome ?? '', capacidade: String(m.capacidade ?? 4), area: m.area ?? 'SALAO', observacoes: m.observacoes ?? '' }); setDialog(true); }}><EditIcon fontSize="small" /></IconButton>
-                  <IconButton size="small" color="error" onClick={() => excluir(m.id)}><DeleteIcon fontSize="small" /></IconButton>
+                   <Button size="small" variant="outlined" onClick={() => acao(m.id, apiBuffet.reservarMesa, 'reservada')}>Reservar</Button>
+                   <Tooltip title="Gerar QR Code da Mesa">
+                     <IconButton size="small" color="primary" onClick={() => { setSelectedMesaForQr(m); setQrDialog(true); }}>
+                       <QrCodeIcon fontSize="small" />
+                     </IconButton>
+                   </Tooltip>
+                   <IconButton size="small" onClick={() => { setEditing(m); setForm({ numero: m.numero ?? '', nome: m.nome ?? '', capacidade: String(m.capacidade ?? 4), area: m.area ?? 'SALAO', observacoes: m.observacoes ?? '' }); setDialog(true); }}><EditIcon fontSize="small" /></IconButton>
+                   <IconButton size="small" color="error" onClick={() => excluir(m.id)}><DeleteIcon fontSize="small" /></IconButton>
                 </Box>
               </CardContent>
             </Card>
@@ -142,7 +152,76 @@ export function MesasBuffetPage() {
         </DialogContent>
         <DialogActions><Button onClick={() => setDialog(false)}>Cancelar</Button><Button variant="contained" onClick={salvar}>Salvar</Button></DialogActions>
       </Dialog>
-    </Box>
-  );
+
+      {/* Dialog QR Code da Mesa */}
+      <Dialog open={qrDialog} onClose={() => setQrDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>QR Code — Mesa {selectedMesaForQr?.numero}</DialogTitle>
+        <DialogContent sx={{ textAlign: 'center', py: 3 }}>
+          {selectedMesaForQr && (
+            <>
+              <Box sx={{ p: 2, display: 'inline-block', bgcolor: 'white', borderRadius: 2, boxShadow: 1, mb: 2 }}>
+                <QRCode
+                  value={`${window.location.origin}/mesa-consumo/${selectedMesaForQr.id}`}
+                  size={200}
+                  level="M"
+                  includeMargin={true}
+                />
+              </Box>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Aponte a câmera do celular para acessar diretamente o cardápio e consumo da mesa sem sessão.
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                value={`${window.location.origin}/mesa-consumo/${selectedMesaForQr.id}`}
+                InputProps={{ readOnly: true }}
+                sx={{ mt: 1 }}
+              />
+            </>
+          )}
+        </DialogContent>
+         <DialogActions>
+           <Button onClick={() => window.print()}>Imprimir QR</Button>
+           <Button onClick={() => {
+             if (selectedMesaForQr) {
+               navigator.clipboard.writeText(`${window.location.origin}/mesa-consumo/${selectedMesaForQr.id}`);
+               toast.success('Link copiado!');
+             }
+           }}>Copiar Link</Button>
+           <Button variant="contained" onClick={() => setQrDialog(false)}>Fechar</Button>
+         </DialogActions>
+       </Dialog>
+
+       {/* Dialog Imprimir Todas as Mesas Ativas com QR Code */}
+       <Dialog open={printAllDialog} onClose={() => setPrintAllDialog(false)} maxWidth="md" fullWidth>
+         <DialogTitle>Imprimir QR Codes — Todas as Mesas Ativas</DialogTitle>
+         <DialogContent sx={{ py: 3 }}>
+           <Typography variant="body2" color="text.secondary" gutterBottom>
+             Visualize abaixo o QR Code e a descrição de cada mesa para impressão em lote:
+           </Typography>
+           <Grid container spacing={3} sx={{ mt: 1 }}>
+             {mesas.filter(m => m.ativa !== false).map((m) => (
+               <Grid item xs={12} sm={6} md={4} key={m.id} sx={{ textAlign: 'center', p: 2, border: '1px dashed #ccc', borderRadius: 2 }}>
+                 <Box sx={{ p: 1, display: 'inline-block', bgcolor: 'white' }}>
+                   <QRCode
+                     value={`${window.location.origin}/mesa-consumo/${m.id}`}
+                     size={140}
+                     level="M"
+                     includeMargin={true}
+                   />
+                 </Box>
+                 <Typography variant="h6" sx={{ mt: 1, fontWeight: 700 }}>Mesa {m.numero}</Typography>
+                 <Typography variant="body2" color="text.secondary">{m.nome || `Mesa ${m.numero}`} · {m.area}</Typography>
+               </Grid>
+             ))}
+           </Grid>
+         </DialogContent>
+         <DialogActions>
+           <Button variant="contained" onClick={() => window.print()}>Imprimir Todos</Button>
+           <Button onClick={() => setPrintAllDialog(false)}>Fechar</Button>
+         </DialogActions>
+       </Dialog>
+     </Box>
+   );
 }
 export default MesasBuffetPage;

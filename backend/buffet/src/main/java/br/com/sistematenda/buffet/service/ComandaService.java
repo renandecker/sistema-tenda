@@ -1,6 +1,7 @@
 package br.com.sistematenda.buffet.service;
 
 import br.com.sistematenda.buffet.dto.ComandaDTO;
+import br.com.sistematenda.buffet.service.ClienteBuffetService;
 import br.com.sistematenda.buffet.entity.Comanda;
 import br.com.sistematenda.buffet.entity.Mesa;
 import br.com.sistematenda.buffet.mapper.ComandaMapper;
@@ -35,6 +36,9 @@ public class ComandaService extends BaseCrudServiceImpl<Comanda, ComandaDTO, UUI
 
     @Inject
     ItemComandaService itemComandaService;
+
+    @Inject
+    ClienteBuffetService clienteBuffetService;
 
     @Override
     public ComandaRepository getRepository() {
@@ -120,6 +124,9 @@ public class ComandaService extends BaseCrudServiceImpl<Comanda, ComandaDTO, UUI
         }
         
         getRepository().persist(entity);
+        if (dto.getClienteDocumento() != null && !dto.getClienteDocumento().isBlank()) {
+            clienteBuffetService.registrarVisitaPorComanda(dto.getClienteNome(), dto.getClienteDocumento(), dto.getClienteTelefone(), entity.id, entity.dataAbertura);
+        }
         return mapper.toDTO(entity);
     }
 
@@ -145,13 +152,18 @@ public class ComandaService extends BaseCrudServiceImpl<Comanda, ComandaDTO, UUI
         entity.dataFechamento = LocalDateTime.now();
         entity.fechadaPor = "SISTEMA"; // TODO: usuário logado
         getRepository().persist(entity);
-        
+
+        // Atualizar consumo do cliente
+        try {
+            clienteBuffetService.atualizarConsumoComanda(comandaId, entity.valorTotal);
+        } catch (Exception ignored) {}
+
         // Liberar mesa se houver
         if (entity.mesa != null) {
             entity.mesa.status = Mesa.StatusMesa.LIVRE;
             mesaRepository.persist(entity.mesa);
         }
-        
+
         return mapper.toDTO(entity);
     }
 

@@ -17,7 +17,14 @@ import {
   Divider,
   Tooltip,
   Chip,
-} from '@mui/material';
+  Badge,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+   DialogActions,
+   Button,
+   Paper,
+ } from '@mui/material';
 import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
@@ -39,11 +46,14 @@ import {
   PriceChange as PriceChangeIcon,
   Warning as WarningIcon,
   AttachMoney as AttachMoneyIcon,
+  MenuBook as MenuBookIcon,
   ChevronRight as ChevronRightIcon,
+  Notifications as NotificationsIcon,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { usePdv } from '@/contexts/PdvContext';
 import { brand } from '@/theme';
+import { apiBuffet } from '@/services/api';
 
 const drawerWidth = 260;
 const triggerWidth = 12;
@@ -53,6 +63,7 @@ const menuItems = [
   { text: 'PDV', icon: <PointOfSaleIcon />, path: '/pdv', roles: ['PDV', 'ADMIN', 'CAIXA'] },
   { text: 'Vendas', icon: <ReceiptLongIcon />, path: '/vendas', roles: ['PDV', 'ADMIN', 'CAIXA', 'GERENTE'] },
   { text: 'Sessões de Caixa', icon: <AttachMoneyIcon />, path: '/sessoes-caixa', roles: ['ADMIN', 'GERENTE', 'CAIXA'] },
+  { text: 'Caderno (Fiado)', icon: <MenuBookIcon />, path: '/caderno', roles: ['PDV', 'ADMIN', 'CAIXA', 'GERENTE'] },
   { divider: true, section: 'Fruteira' },
   { text: 'Produtos', icon: <LocalGroceryStoreIcon />, path: '/fruteira/produtos', roles: ['FRUTEIRA', 'ADMIN', 'GERENTE', 'ESTOQUE'] },
   { text: 'Perdas/Quebras', icon: <WarningIcon />, path: '/fruteira/perdas', roles: ['FRUTEIRA', 'ADMIN', 'GERENTE', 'ESTOQUE'] },
@@ -60,6 +71,7 @@ const menuItems = [
   { text: 'Tabelas de Preço', icon: <PriceChangeIcon />, path: '/fruteira/tabelas-preco', roles: ['FRUTEIRA', 'ADMIN', 'GERENTE'] },
   { divider: true, section: 'Buffet' },
   { text: 'Comandas', icon: <ReceiptLongIcon />, path: '/buffet/comandas', roles: ['BUFFET', 'ADMIN', 'GERENTE', 'CAIXA'] },
+  { text: 'Clientes', icon: <PersonIcon />, path: '/buffet/clientes', roles: ['BUFFET', 'ADMIN', 'GERENTE', 'CAIXA'] },
   { text: 'Mesas', icon: <TableRestaurantIcon />, path: '/buffet/mesas', roles: ['BUFFET', 'ADMIN', 'GERENTE'] },
   { text: 'Produtos', icon: <RestaurantIcon />, path: '/buffet/produtos', roles: ['BUFFET', 'ADMIN', 'GERENTE', 'ESTOQUE'] },
   { text: 'Receitas/Fichas Técnicas', icon: <KitchenIcon />, path: '/buffet/receitas', roles: ['BUFFET', 'ADMIN', 'GERENTE'] },
@@ -86,6 +98,32 @@ export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [comandasAbertas, setComandasAbertas] = useState<any[]>([]);
+  const [selectedComanda, setSelectedComanda] = useState<any | null>(null);
+  const [itensComanda, setItensComanda] = useState<any[]>([]);
+
+  const carregarNotificacoes = async () => {
+    try {
+      const { data } = await apiBuffet.listComandas({ status: 'ABERTA' });
+      const list = data?.content ?? (Array.isArray(data) ? data : []);
+      setComandasAbertas(list);
+      setNotifOpen(true);
+    } catch {
+      setComandasAbertas([]);
+      setNotifOpen(true);
+    }
+  };
+
+  const verDetalhesComanda = async (comanda: any) => {
+    setSelectedComanda(comanda);
+    try {
+      const { data } = await apiBuffet.listItensComanda(comanda.id);
+      setItensComanda(data ?? []);
+    } catch {
+      setItensComanda([]);
+    }
+  };
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
@@ -199,7 +237,14 @@ export function Layout() {
               </Typography>
             </Box>
           </Tooltip>
-          <IconButton onClick={handleMenuOpen} sx={{ ml: 1 }}>
+           <Tooltip title="Notificações de pedidos das mesas">
+             <IconButton color="inherit" onClick={carregarNotificacoes} sx={{ mr: 1 }}>
+               <Badge badgeContent={comandasAbertas.length} color="error">
+                 <NotificationsIcon />
+               </Badge>
+             </IconButton>
+           </Tooltip>
+           <IconButton onClick={handleMenuOpen} sx={{ ml: 1 }}>
             <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700 }}>
               {user?.nome?.charAt(0).toUpperCase() || 'U'}
             </Avatar>
@@ -287,16 +332,60 @@ export function Layout() {
         <Outlet />
       </Box>
 
-      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} transformOrigin={{ horizontal: 'right', vertical: 'top' }} anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}>
-        <MenuItem onClick={() => { handleMenuClose(); navigate('/perfil'); }}>
-          <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
-          Perfil
-        </MenuItem>
-        <MenuItem onClick={handleLogout}>
-          <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
-          Sair
-        </MenuItem>
-      </Menu>
-    </Box>
-  );
-}
+       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} transformOrigin={{ horizontal: 'right', vertical: 'top' }} anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}>
+         <MenuItem onClick={() => { handleMenuClose(); navigate('/perfil'); }}>
+           <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
+           Perfil
+         </MenuItem>
+         <MenuItem onClick={handleLogout}>
+           <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
+           Sair
+         </MenuItem>
+       </Menu>
+
+       {/* Dialog de Notificações de Pedidos das Mesas */}
+       <Dialog open={notifOpen} onClose={() => { setNotifOpen(false); setSelectedComanda(null); }} maxWidth="sm" fullWidth>
+         <DialogTitle>Notificações — Pedidos das Mesas</DialogTitle>
+         <DialogContent>
+           {selectedComanda ? (
+             <Box>
+               <Button size="small" onClick={() => setSelectedComanda(null)} sx={{ mb: 2 }}>← Voltar para lista</Button>
+               <Typography variant="h6" gutterBottom>Comanda #{selectedComanda.numero} — Cliente: {selectedComanda.clienteNome || 'Geral'}</Typography>
+               <Typography variant="body2" color="text.secondary" gutterBottom>Subtotal: R$ {selectedComanda.subtotal?.toFixed(2) || '0,00'}</Typography>
+               <Divider sx={{ my: 1.5 }} />
+               <Typography variant="subtitle2" gutterBottom>Itens Pedidos:</Typography>
+               {itensComanda.map((it: any) => (
+                 <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
+                   <Typography variant="body2">{it.quantidade}x {it.nomeProduto}</Typography>
+                   <Typography variant="body2" fontWeight={600}>R$ {it.valorTotal?.toFixed(2)}</Typography>
+                 </Box>
+               ))}
+               {itensComanda.length === 0 && <Typography variant="body2" color="text.secondary">Nenhum item nesta comanda.</Typography>}
+             </Box>
+           ) : (
+             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
+               <Typography variant="body2" color="text.secondary" gutterBottom>Comandas abertas aguardando atendimento ou fechamento:</Typography>
+               {comandasAbertas.map((c: any) => (
+                 <Paper key={c.id} variant="outlined" sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                   <Box>
+                     <Typography variant="subtitle1" fontWeight={600}>Comanda #{c.numero} — {c.clienteNome || 'Cliente Mesa'}</Typography>
+                     <Typography variant="caption" color="text.secondary">Total: R$ {c.valorTotal?.toFixed(2) || '0,00'}</Typography>
+                   </Box>
+                   <Button variant="contained" size="small" onClick={() => verDetalhesComanda(c)}>Ver Pedidos</Button>
+                 </Paper>
+               ))}
+               {comandasAbertas.length === 0 && (
+                 <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+                   Nenhuma comanda ou pedido ativo no momento.
+                 </Typography>
+               )}
+             </Box>
+           )}
+         </DialogContent>
+         <DialogActions>
+           <Button onClick={() => { setNotifOpen(false); setSelectedComanda(null); }}>Fechar</Button>
+         </DialogActions>
+       </Dialog>
+     </Box>
+   );
+ }

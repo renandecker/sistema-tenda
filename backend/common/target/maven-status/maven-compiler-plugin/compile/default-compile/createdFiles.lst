@@ -20,6 +20,7 @@ br\com\sistematenda\common\config\PixConfig$ItauConfig.class
 br\com\sistematenda\common\service\AuditLogService.class
 br\com\sistematenda\common\enums\OrigemProduto.class
 br\com\sistematenda\common\pix\PixChargeResponse.class
+br\com\sistematenda\common\resource\ClienteResource.class
 br\com\sistematenda\common\config\PixConfig$BradescoConfig.class
 br\com\sistematenda\common\exception\GlobalExceptionMapper.class
 br\com\sistematenda\common\repository\FornecedorRepository.class

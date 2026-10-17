@@ -45,6 +45,7 @@ C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\co
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\repository\FornecedorRepository.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\resource\AuditResource.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\resource\AuthResource.java
+C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\resource\ClienteResource.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\security\JwtTokenService.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\service\AuditLogService.java
 C:\Users\redru\OneDrive\Desktop\sistema-tenda\backend\common\src\main\java\br\com\sistematenda\common\service\BaseCrudServiceImpl.java
