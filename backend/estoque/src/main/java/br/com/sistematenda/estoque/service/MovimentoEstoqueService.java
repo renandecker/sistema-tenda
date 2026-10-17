@@ -283,9 +283,6 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
 
         // Create the movement record with stock tracking
         MovimentoEstoque entity = mapper.toEntity(dto);
-        if (entity.id == null) {
-            entity.id = generateId();
-        }
         entity.estoqueAnterior = estoqueAnterior;
         entity.estoquePosterior = estoquePosterior;
         if (entity.data == null) {

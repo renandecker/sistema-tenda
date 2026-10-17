@@ -20,7 +20,7 @@ interface Perda {
   baixaEstoqueRealizada?: boolean;
 }
 
-const emptyForm = { produtoId: '', tipo: 'QUEBRA', quantidade: '', motivo: '', responsavel: '', data: new Date().toISOString().slice(0, 10), observacoes: '' };
+const emptyForm = { produtoId: '', tipo: 'AVARIA', quantidade: '', motivo: '', responsavel: '', data: new Date().toISOString().slice(0, 10), observacoes: '' };
 
 export function PerdasFruteiraPage() {
   const [perdas, setPerdas] = useState<Perda[]>([]);
@@ -61,7 +61,7 @@ export function PerdasFruteiraPage() {
   const openNew = () => { setEditing(null); setForm(emptyForm); setDialog(true); };
   const openEdit = (p: Perda) => {
     setEditing(p);
-    setForm({ produtoId: p.produto?.id ?? '', tipo: p.tipo ?? 'QUEBRA', quantidade: String(p.quantidade ?? ''), motivo: p.motivo ?? '', responsavel: p.responsavel ?? '', data: (p.data ?? '').slice(0, 10), observacoes: '' });
+    setForm({ produtoId: p.produto?.id ?? '', tipo: p.tipo ?? 'AVARIA', quantidade: String(p.quantidade ?? ''), motivo: p.motivo ?? '', responsavel: p.responsavel ?? '', data: (p.data ?? '').slice(0, 10), observacoes: '' });
     setDialog(true);
   };
 
@@ -160,7 +160,7 @@ export function PerdasFruteiraPage() {
             </Grid>
             <Grid item xs={6}>
               <TextField select fullWidth size="small" label="Tipo" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
-                {['QUEBRA', 'VENCIMENTO', 'AVARIA', 'FURTO', 'OUTROS'].map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                {['DETERIORACAO', 'AVARIA', 'VENCIMENTO', 'FURTO', 'DOACAO', 'OUTROS'].map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={6}><TextField fullWidth size="small" label="Quantidade" value={form.quantidade} onChange={(e) => setForm({ ...form, quantidade: e.target.value })} /></Grid>

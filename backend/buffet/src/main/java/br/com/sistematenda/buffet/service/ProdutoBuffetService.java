@@ -100,6 +100,22 @@ public class ProdutoBuffetService extends BaseCrudServiceImpl<ProdutoBuffet, Pro
     }
 
     @Override
+    protected void antesDePersistir(ProdutoBuffet entity) {
+        if (entity.codigo == null || entity.codigo.isBlank()) {
+            entity.codigo = gerarCodigoUnico();
+        }
+    }
+
+    private String gerarCodigoUnico() {
+        long sequencia = repository.count() + 1;
+        String codigo;
+        do {
+            codigo = String.format("B%06d", sequencia++);
+        } while (repository.findByCodigo(codigo).isPresent());
+        return codigo;
+    }
+
+    @Override
     @Transactional
     public ProdutoBuffetDTO update(UUID id, @Valid ProdutoBuffetDTO dto) {
         validateUpdate(id, dto);

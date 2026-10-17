@@ -123,12 +123,12 @@ export function ProdutosBuffetPage() {
             <Grid item xs={6}><TextField fullWidth size="small" label="Código de barras" value={form.codigoBarras} onChange={(e) => setForm({ ...form, codigoBarras: e.target.value })} placeholder="Ex: 7891234567890" /></Grid>
             <Grid item xs={6}>
               <TextField select fullWidth size="small" label="Categoria" value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })}>
-                {['PRATO_FEITO', 'SELF_SERVICE', 'BEBIDA', 'SOBREMESA', 'PORCAO', 'SALADA', 'CHURRASCO', 'OUTROS'].map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                {['PRATO_QUENTE', 'PRATO_FRIO', 'SALADA', 'GUARNICAO', 'SOBREMESA', 'BEBIDA', 'BEBIDA_ALCOOLICA', 'ADICIONAL', 'PRATO_FEITO', 'EXECUTIVO', 'OUTROS'].map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={6}>
               <TextField select fullWidth size="small" label="Unidade" value={form.unidadeMedida} onChange={(e) => setForm({ ...form, unidadeMedida: e.target.value })}>
-                {['KG', 'G', 'UN', 'PORCAO', 'L', 'ML'].map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
+                {['KG', 'G', 'UN', 'L', 'ML', 'PC', 'CX', 'FD', 'KT', 'MT', 'M2', 'M3'].map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={6}><TextField fullWidth size="small" label="Preço de venda" value={maskCurrency(form.precoVenda)} onChange={(e) => setForm({ ...form, precoVenda: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>

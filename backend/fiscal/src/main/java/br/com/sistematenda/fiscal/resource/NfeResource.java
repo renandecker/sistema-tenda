@@ -37,12 +37,12 @@ public class NfeResource {
             @QueryParam("size") @DefaultValue("20") int size,
             @QueryParam("sortBy") String sortBy,
             @QueryParam("sortDirection") String sortDirection,
-            @QueryParam("status") Nfe.StatusNfe status,
-            @QueryParam("modelo") Nfe.ModeloDocumento modelo,
+            @QueryParam("status") String status,
+            @QueryParam("modelo") String modelo,
+            @QueryParam("busca") String busca,
             @QueryParam("dataInicio") String dataInicio,
-            @QueryParam("dataFim") String dataFim,
-            @QueryParam("vendaId") UUID vendaId) {
-        PageResponse<Nfe> pageResult = repository.findPaginated(page, size, sortBy, sortDirection, status, modelo, dataInicio, dataFim, vendaId);
+            @QueryParam("dataFim") String dataFim) {
+        PageResponse<Nfe> pageResult = repository.findPaginated(page, size, sortBy, sortDirection, status, modelo, busca, dataInicio, dataFim);
         return PageResponse.of(
                 pageResult.getContent().stream().map(mapper::toDTO).toList(),
                 pageResult.getTotalElements(),

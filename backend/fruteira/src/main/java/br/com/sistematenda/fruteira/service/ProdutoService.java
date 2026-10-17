@@ -110,6 +110,22 @@ public class ProdutoService extends BaseCrudServiceImpl<Produto, ProdutoDTO, UUI
     }
 
     @Override
+    protected void antesDePersistir(Produto entity) {
+        if (entity.codigo == null || entity.codigo.isBlank()) {
+            entity.codigo = gerarCodigoUnico();
+        }
+    }
+
+    private String gerarCodigoUnico() {
+        long sequencia = repository.count() + 1;
+        String codigo;
+        do {
+            codigo = String.format("P%06d", sequencia++);
+        } while (repository.findByCodigo(codigo).isPresent());
+        return codigo;
+    }
+
+    @Override
     @Transactional
     public ProdutoDTO update(UUID id, @Valid ProdutoDTO dto) {
         validateUpdate(id, dto);

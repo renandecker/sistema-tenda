@@ -19,7 +19,7 @@ interface Produto {
   codigo?: string;
   codigoBarras?: string;
   nome: string;
-  categoria?: string;
+  tipo?: string;
   precoVenda?: number;
   custoMedio?: number;
   estoqueAtual?: number;
@@ -29,10 +29,26 @@ interface Produto {
   ativo?: boolean;
 }
 
+const TIPOS_PRODUTO: { value: string; label: string }[] = [
+  { value: 'FRUTA', label: 'Fruta' },
+  { value: 'VERDURA', label: 'Verdura' },
+  { value: 'LEGUME', label: 'Legume' },
+  { value: 'SECO', label: 'Seco/Mercearia' },
+  { value: 'BEBIDA', label: 'Bebida' },
+  { value: 'LIMPEZA', label: 'Limpeza' },
+  { value: 'HIGIENE', label: 'Higiene' },
+  { value: 'CONGELADO', label: 'Congelado' },
+  { value: 'RESFRIADO', label: 'Resfriado' },
+  { value: 'PAES', label: 'Pães/Padaria' },
+  { value: 'OUTROS', label: 'Outros' },
+];
+
+const UNIDADES_MEDIDA = ['KG', 'G', 'UN', 'L', 'ML', 'PC', 'CX', 'FD', 'KT', 'MT', 'M2', 'M3'];
+
 const emptyForm = {
   codigoBarras: '',
   nome: '',
-  categoria: 'HORTIFRUTI',
+  tipo: 'FRUTA',
   unidadeMedida: 'KG',
   precoVenda: '',
   custoMedio: '',
@@ -77,7 +93,7 @@ const openEdit = (p: Produto) => {
     setForm({
       codigoBarras: p.codigoBarras ?? '',
       nome: p.nome,
-      categoria: p.categoria ?? 'HORTIFRUTI',
+      tipo: p.tipo ?? 'FRUTA',
       unidadeMedida: p.unidadeMedida ?? p.unidade ?? 'KG',
       precoVenda: String(p.precoVenda ?? ''),
       custoMedio: String(p.custoMedio ?? ''),
@@ -96,7 +112,7 @@ const openEdit = (p: Produto) => {
       const payload = {
         codigoBarras: form.codigoBarras || undefined,
         nome: form.nome,
-        categoria: form.categoria,
+        tipo: form.tipo,
         unidadeMedida: form.unidadeMedida,
         precoVenda: parseCurrency(form.precoVenda),
         custoMedio: form.custoMedio ? parseCurrency(form.custoMedio) : 0,
@@ -161,7 +177,7 @@ const openEdit = (p: Produto) => {
         columns={[
           { field: 'codigo', headerName: 'Código', width: 110 },
           { field: 'nome', headerName: 'Produto', flex: 1 },
-          { field: 'categoria', headerName: 'Categoria', width: 150 },
+          { field: 'tipo', headerName: 'Tipo', width: 150 },
           {
             field: 'precoVenda',
             headerName: 'Preço',
@@ -239,12 +255,12 @@ const openEdit = (p: Produto) => {
                 select
                 fullWidth
                 size="small"
-                label="Categoria"
-                value={form.categoria}
-                onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+                label="Tipo"
+                value={form.tipo}
+                onChange={(e) => setForm({ ...form, tipo: e.target.value })}
               >
-                {['HORTIFRUTI', 'FRUTAS', 'VERDURAS', 'LEGUMES', 'PERCIVEIS', 'OUTROS'].map((c) => (
-                  <MenuItem key={c} value={c}>{c}</MenuItem>
+                {TIPOS_PRODUTO.map((t) => (
+                  <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
                 ))}
               </TextField>
             </Grid>
@@ -257,7 +273,7 @@ const openEdit = (p: Produto) => {
                 value={form.unidadeMedida}
                 onChange={(e) => setForm({ ...form, unidadeMedida: e.target.value })}
               >
-                {['KG', 'G', 'UN', 'PCT', 'CX', 'L'].map((u) => (
+                {UNIDADES_MEDIDA.map((u) => (
                   <MenuItem key={u} value={u}>{u}</MenuItem>
                 ))}
               </TextField>

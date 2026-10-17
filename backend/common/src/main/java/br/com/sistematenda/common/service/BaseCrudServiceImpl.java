@@ -80,9 +80,7 @@ public abstract class BaseCrudServiceImpl<E extends BaseEntity, D, ID> implement
     @Transactional
     public D create(@Valid D dto) {
         E entity = mapper.toEntity(dto);
-        if (entity.id == null) {
-            entity.id = generateId();
-        }
+        antesDePersistir(entity);
         getRepository().persist(entity);
         logAuditoria(TipoAcaoAuditoria.CRIAR, entity.id, "Criado: " + getDescricaoEntidade(entity));
         return mapper.toDTO(entity);
@@ -132,6 +130,9 @@ public abstract class BaseCrudServiceImpl<E extends BaseEntity, D, ID> implement
 
     protected UUID generateId() {
         return UUID.randomUUID();
+    }
+
+    protected void antesDePersistir(E entity) {
     }
 
     protected abstract Class<E> getEntityClass();

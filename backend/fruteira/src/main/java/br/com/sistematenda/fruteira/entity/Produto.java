@@ -27,7 +27,7 @@ import java.math.BigDecimal;
 @Check(constraints = "estoque_atual >= 0")
 public class Produto extends BaseEntity {
 
-    @Column(name = "codigo", unique = true, nullable = false, length = 50, insertable = false, updatable = false)
+    @Column(name = "codigo", unique = true, nullable = false, length = 50, updatable = false)
     @Size(max = 50)
     public String codigo;
 

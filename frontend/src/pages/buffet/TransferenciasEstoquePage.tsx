@@ -145,12 +145,12 @@ export function TransferenciasEstoquePage() {
             <Grid item xs={6}><TextField fullWidth size="small" label="Solicitado por" value={form.solicitadoPor} onChange={(e) => setForm({ ...form, solicitadoPor: e.target.value })} /></Grid>
             <Grid item xs={6}>
               <TextField select fullWidth size="small" label="Origem" value={form.origem} onChange={(e) => setForm({ ...form, origem: e.target.value })}>
-                {['FRUTEIRA', 'BUFFET', 'ESTOQUE', 'FORNECEDOR'].map((o) => <MenuItem key={o} value={o}>{o}</MenuItem>)}
+                {['FRUTEIRA', 'BUFFET', 'FORNECEDOR', 'TRANSFERENCIA'].map((o) => <MenuItem key={o} value={o}>{o}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={6}>
               <TextField select fullWidth size="small" label="Destino" value={form.destino} onChange={(e) => setForm({ ...form, destino: e.target.value })}>
-                {['FRUTEIRA', 'BUFFET', 'ESTOQUE'].map((o) => <MenuItem key={o} value={o}>{o}</MenuItem>)}
+                {['FRUTEIRA', 'BUFFET', 'TRANSFERENCIA'].map((o) => <MenuItem key={o} value={o}>{o}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={12}><TextField fullWidth size="small" label="Observações" value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} multiline rows={2} /></Grid>

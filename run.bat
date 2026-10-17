@@ -8,7 +8,6 @@ set "BACKEND=%ROOT%backend"
 set "FRONTEND=%ROOT%frontend"
 set "LOG_DIR=%ROOT%.logs"
 set "QUARKUS_VERSION=3.12.0"
-set "DB_CONTAINER=sistematenda-postgres"
 set "DB_PORT=5433"
 
 echo ============================================================
@@ -67,8 +66,12 @@ if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 echo.
 
 echo    Liberando portas 3000, 8080 e 8081 ^(caso haja execucao anterior^)...
+echo    Parando containers de app do compose (mantendo o banco)...
+pushd "%ROOT%"
+docker compose stop backend frontend >nul 2>&1
+popd
 for %%p in (3000 8080 8081) do (
-    powershell -NoProfile -Command "$c=Get-NetTCPConnection -LocalPort %%p -State Listen -ErrorAction SilentlyContinue; if($c){$c.OwningProcess | Sort-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }}" >nul 2>&1
+    powershell -NoProfile -Command "$c=Get-NetTCPConnection -LocalPort %%p -State Listen -ErrorAction SilentlyContinue; if($c){$c.OwningProcess | Sort-Object -Unique | ForEach-Object { $pr=Get-Process -Id $_ -ErrorAction SilentlyContinue; if($pr -and $pr.ProcessName -match '^(java|javaw|node)$'){ Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }}" >nul 2>&1
 )
 
 echo ============================================================
@@ -112,11 +115,27 @@ if !errorlevel! neq 0 (
     echo            Inicie o banco manualmente ^(localhost:%DB_PORT%, db/user/senha = sistematenda^).
     goto :eof
 )
-echo    Subindo PostgreSQL via Docker...
-docker start %DB_CONTAINER% >nul 2>&1
+docker info >nul 2>&1
 if !errorlevel! neq 0 (
-    docker run -d --name %DB_CONTAINER% -e POSTGRES_USER=sistematenda -e POSTGRES_PASSWORD=sistematenda -e POSTGRES_DB=sistematenda -p %DB_PORT%:5432 postgres:16 >nul
+    echo    Docker Desktop nao esta rodando. Iniciando...
+    if exist "%ProgramFiles%\Docker\Docker\Docker Desktop.exe" (
+        start "" "%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
+        echo    Aguardando o Docker Desktop iniciar...
+        for /l %%i in (1,1,90) do (
+            docker info >nul 2>&1
+            if !errorlevel! equ 0 goto :docker_up
+            timeout /t 2 /nobreak >nul
+        )
+        echo    [AVISO] Docker Desktop nao respondeu a tempo.
+    ) else (
+        echo    [AVISO] Docker Desktop nao encontrado.
+    )
 )
+:docker_up
+echo    Subindo PostgreSQL via Docker Compose...
+pushd "%ROOT%"
+docker compose up -d db >nul 2>&1
+popd
 echo    Aguardando o banco ficar pronto...
 for /l %%i in (1,1,30) do (
     call :check_port %DB_PORT%

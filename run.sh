@@ -6,7 +6,6 @@ BACKEND="$ROOT/backend"
 FRONTEND="$ROOT/frontend"
 LOG_DIR="$ROOT/.logs"
 QUARKUS_VERSION="3.12.0"
-DB_CONTAINER="sistematenda-postgres"
 DB_PORT="5433"
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
@@ -53,11 +52,16 @@ if port_open localhost "$DB_PORT"; then
   info "  PostgreSQL ativo."
 else
   if command_exists docker; then
-    echo "  Subindo PostgreSQL via Docker..."
-    docker start "$DB_CONTAINER" >/dev/null 2>&1 || \
-      docker run -d --name "$DB_CONTAINER" \
-        -e POSTGRES_USER=sistematenda -e POSTGRES_PASSWORD=sistematenda \
-        -e POSTGRES_DB=sistematenda -p "${DB_PORT}:5432" postgres:16 >/dev/null
+    if ! docker info >/dev/null 2>&1; then
+      echo "  Docker Desktop nao esta rodando. Tentando iniciar..."
+      if command_exists open; then open -a Docker >/dev/null 2>&1 || true; fi
+      for _i in $(seq 1 90); do
+        docker info >/dev/null 2>&1 && break
+        sleep 2
+      done
+    fi
+    echo "  Subindo PostgreSQL via Docker Compose..."
+    ( cd "$ROOT" && docker compose up -d db ) >/dev/null 2>&1
     if wait_for_port localhost "$DB_PORT" 30; then
       info "  PostgreSQL pronto."
     else
@@ -86,12 +90,18 @@ echo
 
 mkdir -p "$LOG_DIR"
 
+info "Parando containers de app do compose (mantendo o banco)..."
+( cd "$ROOT" && docker compose stop backend frontend ) >/dev/null 2>&1 || true
+
 info "Liberando portas 3000, 8080 e 8081 (caso haja execucao anterior)..."
 for port in 3000 8080 8081; do
-  if command_exists fuser; then
-    fuser -k "${port}/tcp" >/dev/null 2>&1 || true
-  elif command_exists lsof; then
-    lsof -t -i:"$port" | xargs -r kill -9 >/dev/null 2>&1 || true
+  if command_exists lsof; then
+    lsof -t -i:"$port" 2>/dev/null | while read -r pid; do
+      comm="$(ps -p "$pid" -o comm= 2>/dev/null || true)"
+      case "$comm" in
+        *java*|*node*) kill -9 "$pid" >/dev/null 2>&1 || true ;;
+      esac
+    done
   fi
 done
 

@@ -53,7 +53,7 @@ interface ProdutoBusca {
   origem?: 'FRUTEIRA' | 'BUFFET';
 }
 
-const FORMAS_PAGAMENTO = ['DINHEIRO', 'PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'VALE_ALIMENTACAO', 'CREDIARIO'];
+const FORMAS_PAGAMENTO = ['DINHEIRO', 'PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'VALE_ALIMENTACAO', 'VALE_REFEICAO', 'VALE_CULTURA'];
 
 export function PdvPage() {
   const [venda, setVenda] = useState<VendaAtual | null>(null);
