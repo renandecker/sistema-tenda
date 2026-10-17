@@ -55,7 +55,7 @@ export function TransferenciasEstoquePage() {
   const solicitar = async () => {
     if (!form.produtoId || !form.quantidade || !form.solicitadoPor) { toast.warning('Informe produto, quantidade e solicitante'); return; }
     try {
-      await apiBuffet.createTransferencia({ produtoId: form.produtoId, quantidade: Number(form.quantidade), origem: form.origem, destino: form.destino, solicitadoPor: form.solicitadoPor, observacoes: form.observacoes });
+      await apiBuffet.createTransferencia({ produto: { id: form.produtoId }, quantidade: Number(form.quantidade), origem: form.origem, destino: form.destino, solicitadoPor: form.solicitadoPor, observacoes: form.observacoes });
       toast.success('Transferência solicitada!');
       setDialog(false);
       setForm({ produtoId: '', quantidade: '', origem: 'FRUTEIRA', destino: 'BUFFET', solicitadoPor: '', observacoes: '' });

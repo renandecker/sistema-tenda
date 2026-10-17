@@ -81,7 +81,7 @@ export function PdvPage() {
   const novaVenda = async () => {
     setLoading(true);
     try {
-      const { data } = await apiPdv.createVenda({ data: new Date().toISOString(), observacoes: 'Venda PDV' });
+      const { data } = await apiPdv.createVenda({ observacoes: 'Venda PDV' });
       setVenda(data);
       toast.success(`Venda ${data?.numero ?? ''} iniciada`);
     } catch {

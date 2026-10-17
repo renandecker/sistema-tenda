@@ -17,6 +17,7 @@ import br.com.sistematenda.common.service.BaseCrudServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 
@@ -36,6 +37,9 @@ public class TransferenciaEstoqueService extends BaseCrudServiceImpl<Transferenc
 
     @Inject
     Event<StockMovementEvent> stockMovementEvent;
+
+    @Inject
+    EntityManager entityManager;
 
     @Override
     protected TransferenciaEstoqueRepository getRepository() {
@@ -84,14 +88,17 @@ public class TransferenciaEstoqueService extends BaseCrudServiceImpl<Transferenc
     public TransferenciaEstoqueDTO create(@Valid TransferenciaEstoqueDTO dto) {
         validateCreate(dto);
         
+        UUID produtoId = UUID.fromString(dto.getProduto().getId());
         TransferenciaEstoque entity = mapper.toEntity(dto);
+        entity.produto = entityManager.getReference(Produto.class, produtoId);
         entity.data = LocalDateTime.now();
         entity.status = TransferenciaEstoque.StatusTransferencia.PENDENTE;
-        entity.solicitadoPor = "SISTEMA"; // TODO: usuário logado
+        entity.solicitadoPor = dto.getSolicitadoPor() != null && !dto.getSolicitadoPor().isBlank()
+            ? dto.getSolicitadoPor() : "SISTEMA";
         
         // Buscar custo do produto na fruteira
-        ProdutoDTO produtoFruteira = produtoService.findById(UUID.fromString(dto.getProduto().getId()));
-        entity.custoUnitario = produtoFruteira.getCustoMedio();
+        ProdutoDTO produtoFruteira = produtoService.findById(produtoId);
+        entity.custoUnitario = produtoFruteira.getCustoMedio() != null ? produtoFruteira.getCustoMedio() : BigDecimal.ZERO;
         entity.valorTotal = entity.quantidade.multiply(entity.custoUnitario);
         
         getRepository().persist(entity);

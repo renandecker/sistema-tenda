@@ -26,8 +26,8 @@ public class TefService {
     @Inject
     ObjectMapper objectMapper;
 
-    @ConfigProperty(name = "tef.agent.url", defaultValue = "http://localhost:8080")
-    String tefAgentUrl;
+    @Inject
+    org.eclipse.microprofile.config.Config config;
 
     @ConfigProperty(name = "tef.timeout.seconds", defaultValue = "120")
     int timeoutSeconds;
@@ -38,11 +38,19 @@ public class TefService {
 
     private final Map<String, CompletableFuture<TefTransacaoResponse>> pendingTransactions = new ConcurrentHashMap<>();
 
+    private String getEffectiveTefAgentUrl() {
+        return config.getOptionalValue("tef.ngrok.url", String.class)
+                .filter(url -> url != null && !url.isBlank())
+                .orElseGet(() -> config.getOptionalValue("tef.agent.url", String.class)
+                        .filter(url -> url != null && !url.isBlank())
+                        .orElse("http://localhost:8080"));
+    }
+
     public TefTransacaoResponse iniciarTransacao(TefIniciarTransacaoRequest request) {
         try {
             String json = objectMapper.writeValueAsString(request);
             HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(URI.create(tefAgentUrl + "/tef/command"))
+                    .uri(URI.create(getEffectiveTefAgentUrl() + "/tef/command"))
                     .header("Content-Type", "application/json")
                     .timeout(Duration.ofSeconds(timeoutSeconds))
                     .POST(HttpRequest.BodyPublishers.ofString(json))
@@ -112,7 +120,7 @@ public class TefService {
         try {
             String json = objectMapper.writeValueAsString(Map.of("command", "CONFIRMAR_TRANSACAO", "params", Map.of("originalRequestId", requestId)));
             HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(URI.create(tefAgentUrl + "/tef/command"))
+                    .uri(URI.create(getEffectiveTefAgentUrl() + "/tef/command"))
                     .header("Content-Type", "application/json")
                     .timeout(Duration.ofSeconds(30))
                     .POST(HttpRequest.BodyPublishers.ofString(json))
@@ -131,7 +139,7 @@ public class TefService {
         try {
             String json = objectMapper.writeValueAsString(Map.of("command", "DESFAZER_TRANSACAO", "params", Map.of("originalRequestId", requestId)));
             HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(URI.create(tefAgentUrl + "/tef/command"))
+                    .uri(URI.create(getEffectiveTefAgentUrl() + "/tef/command"))
                     .header("Content-Type", "application/json")
                     .timeout(Duration.ofSeconds(30))
                     .POST(HttpRequest.BodyPublishers.ofString(json))
@@ -148,7 +156,7 @@ public class TefService {
         try {
             String json = objectMapper.writeValueAsString(Map.of("command", "REIMPRIMIR_COMPROVANTE", "params", Map.of("originalRequestId", requestId, "via", via)));
             HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(URI.create(tefAgentUrl + "/tef/command"))
+                    .uri(URI.create(getEffectiveTefAgentUrl() + "/tef/command"))
                     .header("Content-Type", "application/json")
                     .timeout(Duration.ofSeconds(30))
                     .POST(HttpRequest.BodyPublishers.ofString(json))

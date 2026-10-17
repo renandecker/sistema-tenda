@@ -120,10 +120,20 @@ public class VendaRepository implements PanacheRepositoryBase<Venda, UUID> {
     }
 
     public String getProximoNumero(UUID pdvId) {
-        Long ultima = find("select max(numeroUltimaVenda) from Venda where pdvId = ?1 and deleted = false", pdvId)
-            .project(Long.class)
+        // Numero e unico globalmente (idx_pdv_venda_numero), portanto o sequencial
+        // e calculado sobre todas as vendas para evitar colisao entre PDVs.
+        String ultimoNumero = find("select max(numero) from Venda where deleted = false")
+            .project(String.class)
             .firstResultOptional()
-            .orElse(0L);
-        return String.format("%06d", ultima + 1);
+            .orElse(null);
+        long sequencia = 0L;
+        if (ultimoNumero != null) {
+            try {
+                sequencia = Long.parseLong(ultimoNumero.trim());
+            } catch (NumberFormatException ignored) {
+                sequencia = 0L;
+            }
+        }
+        return String.format("%06d", sequencia + 1);
     }
 }

@@ -10,6 +10,7 @@ import br.com.sistematenda.buffet.repository.ProdutoBuffetRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import java.math.BigDecimal;
@@ -27,6 +28,9 @@ public class StockMovementEventObserver {
 
     @Inject
     ProdutoBuffetRepository produtoBuffetRepository;
+
+    @Inject
+    EntityManager entityManager;
 
     @Transactional
     public void onStockMovement(@Observes StockMovementEvent event) {
@@ -76,15 +80,12 @@ public class StockMovementEventObserver {
 
         // Create the movement record with stock tracking
         MovimentoEstoque entity = new MovimentoEstoque();
-        entity.id = UUID.randomUUID();
-        
+
         if (event.getProdutoFruteiraId() != null) {
-            entity.produtoFruteira = new Produto();
-            entity.produtoFruteira.id = event.getProdutoFruteiraId();
+            entity.produtoFruteira = entityManager.getReference(Produto.class, event.getProdutoFruteiraId());
         }
         if (event.getProdutoBuffetId() != null) {
-            entity.produtoBuffet = new ProdutoBuffet();
-            entity.produtoBuffet.id = event.getProdutoBuffetId();
+            entity.produtoBuffet = entityManager.getReference(ProdutoBuffet.class, event.getProdutoBuffetId());
         }
         
         entity.tipo = mapTipoMovimento(event.getTipo());

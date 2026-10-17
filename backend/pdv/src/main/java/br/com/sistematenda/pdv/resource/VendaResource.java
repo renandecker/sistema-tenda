@@ -20,7 +20,6 @@ import java.util.UUID;
 
 @Path("/pdv/vendas")
 @Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
 public class VendaResource {
 
     @Inject
@@ -62,6 +61,7 @@ public class VendaResource {
     }
 
     @POST
+    @Consumes(MediaType.APPLICATION_JSON)
     public Response criar(@Valid VendaDTO dto) {
         VendaDTO criado = service.create(dto);
         return Response.status(Response.Status.CREATED).entity(criado).build();
@@ -69,6 +69,7 @@ public class VendaResource {
 
     @PUT
     @Path("/{id}")
+    @Consumes(MediaType.APPLICATION_JSON)
     public VendaDTO atualizar(@PathParam("id") UUID id, @Valid VendaDTO dto) {
         return service.update(id, dto);
     }
@@ -124,6 +125,7 @@ public class VendaResource {
 
     @POST
     @Path("/{id}/pagamento")
+    @Consumes(MediaType.APPLICATION_JSON)
     public VendaDTO processarPagamento(@PathParam("id") UUID id, VendaService.PagamentoRequest request) {
         return service.processarPagamento(id, request);
     }

@@ -14,6 +14,7 @@ import br.com.sistematenda.common.service.BaseCrudServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 
@@ -34,6 +35,9 @@ public class PerdaService extends BaseCrudServiceImpl<Perda, PerdaDTO, UUID> {
 
     @Inject
     Event<StockMovementEvent> stockMovementEvent;
+
+    @Inject
+    EntityManager entityManager;
 
     @Override
     protected PerdaRepository getRepository() {
@@ -96,8 +100,7 @@ public class PerdaService extends BaseCrudServiceImpl<Perda, PerdaDTO, UUID> {
         validateCreate(dto);
         
         Perda entity = mapper.toEntity(dto);
-        entity.produto = new Produto();
-        entity.produto.id = UUID.fromString(dto.getProduto().getId());
+        entity.produto = entityManager.getReference(Produto.class, UUID.fromString(dto.getProduto().getId()));
         
         entity.valorTotal = entity.custoUnitario.multiply(entity.quantidade);
         entity.hora = LocalDateTime.now();

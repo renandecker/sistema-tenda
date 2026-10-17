@@ -11,6 +11,7 @@ import br.com.sistematenda.common.exception.ValidationException;
 import br.com.sistematenda.common.service.BaseCrudServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 
@@ -27,6 +28,9 @@ public class EtiquetaBalancaService extends BaseCrudServiceImpl<EtiquetaBalanca,
 
     @Inject
     ProdutoService produtoService;
+
+    @Inject
+    EntityManager entityManager;
 
     @Override
     protected EtiquetaBalancaRepository getRepository() {
@@ -81,8 +85,7 @@ public class EtiquetaBalancaService extends BaseCrudServiceImpl<EtiquetaBalanca,
         validateCreate(dto);
         
         EtiquetaBalanca entity = mapper.toEntity(dto);
-        entity.produto = new Produto();
-        entity.produto.id = UUID.fromString(dto.getProduto().getId());
+        entity.produto = entityManager.getReference(Produto.class, UUID.fromString(dto.getProduto().getId()));
         
         // Sincronizar preço com produto se não informado
         if (entity.preco == null || entity.preco.compareTo(BigDecimal.ZERO) == 0) {

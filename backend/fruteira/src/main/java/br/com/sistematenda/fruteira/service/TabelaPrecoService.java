@@ -10,6 +10,7 @@ import br.com.sistematenda.common.exception.ValidationException;
 import br.com.sistematenda.common.service.BaseCrudServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 
@@ -27,6 +28,9 @@ public class TabelaPrecoService extends BaseCrudServiceImpl<TabelaPreco, TabelaP
 
     @Inject
     ProdutoService produtoService;
+
+    @Inject
+    EntityManager entityManager;
 
     @Override
     protected TabelaPrecoRepository getRepository() {
@@ -77,8 +81,7 @@ public class TabelaPrecoService extends BaseCrudServiceImpl<TabelaPreco, TabelaP
         validateCreate(dto);
         
         TabelaPreco entity = mapper.toEntity(dto);
-        entity.produto = new Produto();
-        entity.produto.id = UUID.fromString(dto.getProduto().getId());
+        entity.produto = entityManager.getReference(Produto.class, UUID.fromString(dto.getProduto().getId()));
         entity.aplicadaEm = LocalDateTime.now();
         entity.aplicadaPor = "SISTEMA"; // TODO: pegar usuário logado
         
