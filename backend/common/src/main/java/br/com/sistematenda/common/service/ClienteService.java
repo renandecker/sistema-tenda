@@ -96,29 +96,18 @@ public class ClienteService extends BaseCrudServiceImpl<Cliente, ClienteDTO, UUI
     }
 
     private void validateCreate(ClienteDTO dto) {
-        if (repository.findByEmail(dto.getEmail()).isPresent()) {
+        if (dto.getNome() == null || dto.getNome().isBlank()) {
+            throw new ValidationException("Nome do cliente é obrigatório");
+        }
+        if (dto.getEmail() != null && repository.findByEmail(dto.getEmail()).isPresent()) {
             throw new ValidationException("Já existe um cliente com este email: " + dto.getEmail());
         }
-        if (repository.findByCpfCnpj(dto.getCpfCnpj()).isPresent()) {
+        if (dto.getCpfCnpj() != null && !dto.getCpfCnpj().isBlank()
+                && repository.findByCpfCnpj(dto.getCpfCnpj()).isPresent()) {
             throw new ValidationException("Já existe um cliente com este CPF/CNPJ: " + dto.getCpfCnpj());
         }
-        
-        // Validações específicas por tipo de pessoa
-        if (dto.isFisica()) {
-            if (dto.getDataNascimento() == null) {
-                throw new ValidationException("Data de nascimento é obrigatória para pessoa física");
-            }
-            if (dto.getRgIe() == null || dto.getRgIe().isBlank()) {
-                throw new ValidationException("RG é obrigatório para pessoa física");
-            }
-        } else if (dto.isJuridica()) {
-            if (dto.getInscricaoEstadual() == null || dto.getInscricaoEstadual().isBlank()) {
-                throw new ValidationException("Inscrição estadual é obrigatória para pessoa jurídica");
-            }
-            if (dto.getNomeFantasia() == null || dto.getNomeFantasia().isBlank()) {
-                throw new ValidationException("Nome fantasia é obrigatório para pessoa jurídica");
-            }
-        }
+        // RG, IE, data de nascimento e nome fantasia são opcionais (cadastro rápido via PDV);
+        // podem ser completados depois na tela de cadastro completo do cliente.
     }
 
     private void validateUpdate(UUID id, ClienteDTO dto) {

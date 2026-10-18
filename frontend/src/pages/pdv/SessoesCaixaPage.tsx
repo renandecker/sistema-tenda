@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, TextField, Tooltip, Typography } from '@mui/material';
-import { Add as AddIcon, AttachMoney as AttachMoneyIcon, Refresh as RefreshIcon, Remove as RemoveIcon, Visibility as ViewIcon } from '@mui/icons-material';
+import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, TextField, Tooltip, Typography } from '@mui/material';
+import { Add as AddIcon, AttachMoney as AttachMoneyIcon, LockOpen as LockOpenIcon, Refresh as RefreshIcon, Remove as RemoveIcon, Visibility as ViewIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { apiPdv } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
@@ -34,6 +34,9 @@ export function SessoesCaixaPage() {
   const [movForm, setMovForm] = useState({ valor: '', motivo: '', operador: '' });
   const [detalhe, setDetalhe] = useState<Sessao | null>(null);
   const [vinculoOk, setVinculoOk] = useState<boolean | null>(null);
+  const [abrirDialog, setAbrirDialog] = useState(false);
+  const [pdvs, setPdvs] = useState<{ id: string; codigo?: string; nome?: string }[]>([]);
+  const [formAbrir, setFormAbrir] = useState({ pdvId: '', operador: '', valorInicial: '' });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,33 +50,77 @@ export function SessoesCaixaPage() {
     }
   }, [page, rowsPerPage]);
 
-  // Abertura automática do caixa para o usuário logado (PDV vinculado)
+  // Resolve o PDV do usuário logado; se não houver vínculo, usa o primeiro PDV ativo
+  const resolverPdvId = useCallback(async (): Promise<string | null> => {
+    if (user?.pdvId) return user.pdvId;
+    try {
+      const { data } = await apiPdv.listPdvs({ size: 200, ativo: true });
+      const list = data?.content ?? (Array.isArray(data) ? data : []);
+      return list[0]?.id ?? null;
+    } catch {
+      return null;
+    }
+  }, [user?.pdvId]);
+
+  // Abertura automática do caixa ao logar/entrar na tela
   const autoAbrir = useCallback(async () => {
-    const pdvId = user?.pdvId;
+    const pdvId = await resolverPdvId();
     if (!pdvId) return;
     try {
-      await apiPdv.abrirCaixaAutomatico({ pdvId, operadorAbertura: user?.nome ?? 'SISTEMA', valorInicial: 0 });
-      // Verifica vínculo PDV x caixa
+      await apiPdv.abrirCaixaAutomatico({ pdvId, operador: user?.nome ?? 'SISTEMA', valorInicial: 0 });
       try {
-        const { data } = await apiPdv.listSessoes({ page: 0, size: 1 });
-        const aberta = (data?.content ?? []).find((s: any) => s?.status === 'ABERTA' && s?.pdv?.id === pdvId);
-        if (aberta) {
+        const { data: aberta } = await apiPdv.getAbertaByPdv(pdvId);
+        if (aberta?.id) {
           const { data: v } = await apiPdv.validarVinculoPdv(aberta.id, pdvId);
           setVinculoOk(!!v?.vinculado);
         }
       } catch { setVinculoOk(null); }
       load();
     } catch (e: any) {
-      // silencioso se já existe
+      const msg = e?.response?.data?.message || '';
+      if (!msg.includes('Já existe caixa aberto')) {
+        toast.error(msg || 'Erro ao abrir caixa automaticamente');
+      } else {
+        load();
+      }
     }
-  }, [user, load]);
+  }, [user, resolverPdvId, load]);
 
   useEffect(() => { load(); autoAbrir(); }, [load, autoAbrir]);
+
+  const abrirDialogManual = async () => {
+    try {
+      const { data } = await apiPdv.listPdvs({ size: 200, ativo: true });
+      const list = data?.content ?? (Array.isArray(data) ? data : []);
+      setPdvs(list);
+      const pdvId = await resolverPdvId();
+      setFormAbrir({ pdvId: pdvId ?? list[0]?.id ?? '', operador: user?.nome ?? '', valorInicial: '' });
+      setAbrirDialog(true);
+    } catch {
+      toast.error('Erro ao listar PDVs');
+    }
+  };
+
+  const confirmarAbertura = async () => {
+    if (!formAbrir.pdvId) { toast.warning('Selecione o PDV'); return; }
+    try {
+      await apiPdv.abrirCaixa({
+        pdvId: formAbrir.pdvId,
+        operador: formAbrir.operador || user?.nome || 'SISTEMA',
+        valorInicial: parseCurrency(formAbrir.valorInicial),
+      });
+      toast.success('Caixa aberto!');
+      setAbrirDialog(false);
+      load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao abrir caixa');
+    }
+  };
 
   const confirmarFechamento = async () => {
     if (!fecharId) return;
     try {
-      await apiPdv.fecharCaixa(fecharId, { operadorFechamento: formFechar.operadorFechamento, valorFinalContado: parseCurrency(formFechar.valorFinalContado), observacoesFechamento: formFechar.observacoesFechamento });
+      await apiPdv.fecharCaixa(fecharId, { operador: formFechar.operadorFechamento, valorFinalContado: parseCurrency(formFechar.valorFinalContado) });
       toast.success('Caixa fechado!');
       setFecharId(null);
       setFormFechar({ operadorFechamento: '', valorFinalContado: '', observacoesFechamento: '' });
@@ -86,7 +133,7 @@ export function SessoesCaixaPage() {
   const confirmarMov = async () => {
     if (!movId || !movForm.valor || !movForm.motivo) { toast.warning('Informe valor e motivo'); return; }
     try {
-      const payload = { valor: parseCurrency(movForm.valor), motivo: movForm.motivo, operador: movForm.operador };
+      const payload = { valor: parseCurrency(movForm.valor), descricao: movForm.motivo, operador: movForm.operador };
       if (movTipo === 'sangria') await apiPdv.sangria(movId, payload);
       else await apiPdv.reforco(movId, payload);
       toast.success(`${movTipo === 'sangria' ? 'Sangria' : 'Reforço'} registrada!`);
@@ -119,6 +166,7 @@ export function SessoesCaixaPage() {
             )}
             <Tooltip title="Fechamento automático às 23:30 (configurável via CAIXA_AUTO_CLOSE_HORA)"><span><Typography variant="caption" color="text.secondary">Auto-fechamento 23:30</Typography></span></Tooltip>
             <Tooltip title="Atualizar"><span><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></span></Tooltip>
+            <Button variant="contained" size="small" startIcon={<LockOpenIcon />} onClick={abrirDialogManual}>Abrir caixa</Button>
           </Box>
         }
       />
@@ -183,6 +231,23 @@ export function SessoesCaixaPage() {
           <Typography variant="caption" color="text.secondary">Divergências entre sistema e contado aparecem aqui para conferência do operador.</Typography>
         </DialogContent>
         <DialogActions><Button variant="contained" onClick={() => setDetalhe(null)}>Fechar</Button></DialogActions>
+      </Dialog>
+
+      <Dialog open={abrirDialog} onClose={() => setAbrirDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Abrir caixa</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12}>
+              <TextField select fullWidth size="small" label="PDV / Terminal" value={formAbrir.pdvId}
+                onChange={(e) => setFormAbrir({ ...formAbrir, pdvId: e.target.value })}>
+                {pdvs.map((p) => <MenuItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12}><TextField fullWidth size="small" label="Operador" value={formAbrir.operador} onChange={(e) => setFormAbrir({ ...formAbrir, operador: e.target.value })} /></Grid>
+            <Grid item xs={12}><TextField fullWidth size="small" label="Fundo inicial (R$)" value={maskCurrency(formAbrir.valorInicial)} onChange={(e) => setFormAbrir({ ...formAbrir, valorInicial: maskCurrency(e.target.value) })} placeholder="0,00" inputMode="decimal" /></Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions><Button onClick={() => setAbrirDialog(false)}>Cancelar</Button><Button variant="contained" onClick={confirmarAbertura}>Abrir caixa</Button></DialogActions>
       </Dialog>
     </Box>
   );

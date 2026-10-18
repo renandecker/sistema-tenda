@@ -58,3 +58,25 @@ export function parseDecimal(value: string | number | null | undefined, maxDecim
 export function parseCurrency(value: string | number | null | undefined): number {
   return parseDecimal(value, 2);
 }
+
+export function maskCpfCnpj(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return '';
+  const d = String(value).replace(/\D/g, '').slice(0, 14);
+  if (!d) return '';
+  if (d.length <= 11) {
+    const parts = [d.slice(0, 3), d.slice(3, 6), d.slice(6, 9)].filter(Boolean);
+    let out = parts.join('.');
+    if (d.length > 9) out += `-${d.slice(9, 11)}`;
+    return out;
+  }
+  const parts = [d.slice(0, 2), d.slice(2, 5), d.slice(5, 8)].filter(Boolean);
+  let out = parts.join('.');
+  if (d.length > 8) out += `/${d.slice(8, 12)}`;
+  if (d.length > 12) out += `-${d.slice(12, 14)}`;
+  return out;
+}
+
+export function parseDocument(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return '';
+  return String(value).replace(/\D/g, '');
+}

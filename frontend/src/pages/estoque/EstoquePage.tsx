@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Box, Button, Card, CardContent, Chip, Grid, IconButton, MenuItem, TextField, Tooltip, Typography } from '@mui/material';
-import { Download as DownloadIcon, Inventory as InventoryIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, TextField, Tooltip, Typography } from '@mui/material';
+import { Add as AddIcon, Download as DownloadIcon, Inventory as InventoryIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { apiBuffet, apiEstoque, apiFruteira } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
 import { formatDateTime, formatNumber } from '@/utils/formatters';
+import { maskCurrency, maskQuantity, parseCurrency, parseDecimal } from '@/utils/masks';
 
 interface Movimento {
   id: string;
@@ -22,6 +23,7 @@ interface Movimento {
 
 interface Saldo {
   id: string;
+  produtoId: string;
   codigo?: string;
   nome: string;
   local: string;
@@ -37,6 +39,9 @@ export function EstoquePage() {
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [tipo, setTipo] = useState('');
   const [local, setLocal] = useState('');
+  const [movDialog, setMovDialog] = useState(false);
+  const [registrando, setRegistrando] = useState(false);
+  const [movForm, setMovForm] = useState({ produtoId: '', operacao: 'ENTRADA_COMPRA', quantidade: '', custo: '', numeroDocumento: '', observacoes: '', responsavel: '' });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,8 +56,8 @@ export function EstoquePage() {
       const listF: any[] = f.status === 'fulfilled' ? (f.value.data?.content ?? (Array.isArray(f.value.data) ? f.value.data : [])) : [];
       const listB: any[] = b.status === 'fulfilled' ? (b.value.data?.content ?? (Array.isArray(b.value.data) ? b.value.data : [])) : [];
       setSaldos([
-        ...listF.map((p) => ({ id: `F-${p.id}`, codigo: p.codigo, nome: p.nome, local: 'FRUTEIRA', estoque: Number(p.estoqueAtual ?? 0), minimo: Number(p.estoqueMinimo ?? 0) })),
-        ...listB.map((p) => ({ id: `B-${p.id}`, codigo: p.codigo, nome: p.nome, local: 'BUFFET', estoque: Number(p.estoqueAtual ?? 0), minimo: Number(p.estoqueMinimo ?? 0) })),
+        ...listF.map((p) => ({ id: `F-${p.id}`, produtoId: p.id, codigo: p.codigo, nome: p.nome, local: 'FRUTEIRA', estoque: Number(p.estoqueAtual ?? 0), minimo: Number(p.estoqueMinimo ?? 0) })),
+        ...listB.map((p) => ({ id: `B-${p.id}`, produtoId: p.id, codigo: p.codigo, nome: p.nome, local: 'BUFFET', estoque: Number(p.estoqueAtual ?? 0), minimo: Number(p.estoqueMinimo ?? 0) })),
       ]);
     } catch {
       setMovimentos([]);
@@ -62,6 +67,49 @@ export function EstoquePage() {
   }, [page, rowsPerPage]);
 
   useEffect(() => { load(); }, [load]);
+
+  const abrirMovDialog = () => {
+    setMovForm({ produtoId: '', operacao: 'ENTRADA_COMPRA', quantidade: '', custo: '', numeroDocumento: '', observacoes: '', responsavel: '' });
+    setMovDialog(true);
+  };
+
+  const registrarMovimento = async () => {
+    const saldo = saldos.find((s) => s.id === movForm.produtoId);
+    if (!saldo) { toast.warning('Selecione o produto'); return; }
+    const qtd = parseDecimal(movForm.quantidade, 3);
+    if (qtd <= 0) { toast.warning('Informe a quantidade'); return; }
+    const isFruteira = saldo.local === 'FRUTEIRA';
+    const payload: any = {
+      quantidade: qtd,
+      custoUnitario: movForm.custo ? parseCurrency(movForm.custo) : undefined,
+      responsavel: movForm.responsavel || undefined,
+    };
+    if (isFruteira) payload.produtoFruteiraId = saldo.produtoId;
+    else payload.produtoBuffetId = saldo.produtoId;
+    setRegistrando(true);
+    try {
+      if (movForm.operacao === 'ENTRADA_COMPRA') {
+        await apiEstoque.registrarEntradaCompra({
+          ...payload,
+          numeroDocumento: movForm.numeroDocumento || undefined,
+          documentoReferencia: movForm.observacoes || undefined,
+        });
+      } else {
+        await apiEstoque.registrarAjuste({
+          ...payload,
+          tipo: movForm.operacao,
+          observacoes: movForm.observacoes || undefined,
+        });
+      }
+      toast.success('Movimento registrado e saldo atualizado!');
+      setMovDialog(false);
+      load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao registrar movimento');
+    } finally {
+      setRegistrando(false);
+    }
+  };
 
   const filtrados = useMemo(() => saldos.filter((s) => (!local || s.local === local)), [saldos, local]);
   const totalItens = filtrados.length;
@@ -90,6 +138,7 @@ export function EstoquePage() {
         action={
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Tooltip title="Atualizar"><span><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></span></Tooltip>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={abrirMovDialog}>Registrar estoque</Button>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => exportar(filtrados, 'saldos-estoque')}>Exportar saldos</Button>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => exportar(movimentos, 'movimentos-estoque')}>Exportar movimentos</Button>
           </Box>
@@ -150,6 +199,57 @@ export function EstoquePage() {
           { field: 'responsavel', headerName: 'Responsável', width: 150 },
         ]}
       />
+
+      <Dialog open={movDialog} onClose={() => setMovDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Registrar quantidade em estoque</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12} sm={7}>
+              <TextField select fullWidth size="small" label="Produto" value={movForm.produtoId}
+                onChange={(e) => setMovForm({ ...movForm, produtoId: e.target.value })}>
+                <MenuItem value=""><em>Selecione</em></MenuItem>
+                {saldos.map((s) => (
+                  <MenuItem key={s.id} value={s.id}>{s.nome}{s.codigo ? ` (${s.codigo})` : ''} — {s.local} · saldo {formatNumber(s.estoque, 3)}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={5}>
+              <TextField select fullWidth size="small" label="Operação" value={movForm.operacao}
+                onChange={(e) => setMovForm({ ...movForm, operacao: e.target.value })}>
+                <MenuItem value="ENTRADA_COMPRA">Entrada (compra)</MenuItem>
+                <MenuItem value="ENTRADA_AJUSTE">Ajuste de entrada</MenuItem>
+                <MenuItem value="SAIDA_AJUSTE">Ajuste de saída</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField fullWidth size="small" label="Quantidade" value={maskQuantity(movForm.quantidade)}
+                onChange={(e) => setMovForm({ ...movForm, quantidade: maskQuantity(e.target.value) })}
+                placeholder="0,000" inputMode="decimal" />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField fullWidth size="small" label="Custo unitário (R$)" value={maskCurrency(movForm.custo)}
+                onChange={(e) => setMovForm({ ...movForm, custo: maskCurrency(e.target.value) })}
+                placeholder="0,00" inputMode="decimal" />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField fullWidth size="small" label="Nº do documento/NF" value={movForm.numeroDocumento}
+                onChange={(e) => setMovForm({ ...movForm, numeroDocumento: e.target.value })} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth size="small" label="Responsável" value={movForm.responsavel}
+                onChange={(e) => setMovForm({ ...movForm, responsavel: e.target.value })} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth size="small" label="Observações" value={movForm.observacoes}
+                onChange={(e) => setMovForm({ ...movForm, observacoes: e.target.value })} />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMovDialog(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={registrarMovimento} disabled={registrando}>Registrar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

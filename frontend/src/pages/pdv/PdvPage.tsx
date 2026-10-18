@@ -21,7 +21,7 @@ import { toast } from 'react-toastify';
 import { apiBuffet, apiClientes, apiCaderno, apiFruteira, apiPdv } from '@/services/api';
 import { PageHeader } from '@/components/PageHeader';
 import { formatCurrency } from '@/utils/formatters';
-import { maskCurrency, maskQuantity, parseCurrency, parseDecimal } from '@/utils/masks';
+import { maskCurrency, maskCpfCnpj, maskQuantity, parseCurrency, parseDecimal, parseDocument } from '@/utils/masks';
 
 interface ItemResumo {
   id?: string;
@@ -81,15 +81,20 @@ export function PdvPage() {
   const [desconto, setDesconto] = useState('');
   const [pesoDialog, setPesoDialog] = useState(false);
   const [pesoBruto, setPesoBruto] = useState('');
-  const [tabValue, setTabValue] = useState<'buffet' | 'fruteira'>('buffet');
+  const [tabValue, setTabValue] = useState<'buffet' | 'fruteira' | 'mesas'>('buffet');
   const [contadorItens, setContadorItens] = useState({ BUFFET: 0, FRUTEIRA: 0 });
   const [mesaDialog, setMesaDialog] = useState(false);
   const [mesasComComanda, setMesasComComanda] = useState<any[]>([]);
+  const [mesasLoading, setMesasLoading] = useState(false);
   const navigate = useNavigate();
 
   const [cliente, setCliente] = useState<any>(null);
   const [opcoesClientes, setOpcoesClientes] = useState<any[]>([]);
   const [situacao, setSituacao] = useState<SituacaoCliente | null>(null);
+  const [documento, setDocumento] = useState('');
+  const [clienteNaoEncontrado, setClienteNaoEncontrado] = useState(false);
+  const [cadClienteDialog, setCadClienteDialog] = useState(false);
+  const [cadClienteForm, setCadClienteForm] = useState({ nome: '', telefone: '' });
   const [fiadoDialog, setFiadoDialog] = useState(false);
   const [fiadoValor, setFiadoValor] = useState('');
   const [fiadoVencimento, setFiadoVencimento] = useState('');
@@ -124,7 +129,33 @@ export function PdvPage() {
 
   const selecionarCliente = (c: any) => {
     setCliente(c);
+    setDocumento(c?.cpfCnpj ? maskCpfCnpj(c.cpfCnpj) : '');
+    setClienteNaoEncontrado(false);
     carregarSituacao(c);
+  };
+
+  // CPF/CNPJ com máscara: ao completar 11 ou 14 dígitos, busca o cliente e o mantém
+  // vinculado à venda enquanto os produtos são adicionados
+  const onDocumentoChange = async (valor: string) => {
+    const masked = maskCpfCnpj(valor);
+    setDocumento(masked);
+    const digits = parseDocument(masked);
+    if (digits.length === 11 || digits.length === 14) {
+      try {
+        const { data } = await apiClientes.getByDocumento(digits);
+        if (data?.id) {
+          setCliente(data);
+          setClienteNaoEncontrado(false);
+          carregarSituacao(data);
+          return;
+        }
+      } catch { /* cliente não cadastrado */ }
+      setCliente(null);
+      setSituacao(null);
+      setClienteNaoEncontrado(true);
+    } else {
+      setClienteNaoEncontrado(false);
+    }
   };
 
   const abrirFiado = () => {
@@ -158,12 +189,24 @@ export function PdvPage() {
     }
   };
 
-  const abrirMesaDialog = async () => {
+  const carregarMesas = useCallback(async () => {
+    setMesasLoading(true);
     try {
       const { data } = await apiBuffet.listMesas({ size: 200 });
       const list = data?.content ?? (Array.isArray(data) ? data : []);
-      const comComanda = list.filter((m: any) => m.comandaAtiva);
-      setMesasComComanda(comComanda);
+      setMesasComComanda(list.filter((m: any) => m.comandaAtiva));
+    } catch {
+      setMesasComComanda([]);
+    } finally {
+      setMesasLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { if (tabValue === 'mesas') carregarMesas(); }, [tabValue, carregarMesas]);
+
+  const abrirMesaDialog = async () => {
+    try {
+      await carregarMesas();
       setMesaDialog(true);
     } catch {
       toast.error('Erro ao listar mesas com comanda');
@@ -331,7 +374,7 @@ export function PdvPage() {
     }
   };
 
-  const finalizar = async () => {
+  const finalizarVendaInterna = async (cpfConsumidor?: string) => {
     if (!venda) return;
     if (venda.id.startsWith('local-')) {
       setVenda((s) => s ? { ...s, status: 'FINALIZADA' } : s);
@@ -339,11 +382,45 @@ export function PdvPage() {
       return;
     }
     try {
-      const { data } = await apiPdv.finalizarVenda(venda.id);
+      const { data } = await apiPdv.finalizarVenda(venda.id, cpfConsumidor);
       setVenda(data);
       toast.success('Venda finalizada!');
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Erro ao finalizar venda');
+    }
+  };
+
+  const finalizar = async () => {
+    if (!venda) return;
+    const docDigits = parseDocument(documento);
+    const docCliente = cliente?.cpfCnpj ? parseDocument(cliente.cpfCnpj) : '';
+    if (docDigits && !cliente) {
+      // Cliente informado mas não cadastrado: pede o nome para cadastro
+      setCadClienteForm({ nome: '', telefone: '' });
+      setCadClienteDialog(true);
+      return;
+    }
+    await finalizarVendaInterna(docCliente || docDigits || undefined);
+  };
+
+  const confirmarCadastroCliente = async () => {
+    if (!cadClienteForm.nome.trim()) { toast.warning('Informe o nome do cliente'); return; }
+    const doc = parseDocument(documento);
+    try {
+      const { data: novo } = await apiClientes.create({
+        nome: cadClienteForm.nome.trim(),
+        telefone: cadClienteForm.telefone || undefined,
+        cpfCnpj: maskCpfCnpj(doc),
+        tipoPessoa: doc.length > 11 ? 'JURIDICA' : 'FISICA',
+        status: 'ATIVO',
+      });
+      setCliente(novo);
+      setClienteNaoEncontrado(false);
+      setCadClienteDialog(false);
+      toast.success('Cliente cadastrado!');
+      await finalizarVendaInterna(doc);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao cadastrar cliente');
     }
   };
 
@@ -434,6 +511,7 @@ export function PdvPage() {
                 <Tabs value={tabValue} onChange={(_, value) => setTabValue(value)} sx={{ mb: 1 }}>
                   <Tab label="Buffet" value="buffet" />
                   <Tab label="Fruteira" value="fruteira" />
+                  <Tab label="Mesas" value="mesas" />
                 </Tabs>
                 {tabValue === 'buffet' && (
                   <Box>
@@ -463,6 +541,32 @@ export function PdvPage() {
                     {venda?.itens?.filter((it) => it.origem !== 'FRUTEIRA')?.length === 0 && <Typography variant="caption" color="text.secondary">Nenhum item de fruteira.</Typography>}
                   </Box>
                 )}
+                {tabValue === 'mesas' && (
+                  <Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="caption" color="text.secondary">Comandas ativas (mesas ocupadas) — carregue o consumo para pagamento</Typography>
+                      <Tooltip title="Atualizar mesas"><span><IconButton size="small" onClick={carregarMesas} disabled={mesasLoading}><RefreshIcon fontSize="small" /></IconButton></span></Tooltip>
+                    </Box>
+                    {mesasComComanda.map((m: any) => (
+                      <Paper key={m.id} variant="outlined" sx={{ p: 1.5, mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box>
+                          <Typography variant="body2" fontWeight={700}>Mesa {m.numero}{m.nome ? ` — ${m.nome}` : ''}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Comanda #{m.comandaAtiva?.numero} · Cliente: {m.comandaAtiva?.clienteNome || 'Cliente'} · Total: {formatCurrency(m.comandaAtiva?.valorTotal ?? 0)}
+                          </Typography>
+                        </Box>
+                        <Button size="small" variant="contained" onClick={() => carregarMesaPdv(m.comandaAtiva.id, m.numero)}>
+                          Carregar consumo
+                        </Button>
+                      </Paper>
+                    ))}
+                    {mesasComComanda.length === 0 && (
+                      <Typography variant="caption" color="text.secondary">
+                        {mesasLoading ? 'Carregando mesas...' : 'Nenhuma mesa com comanda ativa no momento.'}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
               </Box>
             </CardContent>
           </Card>
@@ -471,6 +575,19 @@ export function PdvPage() {
           <Card sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Cliente</Typography>
+              <TextField
+                fullWidth size="small" label="CPF/CNPJ do cliente"
+                value={documento}
+                onChange={(e) => onDocumentoChange(e.target.value)}
+                placeholder="000.000.000-00"
+                inputMode="numeric"
+                sx={{ mb: 1.5 }}
+              />
+              {clienteNaoEncontrado && (
+                <Alert severity="info" sx={{ mb: 1.5 }}>
+                  Cliente não encontrado no cadastro. Informe o nome ao finalizar a venda para cadastrá-lo.
+                </Alert>
+              )}
               <Autocomplete
                 size="small"
                 options={opcoesClientes}
@@ -480,7 +597,7 @@ export function PdvPage() {
                 onChange={(_, v) => selecionarCliente(v)}
                 onInputChange={(_, v, reason) => { if (reason === 'input') buscarClientes(v); }}
                 renderInput={(params) => (
-                  <TextField {...params} placeholder="Buscar cliente por nome ou CPF/CNPJ" />
+                  <TextField {...params} placeholder="Ou busque cliente por nome" />
                 )}
               />
 
@@ -632,6 +749,24 @@ export function PdvPage() {
           <DialogActions>
             <Button onClick={() => setFiadoDialog(false)}>Cancelar</Button>
             <Button variant="contained" color="warning" onClick={lancarFiado}>Lançar dívida</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Dialog: cadastrar cliente inexistente ao finalizar a venda */}
+        <Dialog open={cadClienteDialog} onClose={() => setCadClienteDialog(false)} maxWidth="xs" fullWidth>
+          <DialogTitle>Cadastrar cliente</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              O cliente <strong>{maskCpfCnpj(documento)}</strong> não está cadastrado. Informe o nome para concluir a venda:
+            </Typography>
+            <TextField fullWidth label="Nome do cliente" value={cadClienteForm.nome}
+              onChange={(e) => setCadClienteForm({ ...cadClienteForm, nome: e.target.value })} sx={{ mb: 2 }} autoFocus />
+            <TextField fullWidth label="Telefone (opcional)" value={cadClienteForm.telefone}
+              onChange={(e) => setCadClienteForm({ ...cadClienteForm, telefone: e.target.value })} placeholder="(00) 00000-0000" />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setCadClienteDialog(false)}>Cancelar</Button>
+            <Button variant="contained" onClick={confirmarCadastroCliente}>Cadastrar e finalizar</Button>
           </DialogActions>
         </Dialog>
       </Box>
