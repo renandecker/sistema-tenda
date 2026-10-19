@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '@/services/api';
+import { apiPdv } from '@/services/api';
 
 interface Pdv {
   id: string;
@@ -41,7 +41,7 @@ export function PdvProvider({ children }: { children: React.ReactNode }) {
 
   const fetchPdvs = async () => {
     try {
-      const response = await api.get('/pdv/terminais/ativos');
+      const response = await apiPdv.listTerminaisAtivos();
       setPdvs(response.data.content || response.data);
     } catch (error) {
       console.error('Erro ao buscar PDVs:', error);

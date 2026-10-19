@@ -278,7 +278,7 @@ export function PdvPage() {
     let active = true;
     const carregarSaude = async () => {
       try {
-        const response = await api.get('/api/saude-check');
+        const response = await api.get('/saude-check');
         const data = response.data;
         if (active && data?.pix && data?.tef) {
           const agora = new Date().toISOString();

@@ -166,6 +166,9 @@ export const apiBuffet = {
 };
 
 export const apiPdv = {
+  // Terminais/PDVs
+  listTerminaisAtivos: () => api.get('/pdv/terminais/ativos'),
+
   // Vendas
   listVendas: (params?: any) => api.get('/pdv/vendas', { params }),
   getVenda: (id: string) => api.get(`/pdv/vendas/${id}`),
