@@ -569,6 +569,8 @@ export function PdvPage() {
     setVenda(null);
     toast.success("Venda cancelada - nova venda iniciada");
   };
+
+  const cancelarVenda = async () => {
     if (!venda) return;
     if (!window.confirm('Cancelar esta venda?')) return;
     if (venda.id.startsWith('local-')) { setVenda(null); return; }
