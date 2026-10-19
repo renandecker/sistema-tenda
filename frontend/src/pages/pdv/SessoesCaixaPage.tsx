@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, TextField, Tooltip, Typography } from '@mui/material';
-import { Add as AddIcon, AttachMoney as AttachMoneyIcon, LockOpen as LockOpenIcon, Refresh as RefreshIcon, Remove as RemoveIcon, Visibility as ViewIcon } from '@mui/icons-material';
+import {
+  Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid,
+  IconButton, MenuItem, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  TextField, Tooltip, Typography
+} from '@mui/material';
+import {
+  Add as AddIcon, AttachMoney as AttachMoneyIcon, LockOpen as LockOpenIcon,
+  Refresh as RefreshIcon, Remove as RemoveIcon, Visibility as ViewIcon, ReceiptLong as ReceiptLongIcon
+} from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { apiPdv } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
@@ -13,8 +20,13 @@ interface Sessao {
   id: string;
   pdv?: { id?: string; codigo?: string; nome?: string };
   operadorAbertura?: string;
+  operadorFechamento?: string;
   valorInicial?: number;
   totalVendas?: number;
+  vendasDinheiro?: number;
+  vendasCartao?: number;
+  vendasPix?: number;
+  vendasVale?: number;
   diferenca?: number;
   status?: string;
   dataAbertura?: string;
@@ -38,6 +50,12 @@ export function SessoesCaixaPage() {
   const [pdvs, setPdvs] = useState<{ id: string; codigo?: string; nome?: string }[]>([]);
   const [formAbrir, setFormAbrir] = useState({ pdvId: '', operador: '', valorInicial: '' });
 
+  // Modal para Itens Vendidos e Formas de Pagamento
+  const [vendasModalOpen, setVendasModalOpen] = useState(false);
+  const [sessaoSelecionadaModal, setSessaoSelecionadaModal] = useState<Sessao | null>(null);
+  const [vendasSessao, setVendasSessao] = useState<any[]>([]);
+  const [loadingVendasModal, setLoadingVendasModal] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -50,19 +68,20 @@ export function SessoesCaixaPage() {
     }
   }, [page, rowsPerPage]);
 
-  // Resolve o PDV do usuário logado; se não houver vínculo, usa o primeiro PDV ativo
+  // Resolve o PDV do usuário logado de forma focada e robusta
   const resolverPdvId = useCallback(async (): Promise<string | null> => {
     if (user?.pdvId) return user.pdvId;
     try {
       const { data } = await apiPdv.listPdvs({ size: 200, ativo: true });
       const list = data?.content ?? (Array.isArray(data) ? data : []);
-      return list[0]?.id ?? null;
+      const match = list.find((p: any) => p.codigo?.toLowerCase().includes(user?.nome?.toLowerCase() || ''));
+      return match?.id ?? list[0]?.id ?? null;
     } catch {
       return null;
     }
-  }, [user?.pdvId]);
+  }, [user?.pdvId, user?.nome]);
 
-  // Abertura automática do caixa ao logar/entrar na tela
+  // Abertura automática focada no caixa do usuário logado
   const autoAbrir = useCallback(async () => {
     const pdvId = await resolverPdvId();
     if (!pdvId) return;
@@ -153,18 +172,43 @@ export function SessoesCaixaPage() {
     }
   };
 
+  const abrirModalVendasPagamentos = async (s: Sessao) => {
+    setSessaoSelecionadaModal(s);
+    setVendasModalOpen(true);
+    setLoadingVendasModal(true);
+    try {
+      const pdvId = s.pdv?.id;
+      if (!pdvId) {
+        setVendasSessao([]);
+        return;
+      }
+      const dataInicio = s.dataAbertura ? s.dataAbertura.split('T')[0] : undefined;
+      const dataFim = s.dataFechamento ? s.dataFechamento.split('T')[0] : new Date().toISOString().split('T')[0];
+      const { data } = await apiPdv.listVendas({ pdvId, dataInicio, dataFim, size: 200 });
+      const list = data?.content ?? (Array.isArray(data) ? data : []);
+      setVendasSessao(list);
+    } catch {
+      setVendasSessao([]);
+    } finally {
+      setLoadingVendasModal(false);
+    }
+  };
+
+  const itensAgregados = vendasSessao.flatMap((v: any) => (v.itens ?? []).map((it: any) => ({ ...it, vendaNumero: v.numero })));
+  const pagamentosAgregados = vendasSessao.flatMap((v: any) => (v.pagamentos ?? []).map((p: any) => ({ ...p, vendaNumero: v.numero })));
+
   return (
     <Box>
       <PageHeader
         title="Sessões de Caixa"
-        subtitle="Abertura, fechamento, sangria e reforço por operador"
+        subtitle="Abertura focada no usuário logado, gestão de PDVs e conferência de vendas e pagamentos"
         icon={<AttachMoneyIcon />}
         action={
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             {vinculoOk !== null && (
               <Chip size="small" color={vinculoOk ? 'success' : 'error'} label={vinculoOk ? 'PDV vinculado ao caixa' : 'PDV não vinculado'} />
             )}
-            <Tooltip title="Fechamento automático às 23:30 (configurável via CAIXA_AUTO_CLOSE_HORA)"><span><Typography variant="caption" color="text.secondary">Auto-fechamento 23:30</Typography></span></Tooltip>
+            <Tooltip title="Fechamento automático às 23:30"><span><Typography variant="caption" color="text.secondary">Auto 23:30</Typography></span></Tooltip>
             <Tooltip title="Atualizar"><span><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></span></Tooltip>
             <Button variant="contained" size="small" startIcon={<LockOpenIcon />} onClick={abrirDialogManual}>Abrir caixa</Button>
           </Box>
@@ -183,9 +227,14 @@ export function SessoesCaixaPage() {
           { field: 'status', headerName: 'Status', width: 120, align: 'center', render: (v: string) => <Chip size="small" label={getStatusLabel(v ?? '')} color={getStatusColor(v ?? '')} /> },
           { field: 'dataAbertura', headerName: 'Abertura', width: 170, render: (v: string) => formatDateTime(v) },
           {
-            field: 'acoes', headerName: 'Ações', width: 190, align: 'center',
+            field: 'acoes', headerName: 'Ações', width: 230, align: 'center',
             render: (_: any, row: Sessao) => (
               <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                <Tooltip title="Itens vendidos e Formas de pagamento">
+                  <IconButton size="small" color="primary" onClick={() => abrirModalVendasPagamentos(row)}>
+                    <ReceiptLongIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
                 <Tooltip title="Detalhes / conferência"><IconButton size="small" onClick={() => verDetalhe(row)}><ViewIcon fontSize="small" /></IconButton></Tooltip>
                 <Tooltip title="Sangria"><span><IconButton size="small" color="warning" disabled={row.status !== 'ABERTA'} onClick={() => { setMovId(row.id); setMovTipo('sangria'); }}><RemoveIcon fontSize="small" /></IconButton></span></Tooltip>
                 <Tooltip title="Reforço"><span><IconButton size="small" color="success" disabled={row.status !== 'ABERTA'} onClick={() => { setMovId(row.id); setMovTipo('reforco'); }}><AddIcon fontSize="small" /></IconButton></span></Tooltip>
@@ -195,6 +244,91 @@ export function SessoesCaixaPage() {
           },
         ]}
       />
+
+      {/* Modal de Itens Vendidos e Formas de Pagamento por PDV */}
+      <Dialog open={vendasModalOpen} onClose={() => setVendasModalOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Detalhes do PDV {sessaoSelecionadaModal?.pdv?.codigo} — Itens Vendidos e Formas de Pagamento
+        </DialogTitle>
+        <DialogContent dividers>
+          {loadingVendasModal ? (
+            <Typography variant="body2" sx={{ py: 3, textAlign: 'center' }}>Carregando vendas...</Typography>
+          ) : (
+            <Box>
+              <Box sx={{ mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>Resumo de Pagamentos Registrados</Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={3}><Typography variant="caption">Dinheiro</Typography><Typography variant="body2" fontWeight={700}>{formatCurrency(sessaoSelecionadaModal?.vendasDinheiro ?? 0)}</Typography></Grid>
+                  <Grid item xs={3}><Typography variant="caption">Cartão</Typography><Typography variant="body2" fontWeight={700}>{formatCurrency(sessaoSelecionadaModal?.vendasCartao ?? 0)}</Typography></Grid>
+                  <Grid item xs={3}><Typography variant="caption">PIX</Typography><Typography variant="body2" fontWeight={700}>{formatCurrency(sessaoSelecionadaModal?.vendasPix ?? 0)}</Typography></Grid>
+                  <Grid item xs={3}><Typography variant="caption">Vales</Typography><Typography variant="body2" fontWeight={700}>{formatCurrency(sessaoSelecionadaModal?.vendasVale ?? 0)}</Typography></Grid>
+                </Grid>
+              </Box>
+
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom sx={{ mt: 2 }}>Itens Vendidos ({itensAgregados.length})</Typography>
+              <TableContainer component={Paper} variant="outlined" sx={{ mb: 3, maxHeight: 220 }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Venda</TableCell>
+                      <TableCell>Produto</TableCell>
+                      <TableCell align="right">Qtd</TableCell>
+                      <TableCell align="right">Preço Un.</TableCell>
+                      <TableCell align="right">Total</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {itensAgregados.map((item: any, idx: number) => (
+                      <TableRow key={idx}>
+                        <TableCell>#{item.vendaNumero || '—'}</TableCell>
+                        <TableCell>{item.nomeProduto || item.produtoNome || 'Produto'}</TableCell>
+                        <TableCell align="right">{item.quantidade ?? 1}</TableCell>
+                        <TableCell align="right">{formatCurrency(item.precoUnitario ?? 0)}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>{formatCurrency(item.valorTotal ?? 0)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {itensAgregados.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center">Nenhum item vendido nesta sessão.</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Formas de Pagamento Utilizadas ({pagamentosAgregados.length})</Typography>
+              <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 200 }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Venda</TableCell>
+                      <TableCell>Forma de Pagamento</TableCell>
+                      <TableCell align="right">Valor</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {pagamentosAgregados.map((pag: any, idx: number) => (
+                      <TableRow key={idx}>
+                        <TableCell>#{pag.vendaNumero || '—'}</TableCell>
+                        <TableCell>{pag.formaPagamento ?? '—'}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>{formatCurrency(pag.valor ?? 0)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {pagamentosAgregados.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} align="center">Nenhum pagamento registrado nesta sessão.</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVendasModalOpen(false)} variant="contained">Fechar</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={!!fecharId} onClose={() => setFecharId(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Fechar caixa — conferência</DialogTitle>

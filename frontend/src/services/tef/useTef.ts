@@ -6,13 +6,16 @@ import {
   TefEvent, 
   IniciarTransacaoParams, 
   TipoTransacaoTEF,
-  ComprovanteTEF 
+  ComprovanteTEF,
+  TefConfig
 } from './types';
 
 interface UseTefReturn {
   isConnected: boolean;
   transacaoAtual: TransacaoTEF | null;
   eventoAtual: TefEvent | null;
+  tefStatus: { status: string; detail: string };
+  pixStatus: { status: string; detail: string };
   iniciarTransacao: (params: IniciarTransacaoParams) => Promise<TransacaoTEF>;
   confirmarTransacao: () => Promise<ComprovanteTEF>;
   desfazerTransacao: () => Promise<void>;
@@ -29,6 +32,8 @@ export function useTef(config?: {
   const [isConnected, setIsConnected] = useState(false);
   const [transacaoAtual, setTransacaoAtual] = useState<TransacaoTEF | null>(null);
   const [eventoAtual, setEventoAtual] = useState<TefEvent | null>(null);
+  const [tefStatus, setTefStatus] = useState<{ status: string; detail: string }>({ status: 'unknown', detail: 'unknown' });
+  const [pixStatus, setPixStatus] = useState<{ status: string; detail: string }>({ status: 'unknown', detail: 'unknown' });
   const clientRef = useRef<TefClient>(tefClient);
   const initializedRef = useRef(false);
 
@@ -62,10 +67,16 @@ export function useTef(config?: {
       toast.error(`Erro TEF: ${error.message}`);
     };
 
+    const handleSaudeAtualizada = (data: { timestamp: string; tef: { status: string; detail: string }; pix: { status: string; detail: string } }) => {
+      setTefStatus(data.tef);
+      setPixStatus(data.pix);
+    };
+
     client.on('connected', handleConnected);
     client.on('disconnected', handleDisconnected);
     client.on('event', handleEvent);
     client.on('error', handleError);
+    client.on('saudeAtualizada', handleSaudeAtualizada);
 
     if (config?.autoConnect !== false) {
       client.connect().catch(err => {
@@ -157,6 +168,8 @@ export function useTef(config?: {
     isConnected,
     transacaoAtual,
     eventoAtual,
+    tefStatus,
+    pixStatus,
     iniciarTransacao,
     confirmarTransacao,
     desfazerTransacao,

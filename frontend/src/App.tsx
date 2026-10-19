@@ -30,7 +30,9 @@ import { AtivosImobilizadosPage } from './pages/fiscal/AtivosImobilizadosPage';
 import { AuditScreen } from './pages/audit/AuditScreen';
 import { ConciliacaoCartaoPage } from './pages/fiscal/ConciliacaoCartaoPage';
 import { PerfilPage } from './pages/auth/PerfilPage';
+import { UsuarioPage } from './pages/usuarios/UsuarioPage';
 import { MesaConsumoPublicPage } from './pages/buffet/MesaConsumoPublicPage';
+import { SaudePage } from './pages/pagamentos/SaudePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { useAuth } from './hooks/useAuth';
 
@@ -97,7 +99,9 @@ export function App() {
         <Route path="fiscal/ativos" element={<AtivosImobilizadosPage />} />
         <Route path="fiscal/conciliacao-cartao" element={<ConciliacaoCartaoPage />} />
         <Route path="perfil" element={<PerfilPage />} />
+        <Route path="usuario" element={<UsuarioPage />} />
         <Route path="audit" element={<AuditScreen />} />
+        <Route path="saude" element={<SaudePage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

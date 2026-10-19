@@ -3,6 +3,7 @@ const express = require('express');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const cors = require('cors');
+const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const winston = require('winston');
 const TefClient = require('./TefClient');
@@ -48,6 +49,47 @@ function broadcastToReactClients(message) {
       client.send(data);
     }
   });
+}
+
+async function verificarSaudeSistema() {
+  const healthCheck = {
+    timestamp: new Date().toISOString(),
+    tef: { status: 'fora', detail: 'unknown' },
+    pix: { status: 'fora', detail: 'unknown' }
+  };
+  
+  // Verificar TEF
+  try {
+    const tefConnected = tefImplementation && tefImplementation.initialized;
+    if (USE_SIMULATOR) {
+      healthCheck.tef = { 
+        status: tefConnected ? 'dentro' : 'fora', 
+        detail: 'Simulador ativo' 
+      };
+    } else {
+      healthCheck.tef = { 
+        status: tefConnected ? 'dentro' : 'fora', 
+        detail: 'DLL TEF ' + (tefConnected ? 'carregada' : 'não inicializada')
+      };
+    }
+  } catch (error) {
+    healthCheck.tef = { status: 'fora', detail: error.message };
+  }
+  
+  // Verificar PIX (verificar se o agente TEF pode se conectar e a API PDV está disponível)
+  try {
+    // Tenta fazer uma requisição HTTP para o health endpoint do próprio agente
+    const response = await axios.get('http://localhost:8080/health', { timeout: 3000 });
+    if (response.status === 200) {
+      healthCheck.pix = { status: 'dentro', detail: 'API acessível' };
+    } else {
+      healthCheck.pix = { status: 'fora', detail: 'HTTP ' + response.status };
+    }
+  } catch (error) {
+    healthCheck.pix = { status: 'fora', detail: error.message || 'Não foi possível conectar';
+  }
+  
+  return healthCheck;
 }
 
 function handleTefResponse(requestId, response) {
@@ -157,6 +199,66 @@ server.listen(PORT, () => {
   logger.info(`TEF Agent HTTP server running on port ${PORT}`);
   logger.info(`TEF Agent WebSocket server running on port ${WS_PORT}`);
   logger.info(`Mode: ${USE_SIMULATOR ? 'SIMULATOR' : 'REAL (DLL)'}`);
+
+  // Health check routine
+  const saudacaoIntervalo = process.env.SAUDE_INTERVALO;
+  const saudacaoPrimeiraEm = process.env.SAUDE_PRIMEIRA_EM || '1m';
+  
+  let saudacaoTimer = null;
+  let primeiraConferencia = true;
+  
+  // Parse interval (30m, 15m, 2h, off desliga)
+  const parseIntervalo = (intervalo) => {
+    if (!intervalo || intervalo === 'off') {
+      return null;
+    }
+    const match = intervalo.match(/^(\d+)([mh])$/);
+    if (!match) {
+      logger.warn(`Intervalo inválido: ${intervalo}, usando padrão 1h`);
+      return 60 * 60 * 1000; // 1 hour in ms
+    }
+    const valor = parseInt(match[1]);
+    const unidade = match[2];
+    if (unidade === 'm') {
+      return valor * 60 * 1000;
+    } else if (unidade === 'h') {
+      return valor * 60 * 60 * 1000;
+    }
+    return 60 * 60 * 1000;
+  };
+  
+  const intervaloMs = parseIntervalo(saudacaoIntervalo);
+  
+  if (intervaloMs) {
+    const iniciarSaude = () => {
+      if (primeiraConferencia) {
+        primeiraConferencia = false;
+        setTimeout(executarVerificacaoSaude, parseInt(saudacaoPrimeiraEm) || 60000);
+      }
+      
+      executarVerificacaoSaude();
+      
+      saudacaoTimer = setInterval(executarVerificacaoSaude, intervaloMs);
+      logger.info(`Rotina de saúde iniciada: a cada ${saudacaoIntervalo}`);
+    };
+    
+    const executarVerificacaoSaude = async () => {
+      try {
+        const healthCheck = await verificarSaudeSistema();
+        broadcastToReactClients({
+          type: 'SAUDE_ATUALIZADA',
+          ...healthCheck
+        });
+        logger.info('Verificação de saúde concluída:', healthCheck);
+      } catch (error) {
+        logger.error('Erro na verificação de saúde:', error);
+      }
+    };
+    
+    iniciarSaude();
+  } else {
+    logger.info('Verificação de saúde desabilitada (SAUDE_INTERVALO off)');
+  }
 });
 
 process.on('SIGTERM', () => {
@@ -165,4 +267,3 @@ process.on('SIGTERM', () => {
   server.close(() => process.exit(0));
 });
 
-module.exports = { app, server, wss, tefImplementation };

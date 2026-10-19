@@ -22,6 +22,10 @@ import {
   Print as PrintIcon,
   Cancel as CancelIcon,
   Refresh as RefreshIcon,
+  SignalCellularConnectedNoInternet as TefForteIcon,
+  SignalCellularOff as TefFracoIcon,
+  Wifi as PixDentroIcon,
+  WifiOff as PixForteIcon,
 } from '@mui/icons-material';
 import { useTef } from '@/services/tef';
 import { toast } from 'react-toastify';
@@ -79,6 +83,8 @@ export function TefPaymentModal({
     isConnected,
     transacaoAtual,
     eventoAtual,
+    tefStatus,
+    pixStatus,
     iniciarTransacao,
     confirmarTransacao,
     desfazerTransacao,
@@ -197,16 +203,28 @@ export function TefPaymentModal({
             <CreditCardIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
             Pagamento TEF - Venda #{vendaNumero}
           </Typography>
-          <Chip
+<Chip
             label={isConnected ? 'Conectado' : 'Desconectado'}
             color={isConnected ? 'success' : 'error'}
             size="small"
             icon={isConnected ? <CheckCircleIcon fontSize="small" /> : <ErrorIcon fontSize="small" />}
           />
+          <Chip
+            label={tefStatus.status === 'dentro' ? 'TEF Dentro' : 'TEF Fora'}
+            color={tefStatus.status === 'dentro' ? 'success' : 'error'}
+            size="small"
+            icon={tefStatus.status === 'dentro' ? <CheckCircleIcon fontSize="small" /> : <ErrorIcon fontSize="small" />}
+          />
+          <Chip
+            label={pixStatus.status === 'dentro' ? 'PIX Dentro' : 'PIX Fora'}
+            color={pixStatus.status === 'dentro' ? 'success' : 'error'}
+            size="small"
+            icon={pixStatus.status === 'dentro' ? <CheckCircleIcon fontSize="small" /> : <ErrorIcon fontSize="small" />}
+          />
         </Box>
       </DialogTitle>
-      
-      <DialogContent>
+    
+    <DialogContent>
         <Box sx={{ mt: 1 }}>
           <Typography variant="body2" color="text.secondary" gutterBottom>
             Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor)}</strong>

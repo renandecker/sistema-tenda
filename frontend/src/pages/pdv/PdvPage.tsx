@@ -12,15 +12,14 @@ import {
   Payments as PaymentsIcon,
   Cancel as CancelIcon,
   CheckCircle as CheckIcon,
-  TableRestaurant as TableRestaurantIcon,
   MenuBook as MenuBookIcon,
   Warning as WarningIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { apiBuffet, apiClientes, apiCaderno, apiFruteira, apiPdv } from '@/services/api';
+import { apiBuffet, apiClientes, apiCaderno, apiFruteira, apiPdv, api } from '@/services/api';
 import { PageHeader } from '@/components/PageHeader';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, formatNumber } from '@/utils/formatters';
 import { maskCurrency, maskCpfCnpj, maskQuantity, parseCurrency, parseDecimal, parseDocument } from '@/utils/masks';
 
 interface ItemResumo {
@@ -54,6 +53,8 @@ interface ProdutoBusca {
   precoVenda?: number;
   unidadeMedida?: string;
   unidade?: string;
+  estoqueAtual?: number;
+  controlaEstoque?: boolean;
   origem?: 'FRUTEIRA' | 'BUFFET';
 }
 
@@ -83,10 +84,53 @@ export function PdvPage() {
   const [pesoBruto, setPesoBruto] = useState('');
   const [tabValue, setTabValue] = useState<'buffet' | 'fruteira' | 'mesas'>('buffet');
   const [contadorItens, setContadorItens] = useState({ BUFFET: 0, FRUTEIRA: 0 });
-  const [mesaDialog, setMesaDialog] = useState(false);
   const [mesasComComanda, setMesasComComanda] = useState<any[]>([]);
   const [mesasLoading, setMesasLoading] = useState(false);
+  const [estoqueBuffet, setEstoqueBuffet] = useState<ProdutoBusca[]>([]);
+  const [estoqueFruteira, setEstoqueFruteira] = useState<ProdutoBusca[]>([]);
+  const [estoqueLoading, setEstoqueLoading] = useState(false);
+  const [buscou, setBuscou] = useState(false);
   const navigate = useNavigate();
+
+  const [saude, setSaude] = useState<{
+    pix: {
+      status: 'funcionando' | 'atencao' | 'problema' | 'nao_configurado';
+      icone: string;
+      cor: string;
+      mensagem: string;
+      detalhe: string;
+      horaVerificacao: string;
+    };
+    tef: {
+      status: 'funcionando' | 'atencao' | 'problema' | 'nao_configurado';
+      icone: string;
+      cor: string;
+      mensagem: string;
+      detalhe: string;
+      horaVerificacao: string;
+    };
+    ultimaVerificacao: string | null;
+    verificando: boolean;
+  }>({
+    pix: {
+      status: 'nao_configurado',
+      icone: '',
+      cor: 'gray',
+      mensagem: '',
+      detalhe: '',
+      horaVerificacao: '',
+    },
+    tef: {
+      status: 'nao_configurado',
+      icone: '',
+      cor: 'gray',
+      mensagem: '',
+      detalhe: '',
+      horaVerificacao: '',
+    },
+    ultimaVerificacao: null,
+    verificando: false,
+  });
 
   const [cliente, setCliente] = useState<any>(null);
   const [opcoesClientes, setOpcoesClientes] = useState<any[]>([]);
@@ -202,15 +246,81 @@ export function PdvPage() {
     }
   }, []);
 
-  useEffect(() => { if (tabValue === 'mesas') carregarMesas(); }, [tabValue, carregarMesas]);
-
-  const abrirMesaDialog = async () => {
+  const carregarEstoque = useCallback(async () => {
+    setEstoqueLoading(true);
     try {
-      await carregarMesas();
-      setMesaDialog(true);
-    } catch {
-      toast.error('Erro ao listar mesas com comanda');
+      const [f, b] = await Promise.allSettled([
+        apiFruteira.listProdutos({ size: 200, ativo: true }),
+        apiBuffet.listProdutos({ size: 200, ativo: true }),
+      ]);
+      const listaF: any[] = f.status === 'fulfilled' ? (f.value.data?.content ?? (Array.isArray(f.value.data) ? f.value.data : [])) : [];
+      const listaB: any[] = b.status === 'fulfilled' ? (b.value.data?.content ?? (Array.isArray(b.value.data) ? b.value.data : [])) : [];
+      setEstoqueFruteira(
+        listaF
+          .map((p) => ({ ...p, origem: 'FRUTEIRA' as const }))
+          .filter((p) => Number(p.estoqueAtual ?? 0) > 0),
+      );
+      setEstoqueBuffet(
+        listaB
+          .map((p) => ({ ...p, origem: 'BUFFET' as const }))
+          .filter((p) => p.controlaEstoque === false || Number(p.estoqueAtual ?? 0) > 0),
+      );
+    } finally {
+      setEstoqueLoading(false);
     }
+  }, []);
+
+  useEffect(() => { carregarEstoque(); }, [carregarEstoque]);
+  useEffect(() => { carregarMesas(); }, [carregarMesas]);
+
+  // Health check PIX/TEF a cada atualização
+  useEffect(() => {
+    let active = true;
+    const carregarSaude = async () => {
+      try {
+        const response = await api.get('/api/saude-check');
+        const data = response.data;
+        if (active && data?.pix && data?.tef) {
+          const agora = new Date().toISOString();
+          setSaude({
+            pix: {
+              status: data.pix.status || 'problema',
+              icone: data.pix.icone || '💠',
+              cor: data.pix.cor || 'red',
+              mensagem: data.pix.mensagem || 'PIX fora do ar',
+              detalhe: data.pix.detalhe || '',
+              horaVerificacao: agora,
+            },
+            tef: {
+              status: data.tef.status || 'problema',
+              icone: data.tef.icone || '📟',
+              cor: data.tef.cor || 'red',
+              mensagem: data.tef.mensagem || 'TEF fora do ar',
+              detalhe: data.tef.detalhe || '',
+              horaVerificacao: agora,
+            },
+            ultimaVerificacao: agora,
+            verificando: false,
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao verificar saúde:', error);
+      }
+    };
+    carregarSaude();
+    const intervalo = setInterval(carregarSaude, 300000); // 5 minutos
+    return () => { active = false; clearInterval(intervalo); };
+  }, []);
+
+  const mesaCorresponde = (m: any, termo: string) => {
+    const t = termo.trim().toLowerCase();
+    if (!t) return true;
+    return (
+      String(m.numero ?? '').toLowerCase().includes(t) ||
+      String(m.nome ?? '').toLowerCase().includes(t) ||
+      String(m.comandaAtiva?.numero ?? '').toLowerCase().includes(t) ||
+      String(m.comandaAtiva?.clienteNome ?? '').toLowerCase().includes(t)
+    );
   };
 
   const carregarMesaPdv = async (comandaId: string, mesaNumero: string) => {
@@ -224,7 +334,6 @@ export function PdvPage() {
       const idToUse = vendaAtualId || 'local-temp';
       const { data } = await apiPdv.addItemComanda(idToUse, comandaId);
       setVenda(data);
-      setMesaDialog(false);
       toast.success(`Consumo da Mesa ${mesaNumero} carregado para pagamento!`);
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Erro ao carregar comanda da mesa');
@@ -240,8 +349,25 @@ export function PdvPage() {
     }
   }, []);
 
+  const limparEstado = () => {
+    setBusca('');
+    setResultados([]);
+    setBuscou(false);
+    setQuantidade('1');
+    setDesconto('');
+    setCliente(null);
+    setDocumento('');
+    setSituacao(null);
+    setClienteNaoEncontrado(false);
+    setOpcoesClientes([]);
+    setContadorItens({ BUFFET: 0, FRUTEIRA: 0 });
+    setFormaPagamento('DINHEIRO');
+    setValorPagamento('');
+  };
+
   const novaVenda = async () => {
     setLoading(true);
+    limparEstado();
     try {
       const { data } = await apiPdv.createVenda({ observacoes: 'Venda PDV' });
       setVenda(data);
@@ -266,8 +392,9 @@ export function PdvPage() {
       ]);
       const listF: ProdutoBusca[] = (f.status === 'fulfilled' ? (Array.isArray(f.value.data) ? f.value.data : f.value.data?.content ?? []) : []).map((p: any) => ({ ...p, origem: 'FRUTEIRA' as const }));
       const listB: ProdutoBusca[] = (b.status === 'fulfilled' ? (Array.isArray(b.value.data) ? b.value.data : b.value.data?.content ?? []) : []).map((p: any) => ({ ...p, origem: 'BUFFET' as const }));
+      let combined = [...listF, ...listB];
       // fallback por código de barras exato
-      if (listF.length === 0 && listB.length === 0) {
+      if (combined.length === 0) {
         const byCode = await Promise.allSettled([
           apiFruteira.getByCodigoBarras(busca).catch(() => apiFruteira.getByCodigo(busca)),
           apiBuffet.getByCodigoBarras(busca).catch(() => apiBuffet.getByCodigo(busca)),
@@ -275,11 +402,21 @@ export function PdvPage() {
         const extra: ProdutoBusca[] = [];
         if (byCode[0].status === 'fulfilled' && byCode[0].value?.data) extra.push({ ...byCode[0].value.data, origem: 'FRUTEIRA' });
         if (byCode[1].status === 'fulfilled' && byCode[1].value?.data) extra.push({ ...byCode[1].value.data, origem: 'BUFFET' });
-        setResultados(extra);
-        if (extra.length === 0) toast.info('Nenhum produto encontrado');
-      } else {
-        setResultados([...listF, ...listB].slice(0, 30));
+        combined = extra;
       }
+      setResultados(combined.slice(0, 30));
+      setBuscou(true);
+
+      // Exibe nas abas a origem onde o item/mesa foi encontrado
+      const hasB = combined.some((p) => p.origem === 'BUFFET');
+      const hasF = combined.some((p) => p.origem === 'FRUTEIRA');
+      const hasM = mesasComComanda.some((m) => mesaCorresponde(m, busca));
+      if ((hasB ? 1 : 0) + (hasF ? 1 : 0) + (hasM ? 1 : 0) === 1) {
+        if (hasB) setTabValue('buffet');
+        else if (hasF) setTabValue('fruteira');
+        else setTabValue('mesas');
+      }
+      if (combined.length === 0 && !hasM) toast.info('Nenhum item ou mesa encontrado');
     } catch {
       toast.error('Erro ao buscar produtos');
     } finally {
@@ -463,6 +600,27 @@ export function PdvPage() {
   }, [tabValue, resultados, venda, adicionarItem]);
 
   const saldo = (venda?.valorTotal ?? 0) - (venda?.valorPago ?? 0);
+  const vendaIniciada = !!venda && ((venda.itens?.length ?? 0) > 0 || !!cliente);
+  const itensBuffetTab = buscou ? resultados.filter((p) => p.origem === 'BUFFET') : estoqueBuffet;
+  const itensFruteiraTab = buscou ? resultados.filter((p) => p.origem === 'FRUTEIRA') : estoqueFruteira;
+  const mesasFiltradas = busca.trim() ? mesasComComanda.filter((m) => mesaCorresponde(m, busca)) : mesasComComanda;
+
+  const renderProdutos = (produtos: ProdutoBusca[], vazio: string) => (
+    <Box>
+      {produtos.map((p) => (
+        <Box key={`${p.origem}-${p.id}`} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="body2" fontWeight={600} noWrap>{p.nome}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {p.codigo ?? p.codigoBarras ?? '—'} · {formatCurrency(p.precoVenda ?? 0)} · Est: {formatNumber(Number(p.estoqueAtual ?? 0), 3)}{p.unidadeMedida ? ` ${p.unidadeMedida}` : ''}
+            </Typography>
+          </Box>
+          <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => adicionarItem(p)} disabled={!venda}>Adicionar</Button>
+        </Box>
+      ))}
+      {produtos.length === 0 && <Typography variant="caption" color="text.secondary">{vazio}</Typography>}
+    </Box>
+  );
 
   return (
     <Box>
@@ -472,82 +630,63 @@ export function PdvPage() {
         icon={<PointOfSaleIcon />}
          action={
            <Box sx={{ display: 'flex', gap: 1 }}>
-             <Button variant="outlined" startIcon={<TableRestaurantIcon />} onClick={abrirMesaDialog}>Selecionar Mesa</Button>
              <Button variant="outlined" color="warning" startIcon={<MenuBookIcon />} onClick={abrirFiado}>Caderno (fiado)</Button>
              <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => venda && recarregarVenda(venda.id)} disabled={!venda || venda.id.startsWith('local-')}>Atualizar</Button>
              <Button variant="contained" startIcon={<AddIcon />} onClick={novaVenda} disabled={loading}>Nova venda</Button>
            </Box>
          }
       />
+      {/* Banner de status PIX/TEF */}
+      {saude.verificando ? (
+        <Box sx={{ p: 1, backgroundColor: '#fff3e0', color: '#ef6c00', borderRadius: 1, mb: 2 }}>
+          <Typography variant="body1">Verificando saúde dos pagamentos...</Typography>
+        </Box>
+      ) : (
+        <Alert
+          severity={saude.pix.cor === 'red' || saude.tef.cor === 'red' ? 'error' : saude.pix.cor === 'orange' || saude.tef.cor === 'orange' ? 'warning' : 'success'}
+          sx={{ p: 1, mb: 2, display: saude.pix.status === 'nao_configurado' && saude.tef.status === 'nao_configurado' ? 'none' : 'block' }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {saude.pix.cor !== 'gray' && <span>💠 PIX {saude.pix.mensagem}</span>}
+            {saude.tef.cor !== 'gray' && <span>📟 TEF {saude.tef.mensagem}</span>}
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            Última verificação: {saude.ultimaVerificacao ? new Date(saude.ultimaVerificacao).toLocaleString('pt-BR') : 'Nunca'}
+          </Typography>
+        </Alert>
+      )}
       <Grid container spacing={2}>
-        <Grid item xs={12} md={7}>
+        <Grid item xs={12} md={4}>
           <Card sx={{ mb: 2 }}>
             <CardContent>
-              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Buscar produto</Typography>
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Buscar produto / mesa / comanda</Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField fullWidth size="small" placeholder="Código, código de barras ou nome + Enter" value={busca}
-                  onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' || (e.altKey && e.key === 'Enter')) && buscarProdutos()} />
+                <TextField fullWidth size="small" placeholder="Código, código de barras, nome, mesa ou comanda + Enter" value={busca}
+                  onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' || (e.altKey && e.key === 'Enter')) { e.preventDefault(); buscarProdutos(); carregarMesas(); } }} />
                 <TextField size="small" label="Qtd" value={maskQuantity(quantidade)} onChange={(e) => setQuantidade(maskQuantity(e.target.value))} sx={{ width: 90 }} inputMode="decimal" />
-                <Button variant="contained" onClick={buscarProdutos} disabled={buscando} startIcon={<SearchIcon />}>Buscar</Button>
+                <Button variant="contained" onClick={() => { buscarProdutos(); carregarMesas(); }} disabled={buscando} startIcon={<SearchIcon />}>Buscar</Button>
                 <Tooltip title="Lançar prato por peso (balança)"><span><IconButton color="primary" onClick={() => setPesoDialog(true)} disabled={!venda}><ScaleIcon /></IconButton></span></Tooltip>
               </Box>
-              {resultados.map((p) => (
-                <Box key={`${p.origem}-${p.id}`} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1, borderBottom: 1, borderColor: 'divider' }}>
-                  <Box>
-                    <Typography variant="body2" fontWeight={600}>{p.nome}</Typography>
-                    <Typography variant="caption" color="text.secondary">{p.codigo ?? p.codigoBarras ?? '—'} · {p.origem} · {formatCurrency(p.precoVenda ?? 0)}</Typography>
-                  </Box>
-                  <Button size="small" variant="outlined" onClick={() => adicionarItem(p)} disabled={!venda}>Adicionar</Button>
-                </Box>
-              ))}
-              {resultados.length === 0 && <Typography variant="caption" color="text.secondary">Busque por nome, código ou código de barras. Produtos da fruteira e do buffet aparecem aqui.</Typography>}
             </CardContent>
           </Card>
-<Card>
+          <Card>
             <CardContent>
-              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Itens da venda {venda?.numero ? `#${venda.numero}` : ''}</Typography>
-              {!venda && <Typography variant="body2" color="text.secondary">Nenhuma venda aberta. Clique em "Nova venda".</Typography>}
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Itens a venda</Typography>
               <Box sx={{ mt: 1 }}>
                 <Tabs value={tabValue} onChange={(_, value) => setTabValue(value)} sx={{ mb: 1 }}>
                   <Tab label="Buffet" value="buffet" />
                   <Tab label="Fruteira" value="fruteira" />
                   <Tab label="Mesas" value="mesas" />
                 </Tabs>
-                {tabValue === 'buffet' && (
-                  <Box>
-                    {venda?.itens?.filter((it) => it.origem === 'BUFFET')?.map((it) => (
-                      <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
-                        <Box>
-                          <Typography variant="body2">{it.quantidade}x {it.nomeProduto}</Typography>
-                          <Typography variant="caption" color="text.secondary">{it.codigoProduto} · {formatCurrency(it.precoUnitario ?? 0)} un.</Typography>
-                        </Box>
-                        <Typography variant="body2" fontWeight={700}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
-                      </Box>
-                    ))}
-                    {venda?.itens?.filter((it) => it.origem !== 'BUFFET')?.length === 0 && <Typography variant="caption" color="text.secondary">Nenhum item de buffet.</Typography>}
-                  </Box>
-                )}
-                {tabValue === 'fruteira' && (
-                  <Box>
-                    {venda?.itens?.filter((it) => it.origem === 'FRUTEIRA')?.map((it) => (
-                      <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
-                        <Box>
-                          <Typography variant="body2">{it.quantidade}x {it.nomeProduto}</Typography>
-                          <Typography variant="caption" color="text.secondary">{it.codigoProduto} · {formatCurrency(it.precoUnitario ?? 0)} un.</Typography>
-                        </Box>
-                        <Typography variant="body2" fontWeight={700}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
-                      </Box>
-                    ))}
-                    {venda?.itens?.filter((it) => it.origem !== 'FRUTEIRA')?.length === 0 && <Typography variant="caption" color="text.secondary">Nenhum item de fruteira.</Typography>}
-                  </Box>
-                )}
+                {tabValue === 'buffet' && renderProdutos(itensBuffetTab, estoqueLoading ? 'Carregando...' : (buscou ? 'Nenhum item de buffet encontrado na busca' : 'Nenhum item de buffet com estoque disponível'))}
+                {tabValue === 'fruteira' && renderProdutos(itensFruteiraTab, estoqueLoading ? 'Carregando...' : (buscou ? 'Nenhum item de fruteira encontrado na busca' : 'Nenhum item de fruteira com estoque disponível'))}
                 {tabValue === 'mesas' && (
                   <Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="caption" color="text.secondary">Comandas ativas (mesas ocupadas) — carregue o consumo para pagamento</Typography>
+                      <Typography variant="caption" color="text.secondary">Comandas ativas (mesas ocupadas)</Typography>
                       <Tooltip title="Atualizar mesas"><span><IconButton size="small" onClick={carregarMesas} disabled={mesasLoading}><RefreshIcon fontSize="small" /></IconButton></span></Tooltip>
                     </Box>
-                    {mesasComComanda.map((m: any) => (
+                    {mesasFiltradas.map((m: any) => (
                       <Paper key={m.id} variant="outlined" sx={{ p: 1.5, mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Box>
                           <Typography variant="body2" fontWeight={700}>Mesa {m.numero}{m.nome ? ` — ${m.nome}` : ''}</Typography>
@@ -560,9 +699,9 @@ export function PdvPage() {
                         </Button>
                       </Paper>
                     ))}
-                    {mesasComComanda.length === 0 && (
+                    {mesasFiltradas.length === 0 && (
                       <Typography variant="caption" color="text.secondary">
-                        {mesasLoading ? 'Carregando mesas...' : 'Nenhuma mesa com comanda ativa no momento.'}
+                        {mesasLoading ? 'Carregando mesas...' : (buscou ? 'Nenhuma mesa encontrada na busca' : 'Nenhuma mesa com comanda ativa no momento.')}
                       </Typography>
                     )}
                   </Box>
@@ -571,7 +710,62 @@ export function PdvPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={5}>
+        <Grid item xs={12} md={8}>
+          <Card sx={{ mb: 2 }}>
+            <CardContent>
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Itens da venda {venda?.numero ? `#${venda.numero}` : ''}</Typography>
+              {!venda && <Typography variant="body2" color="text.secondary">Nenhuma venda aberta. Clique em "Nova venda".</Typography>}
+              <Box sx={{ mt: 1 }}>
+                <Tabs value={tabValue} onChange={(_, value) => setTabValue(value)} sx={{ mb: 1 }}>
+                  <Tab label="Buffet" value="buffet" />
+                  <Tab label="Fruteira" value="fruteira" />
+                  <Tab label="Mesas" value="mesas" />
+                </Tabs>
+                {tabValue === 'buffet' && (
+                  <Box>
+                    {venda?.itens?.filter((it) => it.origem === 'BUFFET').map((it) => (
+                      <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
+                        <Box>
+                          <Typography variant="body2">{it.quantidade}x {it.nomeProduto}</Typography>
+                          <Typography variant="caption" color="text.secondary">{it.codigoProduto} · {formatCurrency(it.precoUnitario ?? 0)} un.</Typography>
+                        </Box>
+                        <Typography variant="body2" fontWeight={700}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
+                      </Box>
+                    ))}
+                    {(!venda?.itens || venda.itens.filter((it) => it.origem === 'BUFFET').length === 0) && <Typography variant="caption" color="text.secondary">Nenhum item de buffet.</Typography>}
+                  </Box>
+                )}
+                {tabValue === 'fruteira' && (
+                  <Box>
+                    {venda?.itens?.filter((it) => it.origem === 'FRUTEIRA').map((it) => (
+                      <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
+                        <Box>
+                          <Typography variant="body2">{it.quantidade}x {it.nomeProduto}</Typography>
+                          <Typography variant="caption" color="text.secondary">{it.codigoProduto} · {formatCurrency(it.precoUnitario ?? 0)} un.</Typography>
+                        </Box>
+                        <Typography variant="body2" fontWeight={700}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
+                      </Box>
+                    ))}
+                    {(!venda?.itens || venda.itens.filter((it) => it.origem === 'FRUTEIRA').length === 0) && <Typography variant="caption" color="text.secondary">Nenhum item de fruteira.</Typography>}
+                  </Box>
+                )}
+                {tabValue === 'mesas' && (
+                  <Box>
+                    {venda?.itens?.map((it) => (
+                      <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
+                        <Box>
+                          <Typography variant="body2">{it.quantidade}x {it.nomeProduto}</Typography>
+                          <Typography variant="caption" color="text.secondary">{it.codigoProduto} · {formatCurrency(it.precoUnitario ?? 0)} un.</Typography>
+                        </Box>
+                        <Typography variant="body2" fontWeight={700}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
+                      </Box>
+                    ))}
+                    {(!venda?.itens || venda.itens.length === 0) && <Typography variant="caption" color="text.secondary">Nenhum item na venda.</Typography>}
+                  </Box>
+                )}
+              </Box>
+            </CardContent>
+          </Card>
           <Card sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Cliente</Typography>
@@ -641,6 +835,16 @@ export function PdvPage() {
           <Card>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700}>Resumo</Typography>
+              {venda?.itens && venda.itens.length > 0 && (
+                <Box sx={{ mt: 1, mb: 1, maxHeight: 160, overflow: 'auto' }}>
+                  {venda.itens.map((it) => (
+                    <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: 1, borderColor: 'divider' }}>
+                      <Typography variant="caption">{it.quantidade}x {it.nomeProduto}</Typography>
+                      <Typography variant="caption" fontWeight={600}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}><Typography variant="body2">Subtotal</Typography><Typography fontWeight={600}>{formatCurrency(venda?.subtotal ?? 0)}</Typography></Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">Desconto</Typography><Typography>{formatCurrency(venda?.desconto ?? 0)}</Typography></Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">Pago</Typography><Typography>{formatCurrency(venda?.valorPago ?? 0)}</Typography></Box>
@@ -654,7 +858,7 @@ export function PdvPage() {
               <Grid container spacing={1}>
                 <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={() => { setValorPagamento(saldo > 0 ? maskCurrency(saldo) : ''); setPagDialog(true); }} disabled={!venda}>Pagamento</Button></Grid>
                 <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={venda == null || (venda?.pagamentos?.length === 0 && venda?.valorPago === 0)}>Finalizar</Button></Grid>
-                <Grid item xs={12}><Button fullWidth color="error" startIcon={<CancelIcon />} onClick={cancelar} disabled={!venda}>Cancelar venda</Button></Grid>
+                <Grid item xs={12}><Button fullWidth color="error" startIcon={<CancelIcon />} onClick={cancelar} disabled={!vendaIniciada && !venda}>Cancelar venda</Button></Grid>
               </Grid>
               {venda?.pagamentos && venda.pagamentos.length > 0 && (
                 <Box sx={{ mt: 2 }}>
@@ -686,47 +890,14 @@ export function PdvPage() {
         <DialogActions><Button onClick={() => setPagDialog(false)}>Fechar</Button><Button variant="contained" onClick={confirmarPagamento}>Confirmar</Button></DialogActions>
       </Dialog>
 
-       <Dialog open={pesoDialog} onClose={() => setPesoDialog(false)} maxWidth="xs" fullWidth>
-         <DialogTitle>Lançar prato por peso</DialogTitle>
-         <DialogContent>
-           <TextField fullWidth label="Peso bruto (kg)" value={maskQuantity(pesoBruto)} onChange={(e) => setPesoBruto(maskQuantity(e.target.value))} placeholder="Ex: 0,532" sx={{ mt: 1 }} inputMode="decimal" />
-           <Typography variant="caption" color="text.secondary">Integração com balanças Toledo/Filizola via leitura do peso.</Typography>
-         </DialogContent>
-         <DialogActions><Button onClick={() => setPesoDialog(false)}>Fechar</Button><Button variant="contained" onClick={lancarPeso}>Lançar</Button></DialogActions>
-       </Dialog>
-
-       {/* Dialog Selecionar Mesa para PDV */}
-       <Dialog open={mesaDialog} onClose={() => setMesaDialog(false)} maxWidth="sm" fullWidth>
-         <DialogTitle>Selecionar Mesa / Consumo</DialogTitle>
-         <DialogContent>
-           <Typography variant="body2" color="text.secondary" gutterBottom>
-             Selecione a mesa para carregar os consumos e fechar a conta no caixa:
-           </Typography>
-           <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-             {mesasComComanda.map((m: any) => (
-               <Paper key={m.id} variant="outlined" sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                 <Box>
-                   <Typography variant="subtitle1" fontWeight={600}>Mesa {m.numero} — {m.nome}</Typography>
-                   <Typography variant="body2" color="text.secondary">
-                     Comanda: #{m.comandaAtiva?.numero} · Cliente: {m.comandaAtiva?.clienteNome || 'Cliente'}
-                   </Typography>
-                 </Box>
-                 <Button variant="contained" size="small" onClick={() => carregarMesaPdv(m.comandaAtiva.id, m.numero)}>
-                   Carregar Consumo
-                 </Button>
-               </Paper>
-             ))}
-             {mesasComComanda.length === 0 && (
-               <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                 Nenhuma mesa com comanda ativa no momento.
-               </Typography>
-             )}
-           </Box>
-         </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setMesaDialog(false)}>Fechar</Button>
-          </DialogActions>
-        </Dialog>
+      <Dialog open={pesoDialog} onClose={() => setPesoDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Lançar prato por peso</DialogTitle>
+        <DialogContent>
+          <TextField fullWidth label="Peso bruto (kg)" value={maskQuantity(pesoBruto)} onChange={(e) => setPesoBruto(maskQuantity(e.target.value))} placeholder="Ex: 0,532" sx={{ mt: 1 }} inputMode="decimal" />
+          <Typography variant="caption" color="text.secondary">Integração com balanças Toledo/Filizola via leitura do peso.</Typography>
+        </DialogContent>
+        <DialogActions><Button onClick={() => setPesoDialog(false)}>Fechar</Button><Button variant="contained" onClick={lancarPeso}>Lançar</Button></DialogActions>
+      </Dialog>
 
         {/* Dialog: lançar fiado no caderno */}
         <Dialog open={fiadoDialog} onClose={() => setFiadoDialog(false)} maxWidth="xs" fullWidth>

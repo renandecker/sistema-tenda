@@ -14,20 +14,22 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
 
     @Override
     public Response toResponse(Throwable exception) {
-        LOG.error("Erro não tratado", exception);
-
         if (exception instanceof BusinessException businessException) {
+            LOG.debug("Erro de negócio: " + businessException.getMessage());
             return buildBusinessErrorResponse(businessException);
         }
 
         if (exception instanceof jakarta.validation.ConstraintViolationException validationException) {
+            LOG.debug("Erro de validação: " + validationException.getMessage());
             return buildValidationErrorResponse(validationException);
         }
 
         if (exception instanceof jakarta.ws.rs.WebApplicationException webApplicationException) {
+            LOG.debug("Erro web: " + webApplicationException.getMessage());
             return webApplicationException.getResponse();
         }
 
+        LOG.error("Erro não tratado", exception);
         return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(new ErrorResponse("INTERNAL_ERROR", "Erro interno do servidor"))
                 .build();

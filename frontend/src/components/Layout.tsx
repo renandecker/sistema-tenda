@@ -49,6 +49,7 @@ import {
   MenuBook as MenuBookIcon,
   ChevronRight as ChevronRightIcon,
   Notifications as NotificationsIcon,
+  Cash as CashIcon,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { usePdv } from '@/contexts/PdvContext';
@@ -332,16 +333,20 @@ export function Layout() {
         <Outlet />
       </Box>
 
-       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} transformOrigin={{ horizontal: 'right', vertical: 'top' }} anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}>
-         <MenuItem onClick={() => { handleMenuClose(); navigate('/perfil'); }}>
-           <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
-           Perfil
-         </MenuItem>
-         <MenuItem onClick={handleLogout}>
-           <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
-           Sair
-         </MenuItem>
-       </Menu>
+<Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} transformOrigin={{ horizontal: 'right', vertical: 'top' }} anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}>
+          <MenuItem onClick={() => { handleMenuClose(); navigate('/perfil'); }}>
+            <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
+            Perfil
+          </MenuItem>
+          <MenuItem onClick={() => { handleMenuClose(); navigate('/usuario'); }}>
+            <ListItemIcon><CashIcon fontSize="small" /></ListItemIcon>
+            Usuário e Caixa
+          </MenuItem>
+          <MenuItem onClick={handleLogout}>
+            <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
+            Sair
+          </MenuItem>
+        </Menu>
 
        {/* Dialog de Notificações de Pedidos das Mesas */}
        <Dialog open={notifOpen} onClose={() => { setNotifOpen(false); setSelectedComanda(null); }} maxWidth="sm" fullWidth>
