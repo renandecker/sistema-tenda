@@ -1,3 +1,5 @@
+import React from 'react';
+import { PageHeader } from '@/components/PageHeader';
 import {
   Box,
   Card,
@@ -16,10 +18,12 @@ import {
 } from '@mui/material';
 import {
   Person as PersonIcon,
-  Cash as CashIcon,
-  PanVert as PanVertIcon,
+  AccountBalance as CashIcon,
+  SwapHoriz as PanVertIcon,
   CheckCircle as CheckCircleIcon,
   CalendarMonth as CalendarMonthIcon,
+  Email as EmailIcon,
+  Security as SecurityIcon,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { usePdv } from '@/contexts/PdvContext';
@@ -184,7 +188,7 @@ export function UsuarioPage() {
                 <CheckCircleIcon fontSize="small" sx={{ mr: 1 }} /> Caixa já aberto
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Operador: {sessaoAtiva.operador} | Valor Inicial: R$ {sessaoAtiva.valorInicial?.toFixed(2)} | Status: {sessaoAtiva.status}
+                Operador: {(sessaoAtiva as any).operador || 'Operador'} | Valor Inicial: R$ {sessaoAtiva.valorInicial?.toFixed(2)} | Status: {sessaoAtiva.status}
               </Typography>
             </Box>
           ) : (

@@ -49,7 +49,7 @@ import {
   MenuBook as MenuBookIcon,
   ChevronRight as ChevronRightIcon,
   Notifications as NotificationsIcon,
-  Cash as CashIcon,
+  AccountBalance as CashIcon,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { usePdv } from '@/contexts/PdvContext';

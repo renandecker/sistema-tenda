@@ -26,7 +26,7 @@ import {
 import QRCode from 'qrcode.react';
 import { toast } from 'react-toastify';
 
-interface PixChargeResponse {
+export interface PixChargeResponse {
   txid: string;
   qrCode?: string;
   qrCodeBase64?: string;
