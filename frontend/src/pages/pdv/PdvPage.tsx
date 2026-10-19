@@ -563,6 +563,13 @@ export function PdvPage() {
 
   const cancelar = async () => {
     if (!venda) return;
+    if (!window.confirm("Cancelar esta venda?")) return;
+    // Clear all fields and start new venda
+    limparEstado();
+    setVenda(null);
+    toast.success("Venda cancelada - nova venda iniciada");
+  };
+    if (!venda) return;
     if (!window.confirm('Cancelar esta venda?')) return;
     if (venda.id.startsWith('local-')) { setVenda(null); return; }
     try {
@@ -750,11 +757,9 @@ export function PdvPage() {
                   ))}
                 </Box>
               )}
-              {(!venda?.itens || venda.itens.length === 0) && <Typography variant="caption" color="text.secondary">Nenhum item na venda.</Typography>
+
             </CardContent>
           </Card>
-        </Grid>
-        <Grid item xs={12} md={6}>
           <Card sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Resumo</Typography>
@@ -806,7 +811,7 @@ export function PdvPage() {
         <DialogTitle>Registrar pagamento</DialogTitle>
         <DialogContent>
           <TextField select fullWidth label="Forma de pagamento" value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)} sx={{ mt: 1, mb: 2 }}>
-            {FORMAS_PAGAMENTO.map((f) => <MenuItem key={f} value={f}>{f}</MenuItem>)}
+            {FORMAS_PAGAMENTO.map(function (f) { return <Button key={f} variant="outline" sx={{ mr: 1, mb: 1 }} onClick={() => setFormaPagamento(f)}>{f}</Button>; })}
           </TextField>
           <TextField fullWidth label="Valor recebido (R$)" value={maskCurrency(valorPagamento)} onChange={(e) => setValorPagamento(maskCurrency(e.target.value))} placeholder="0,00" inputMode="decimal" />
         </DialogContent>
