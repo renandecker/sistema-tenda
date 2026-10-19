@@ -220,14 +220,14 @@ export function UsuarioPage() {
                 </MenuItem>
               </Select>
 
-              <IconButton
+              <Button
                 variant="contained"
                 color="primary"
                 sx={{ width: '100%', mt: 2 }}
                 onClick={handleAbrirCaixa}
               >
                 <PanVertIcon sx={{ mr: 1 }} /> Abrir Caixa
-              </IconButton>
+              </Button>
             </Box>
           )}
         </CardContent>

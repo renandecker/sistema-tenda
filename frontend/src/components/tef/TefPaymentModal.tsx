@@ -22,7 +22,7 @@ import {
   Print as PrintIcon,
   Cancel as CancelIcon,
   Refresh as RefreshIcon,
-  SignalCellularConnectedNoInternet as TefForteIcon,
+  SignalCellularConnectedNoInternet0Bar as TefForteIcon,
   SignalCellularOff as TefFracoIcon,
   Wifi as PixDentroIcon,
   WifiOff as PixForteIcon,

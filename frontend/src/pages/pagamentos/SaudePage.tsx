@@ -7,6 +7,7 @@ import {
   Typography,
   Divider,
   Alert,
+  Button,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -15,7 +16,6 @@ import {
   Person as PersonIcon,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
-import { useApi } from '@/hooks/useApi';
 
 interface StatusItem {
   status: 'funcionando' | 'atencao' | 'problema' | 'nao_configurado';
@@ -63,7 +63,7 @@ export function SaudePage() {
   });
 
   // Verificar se o usuário tem permissão (supervisor ou gerente)
-  PodeVerificarAgora = () => {
+  const podeVerificarAgora = () => {
     if (!isAuthenticated) return false;
     // Supervisor e Gerente podem verificar
     return isInRole('SUPERVISOR') || isInRole('GERENTE') || hasPermission('pagamentos.verificar');
@@ -71,7 +71,7 @@ export function SaudePage() {
 
   // Health check API call
   const executarVerificacao = async () => {
-    if (!PodeVerificarAgora()) {
+    if (!podeVerificarAgora()) {
       alert('Apenas supervisores e gerentes podem executar verificação manual');
       return;
     }
@@ -250,9 +250,10 @@ export function SaudePage() {
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <Box sx={{ p: 1 }}>
-                <button
+                <Button
+                  variant="contained"
                   onClick={executarVerificacao}
-                  disabled={!PodeVerificarAgora()}
+                  disabled={!podeVerificarAgora()}
                   sx={{
                     width: '100%',
                     background: '#1976d2',
@@ -260,13 +261,14 @@ export function SaudePage() {
                     '&:hover': { background: '#1565c0' },
                   }}
                 >
-                  {PodeVerificarAgora() ? 'Verificar agora' : 'Sem permissão'}
-                </button>
+                  {podeVerificarAgora() ? 'Verificar agora' : 'Sem permissão'}
+                </Button>
               </Box>
             </Grid>
             <Grid item xs={12} sm={6}>
               <Box sx={{ p: 1 }}>
-                <button
+                <Button
+                  variant="contained"
                   onClick={() => window.location.reload()}
                   sx={{
                     width: '100%',
@@ -276,7 +278,7 @@ export function SaudePage() {
                   }}
                 >
                   Atualizar Página
-                </button>
+                </Button>
               </Box>
             </Grid>
           </Grid>
