@@ -70,7 +70,12 @@ export function DefeitosPage() {
     setLoading(true);
     try {
       const [d, f, b] = await Promise.allSettled([
-        apiEstoque.listDefeitos({ page, size: rowsPerPage, dataInicio, dataFim }),
+        apiEstoque.listDefeitos({
+          page,
+          size: rowsPerPage,
+          ...(dataInicio ? { dataInicio } : {}),
+          ...(dataFim ? { dataFim } : {}),
+        }),
         apiFruteira.listProdutos({ size: 500 }),
         apiBuffet.listProdutos({ size: 500 }),
       ]);

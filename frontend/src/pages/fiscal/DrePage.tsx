@@ -111,6 +111,7 @@ export function DrePage() {
         data={linhas.map((l) => ({ ...l, percentual: receita ? (l.valor / receita) * 100 : 0 }))} loading={loading} page={0} rowsPerPage={50}
         onPageChange={() => undefined} searchable={false}
         emptyMessage="Sem dados no período — ajuste o intervalo e clique em Apurar"
+        getRowId={(row) => row.conta}
         columns={[
           { field: 'conta', headerName: 'Conta', flex: 1 },
           { field: 'grupo', headerName: 'Grupo', width: 150, align: 'center' },

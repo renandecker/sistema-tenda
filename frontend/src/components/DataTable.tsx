@@ -56,6 +56,7 @@ interface DataTableProps<T> {
   selectable?: boolean;
   selectedRows?: T[];
   onSelectionChange?: (rows: T[]) => void;
+  getRowId?: (row: T) => string | number;
   emptyMessage?: string;
   stickyHeader?: boolean;
   maxHeight?: number;
@@ -81,6 +82,7 @@ export function DataTable<T extends Record<string, any>>({
   selectable = false,
   selectedRows = [],
   onSelectionChange,
+  getRowId = (row: T) => (row as any).id,
   emptyMessage = 'Nenhum registro encontrado',
   stickyHeader = true,
   maxHeight = 600,
@@ -133,7 +135,7 @@ export function DataTable<T extends Record<string, any>>({
     ? filteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
     : filteredData;
 
-  const isRowSelected = (row: T) => selectedRows.some(s => s.id === row.id);
+  const isRowSelected = (row: T) => selectedRows.some(s => getRowId(s) === getRowId(row));
 
   const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
@@ -144,8 +146,9 @@ export function DataTable<T extends Record<string, any>>({
   };
 
   const handleSelectRow = (row: T) => {
+    const rowId = getRowId(row);
     if (isRowSelected(row)) {
-      onSelectionChange?.(selectedRows.filter(r => r.id !== row.id));
+      onSelectionChange?.(selectedRows.filter(r => getRowId(r) !== rowId));
     } else {
       onSelectionChange?.([...selectedRows, row]);
     }
@@ -283,9 +286,9 @@ export function DataTable<T extends Record<string, any>>({
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedData.map((row) => (
+              paginatedData.map((row, index) => (
                 <TableRow
-                  key={row.id}
+                  key={getRowId(row) ?? index}
                   hover={!!onRowClick}
                   onClick={() => onRowClick?.(row)}
                   selected={isRowSelected(row)}

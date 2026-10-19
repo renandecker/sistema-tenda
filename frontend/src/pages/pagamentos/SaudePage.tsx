@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Grid,
@@ -16,6 +16,7 @@ import {
   Person as PersonIcon,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
+import { NotificationModal, NotificationSeverity } from '@/components/NotificationModal';
 
 interface StatusItem {
   status: 'funcionando' | 'atencao' | 'problema' | 'nao_configurado';
@@ -62,6 +63,16 @@ export function SaudePage() {
     verificando: false,
   });
 
+  const [notificacao, setNotificacao] = useState<{
+    open: boolean;
+    title?: string;
+    message: string;
+    severity: NotificationSeverity;
+  }>({ open: false, message: '', severity: 'info' });
+
+  const notificar = (message: string, severity: NotificationSeverity, title?: string) =>
+    setNotificacao({ open: true, message, severity, title });
+
   // Verificar se o usuário tem permissão (supervisor ou gerente)
   const podeVerificarAgora = () => {
     if (!isAuthenticated) return false;
@@ -72,7 +83,11 @@ export function SaudePage() {
   // Health check API call
   const executarVerificacao = async () => {
     if (!podeVerificarAgora()) {
-      alert('Apenas supervisores e gerentes podem executar verificação manual');
+      notificar(
+        'Apenas supervisores e gerentes podem executar verificação manual.',
+        'warning',
+        'Permissão necessária',
+      );
       return;
     }
 
@@ -116,12 +131,14 @@ export function SaudePage() {
             historico: prev.historico.slice(-9),
           }));
         }
+
+        notificar('Verificação concluída com sucesso.', 'success', 'Verificação realizada');
       } else {
-        alert('Erro na verificação: ' + (data.message || 'Erro desconhecido'));
+        notificar('Erro na verificação: ' + (data.message || 'Erro desconhecido'), 'error');
       }
     } catch (error: any) {
       console.error('Erro na verificação:', error);
-      alert('Erro ao conectar com o serviço de saúde');
+      notificar('Erro ao conectar com o serviço de saúde.', 'error');
     } finally {
       setState(prev => ({ ...prev, verificando: false }));
     }
@@ -303,6 +320,14 @@ export function SaudePage() {
           </Box>
         )}
       </Box>
+
+      <NotificationModal
+        open={notificacao.open}
+        onClose={() => setNotificacao(prev => ({ ...prev, open: false }))}
+        title={notificacao.title}
+        message={notificacao.message}
+        severity={notificacao.severity}
+      />
     </Box>
   );
 }

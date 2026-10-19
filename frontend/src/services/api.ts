@@ -283,3 +283,9 @@ export const apiFiscal = {
   listAtivos: (params?: any) => api.get('/fiscal/ativos', { params }),
   listConciliacao: (params?: any) => api.get('/fiscal/conciliacao-cartao', { params }),
 };
+
+export const apiSaude = {
+  verificar: () => api.get('/saude-check'),
+  verificarManual: () => api.post('/saude-check', { manual: true }),
+  historico: () => api.get('/saude-check/historico'),
+};

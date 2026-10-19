@@ -10,6 +10,9 @@ import { theme } from './theme';
 import { App } from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { PdvProvider } from './contexts/PdvContext';
+import { setupIndexedDBCleanup } from './utils/indexedDBCleanup';
+
+setupIndexedDBCleanup();
 
 const queryClient = new QueryClient({
   defaultOptions: {

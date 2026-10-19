@@ -124,6 +124,77 @@ app.get('/health', (req, res) => {
   });
 });
 
+const historicoSaude = [];
+const MAX_HISTORICO = 50;
+
+function mapearStatusParaFrontend(status, detail, tipo) {
+  const statusMap = {
+    'dentro': { status: 'funcionando', cor: 'green' },
+    'fora': { status: 'problema', cor: 'red' }
+  };
+  const mapeado = statusMap[status] || { status: 'atencao', cor: 'orange' };
+  const icone = tipo === 'pix' ? '💠' : '📟';
+  const mensagem = tipo === 'pix'
+    ? (status === 'dentro' ? 'PIX operacional' : 'PIX indisponível')
+    : (status === 'dentro' ? 'TEF operacional' : 'TEF indisponível');
+  return {
+    status: mapeado.status,
+    icone,
+    cor: mapeado.cor,
+    mensagem,
+    detalhe: detail || ''
+  };
+}
+
+async function executarSaudeCheck(manual = false) {
+  const healthCheck = await verificarSaudeSistema();
+  const agora = new Date().toISOString();
+  
+  const pix = mapearStatusParaFrontend(healthCheck.pix.status, healthCheck.pix.detail, 'pix');
+  const tef = mapearStatusParaFrontend(healthCheck.tef.status, healthCheck.tef.detail, 'tef');
+  pix.horaVerificacao = agora;
+  tef.horaVerificacao = agora;
+  
+  const resultado = {
+    success: true,
+    pix,
+    tef,
+    ultimaVerificacao: agora,
+    manual
+  };
+  
+  historicoSaude.unshift({ ...resultado, timestamp: agora });
+  if (historicoSaude.length > MAX_HISTORICO) {
+    historicoSaude.pop();
+  }
+  
+  return resultado;
+}
+
+app.get('/saude-check', async (req, res) => {
+  try {
+    const resultado = await executarSaudeCheck(false);
+    res.json(resultado);
+  } catch (error) {
+    logger.error('Erro no saude-check GET:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/saude-check', async (req, res) => {
+  try {
+    const resultado = await executarSaudeCheck(true);
+    res.json(resultado);
+  } catch (error) {
+    logger.error('Erro no saude-check POST:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.get('/saude-check/historico', (req, res) => {
+  res.json({ success: true, historico: historicoSaude });
+});
+
 app.post('/tef/command', async (req, res) => {
   const { command, params } = req.body;
   const requestId = uuidv4();

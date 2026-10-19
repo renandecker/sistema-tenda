@@ -6,6 +6,7 @@ import { apiBuffet, apiFruteira } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
 import { formatDateTime, formatNumber, getStatusColor, getStatusLabel } from '@/utils/formatters';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Transferencia {
   id: string;
@@ -20,6 +21,7 @@ interface Transferencia {
 }
 
 export function TransferenciasEstoquePage() {
+  const { user } = useAuth();
   const [items, setItems] = useState<Transferencia[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -68,7 +70,7 @@ export function TransferenciasEstoquePage() {
   const executarAcao = async () => {
     if (!alvo || !acao) return;
     try {
-      const operador = motivo || 'operador';
+      const operador = user?.nome || 'Operador';
       if (acao === 'aprovar') await apiBuffet.aprovar(alvo.id, operador);
       if (acao === 'rejeitar') {
         if (!motivo) { toast.warning('Informe o motivo da rejeição'); return; }
@@ -98,7 +100,7 @@ export function TransferenciasEstoquePage() {
         action={
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Tooltip title="Atualizar"><span><IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton></span></Tooltip>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialog(true)}>Solicitar transferência</Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setForm({ produtoId: '', quantidade: '', origem: 'FRUTEIRA', destino: 'BUFFET', solicitadoPor: user?.nome || '', observacoes: '' }); setDialog(true); }}>Solicitar transferência</Button>
           </Box>
         }
       />
@@ -159,12 +161,18 @@ export function TransferenciasEstoquePage() {
         <DialogActions><Button onClick={() => setDialog(false)}>Cancelar</Button><Button variant="contained" onClick={solicitar}>Solicitar</Button></DialogActions>
       </Dialog>
 
-      <Dialog open={!!alvo} onClose={() => { setAlvo(null); setAcao(null); }} maxWidth="xs" fullWidth>
+      <Dialog open={!!alvo} onClose={() => { setAlvo(null); setAcao(null); setMotivo(''); }} maxWidth="xs" fullWidth>
         <DialogTitle>{acao === 'aprovar' ? 'Aprovar' : acao === 'concluir' ? 'Confirmar recebimento' : acao === 'rejeitar' ? 'Rejeitar' : 'Cancelar'} — {alvo?.produto?.nome}</DialogTitle>
         <DialogContent>
-          <TextField fullWidth size="small" label={acao === 'aprovar' || acao === 'concluir' ? 'Responsável (aprovado/recebido por)' : 'Motivo'} value={motivo} onChange={(e) => setMotivo(e.target.value)} sx={{ mt: 1 }} multiline rows={2} />
+          {acao === 'aprovar' || acao === 'concluir' ? (
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              A operação será registrada em nome de <b>{user?.nome || 'Operador'}</b>.
+            </Typography>
+          ) : (
+            <TextField fullWidth size="small" label="Motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} sx={{ mt: 1 }} multiline rows={2} />
+          )}
         </DialogContent>
-        <DialogActions><Button onClick={() => { setAlvo(null); setAcao(null); }}>Voltar</Button><Button variant="contained" onClick={executarAcao}>Confirmar</Button></DialogActions>
+        <DialogActions><Button onClick={() => { setAlvo(null); setAcao(null); setMotivo(''); }}>Voltar</Button><Button variant="contained" onClick={executarAcao}>Confirmar</Button></DialogActions>
       </Dialog>
     </Box>
   );

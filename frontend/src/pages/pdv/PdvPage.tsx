@@ -17,7 +17,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { apiBuffet, apiClientes, apiCaderno, apiFruteira, apiPdv, api } from '@/services/api';
+import { apiBuffet, apiClientes, apiCaderno, apiFruteira, apiPdv } from '@/services/api';
 import { PageHeader } from '@/components/PageHeader';
 import { formatCurrency, formatNumber } from '@/utils/formatters';
 import { maskCurrency, maskCpfCnpj, maskQuantity, parseCurrency, parseDecimal, parseDocument } from '@/utils/masks';
@@ -576,28 +576,30 @@ export function PdvPage() {
 
   useEffect(() => {
     const handler = (_e: KeyboardEvent) => {
-      // Alt+1: trocar para aba buffet
-      if (_e.altKey && _e.key === '1') {
-        setTabValue('buffet');
-        _e.preventDefault();
-      }
-      // Alt+2: trocar para aba fruteira
-      if (_e.altKey && _e.key === '2') {
-        setTabValue('fruteira');
-        _e.preventDefault();
-      }
-      // Alt+N: adicionar produto da busca (N=1..9 corresponde ao índice)
-      if (_e.altKey && _e.key >= '1' && _e.key <= '9' && venda) {
-        const idx = parseInt(_e.key, 10) - 1;
-        if (resultados[idx]) {
-          adicionarItem(resultados[idx]);
-          _e.preventDefault();
+      // F1-F12 shortcuts for all buttons
+      if (_e.key >= 'F1' && _e.key <= 'F12') {
+        const keyNum = parseInt(_e.key.replace('F', ''), 10);
+        // Atalho para alternar abas: F1=buffet, F2=fruteira, F3=mesas
+        if (keyNum === 1) { setTabValue('buffet'); _e.preventDefault(); }
+        else if (keyNum === 2) { setTabValue('fruteira'); _e.preventDefault(); }
+        else if (keyNum === 3) { setTabValue('mesas'); _e.preventDefault(); }
+        // Atalho para adicionar item da busca: F4-F12 correspondem a índices 0-8
+        else if (keyNum >= 4 && keyNum <= 12 && venda && resultados) {
+          const idx = keyNum - 4;
+          if (resultados[idx]) {
+            adicionarItem(resultados[idx]);
+            _e.preventDefault();
+          }
         }
+        // Atalho para finalizar venda: F2
+        else if (keyNum === 2) { finalizar(); _e.preventDefault(); }
+        // Atalho para cancelar venda: F3
+        else if (keyNum === 3) { cancelar(); _e.preventDefault(); }
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [tabValue, resultados, venda, adicionarItem]);
+  }, [tabValue, resultados, venda, adicionarItem, finalizar, cancelar]);
 
   const saldo = (venda?.valorTotal ?? 0) - (venda?.valorPago ?? 0);
   const vendaIniciada = !!venda && ((venda.itens?.length ?? 0) > 0 || !!cliente);
@@ -629,12 +631,12 @@ export function PdvPage() {
         subtitle="Venda de produtos da fruteira e buffet por código de barras, peso e múltiplos pagamentos"
         icon={<PointOfSaleIcon />}
          action={
-           <Box sx={{ display: 'flex', gap: 1 }}>
-             <Button variant="outlined" color="warning" startIcon={<MenuBookIcon />} onClick={abrirFiado}>Caderno (fiado)</Button>
-             <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => venda && recarregarVenda(venda.id)} disabled={!venda || venda.id.startsWith('local-')}>Atualizar</Button>
-             <Button variant="contained" startIcon={<AddIcon />} onClick={novaVenda} disabled={loading}>Nova venda</Button>
-           </Box>
-         }
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button variant="outlined" color="warning" startIcon={<MenuBookIcon />} onClick={abrirFiado}>Caderno (fiado)</Button>
+            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => venda && recarregarVenda(venda.id)} disabled={!venda || venda.id.startsWith('local-')}>Atualizar</Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={novaVenda} disabled={loading}>Nova venda</Button>
+          </Box>
+        }
       />
       {/* Banner de status PIX/TEF */}
       {saude.verificando ? (
@@ -656,7 +658,7 @@ export function PdvPage() {
         </Alert>
       )}
       <Grid container spacing={2}>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={6}>
           <Card sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Buscar produto / mesa / comanda</Typography>
@@ -666,103 +668,6 @@ export function PdvPage() {
                 <TextField size="small" label="Qtd" value={maskQuantity(quantidade)} onChange={(e) => setQuantidade(maskQuantity(e.target.value))} sx={{ width: 90 }} inputMode="decimal" />
                 <Button variant="contained" onClick={() => { buscarProdutos(); carregarMesas(); }} disabled={buscando} startIcon={<SearchIcon />}>Buscar</Button>
                 <Tooltip title="Lançar prato por peso (balança)"><span><IconButton color="primary" onClick={() => setPesoDialog(true)} disabled={!venda}><ScaleIcon /></IconButton></span></Tooltip>
-              </Box>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent>
-              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Itens a venda</Typography>
-              <Box sx={{ mt: 1 }}>
-                <Tabs value={tabValue} onChange={(_, value) => setTabValue(value)} sx={{ mb: 1 }}>
-                  <Tab label="Buffet" value="buffet" />
-                  <Tab label="Fruteira" value="fruteira" />
-                  <Tab label="Mesas" value="mesas" />
-                </Tabs>
-                {tabValue === 'buffet' && renderProdutos(itensBuffetTab, estoqueLoading ? 'Carregando...' : (buscou ? 'Nenhum item de buffet encontrado na busca' : 'Nenhum item de buffet com estoque disponível'))}
-                {tabValue === 'fruteira' && renderProdutos(itensFruteiraTab, estoqueLoading ? 'Carregando...' : (buscou ? 'Nenhum item de fruteira encontrado na busca' : 'Nenhum item de fruteira com estoque disponível'))}
-                {tabValue === 'mesas' && (
-                  <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="caption" color="text.secondary">Comandas ativas (mesas ocupadas)</Typography>
-                      <Tooltip title="Atualizar mesas"><span><IconButton size="small" onClick={carregarMesas} disabled={mesasLoading}><RefreshIcon fontSize="small" /></IconButton></span></Tooltip>
-                    </Box>
-                    {mesasFiltradas.map((m: any) => (
-                      <Paper key={m.id} variant="outlined" sx={{ p: 1.5, mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Box>
-                          <Typography variant="body2" fontWeight={700}>Mesa {m.numero}{m.nome ? ` — ${m.nome}` : ''}</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Comanda #{m.comandaAtiva?.numero} · Cliente: {m.comandaAtiva?.clienteNome || 'Cliente'} · Total: {formatCurrency(m.comandaAtiva?.valorTotal ?? 0)}
-                          </Typography>
-                        </Box>
-                        <Button size="small" variant="contained" onClick={() => carregarMesaPdv(m.comandaAtiva.id, m.numero)}>
-                          Carregar consumo
-                        </Button>
-                      </Paper>
-                    ))}
-                    {mesasFiltradas.length === 0 && (
-                      <Typography variant="caption" color="text.secondary">
-                        {mesasLoading ? 'Carregando mesas...' : (buscou ? 'Nenhuma mesa encontrada na busca' : 'Nenhuma mesa com comanda ativa no momento.')}
-                      </Typography>
-                    )}
-                  </Box>
-                )}
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={8}>
-          <Card sx={{ mb: 2 }}>
-            <CardContent>
-              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Itens da venda {venda?.numero ? `#${venda.numero}` : ''}</Typography>
-              {!venda && <Typography variant="body2" color="text.secondary">Nenhuma venda aberta. Clique em "Nova venda".</Typography>}
-              <Box sx={{ mt: 1 }}>
-                <Tabs value={tabValue} onChange={(_, value) => setTabValue(value)} sx={{ mb: 1 }}>
-                  <Tab label="Buffet" value="buffet" />
-                  <Tab label="Fruteira" value="fruteira" />
-                  <Tab label="Mesas" value="mesas" />
-                </Tabs>
-                {tabValue === 'buffet' && (
-                  <Box>
-                    {venda?.itens?.filter((it) => it.origem === 'BUFFET').map((it) => (
-                      <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
-                        <Box>
-                          <Typography variant="body2">{it.quantidade}x {it.nomeProduto}</Typography>
-                          <Typography variant="caption" color="text.secondary">{it.codigoProduto} · {formatCurrency(it.precoUnitario ?? 0)} un.</Typography>
-                        </Box>
-                        <Typography variant="body2" fontWeight={700}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
-                      </Box>
-                    ))}
-                    {(!venda?.itens || venda.itens.filter((it) => it.origem === 'BUFFET').length === 0) && <Typography variant="caption" color="text.secondary">Nenhum item de buffet.</Typography>}
-                  </Box>
-                )}
-                {tabValue === 'fruteira' && (
-                  <Box>
-                    {venda?.itens?.filter((it) => it.origem === 'FRUTEIRA').map((it) => (
-                      <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
-                        <Box>
-                          <Typography variant="body2">{it.quantidade}x {it.nomeProduto}</Typography>
-                          <Typography variant="caption" color="text.secondary">{it.codigoProduto} · {formatCurrency(it.precoUnitario ?? 0)} un.</Typography>
-                        </Box>
-                        <Typography variant="body2" fontWeight={700}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
-                      </Box>
-                    ))}
-                    {(!venda?.itens || venda.itens.filter((it) => it.origem === 'FRUTEIRA').length === 0) && <Typography variant="caption" color="text.secondary">Nenhum item de fruteira.</Typography>}
-                  </Box>
-                )}
-                {tabValue === 'mesas' && (
-                  <Box>
-                    {venda?.itens?.map((it) => (
-                      <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
-                        <Box>
-                          <Typography variant="body2">{it.quantidade}x {it.nomeProduto}</Typography>
-                          <Typography variant="caption" color="text.secondary">{it.codigoProduto} · {formatCurrency(it.precoUnitario ?? 0)} un.</Typography>
-                        </Box>
-                        <Typography variant="body2" fontWeight={700}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
-                      </Box>
-                    ))}
-                    {(!venda?.itens || venda.itens.length === 0) && <Typography variant="caption" color="text.secondary">Nenhum item na venda.</Typography>}
-                  </Box>
-                )}
               </Box>
             </CardContent>
           </Card>
@@ -810,7 +715,7 @@ export function PdvPage() {
                     Cliente está devendo {formatCurrency(Number(situacao.totalDivida ?? 0))}
                   </Typography>
                   <Typography variant="caption" display="block">
-                    {situacao.quantidadeLancamentos ?? 0} lançamento(s) em aberto
+                    {situacao.quantidadeLancamentos ?? 0} lançamento(es) em aberto
                     {situacao.possuiAtraso ? ' · HÁ DÍVIDAS VENCIDAS' : ''}
                   </Typography>
                 </Alert>
@@ -832,9 +737,27 @@ export function PdvPage() {
               </Box>
             </CardContent>
           </Card>
-          <Card>
+          <Card sx={{ mb: 2 }}>
             <CardContent>
-              <Typography variant="subtitle1" fontWeight={700}>Resumo</Typography>
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Itens da venda</Typography>
+              {venda?.itens && venda.itens.length > 0 && (
+                <Box sx={{ mt: 1, mb: 1, maxHeight: 160, overflow: 'auto' }}>
+                  {venda.itens.map((it) => (
+                    <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: 1, borderColor: 'divider' }}>
+                      <Typography variant="caption">{it.quantidade}x {it.nomeProduto}</Typography>
+                      <Typography variant="caption" fontWeight={600}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+              {(!venda?.itens || venda.itens.length === 0) && <Typography variant="caption" color="text.secondary">Nenhum item na venda.</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ mb: 2 }}>
+            <CardContent>
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Resumo</Typography>
               {venda?.itens && venda.itens.length > 0 && (
                 <Box sx={{ mt: 1, mb: 1, maxHeight: 160, overflow: 'auto' }}>
                   {venda.itens.map((it) => (
@@ -899,48 +822,48 @@ export function PdvPage() {
         <DialogActions><Button onClick={() => setPesoDialog(false)}>Fechar</Button><Button variant="contained" onClick={lancarPeso}>Lançar</Button></DialogActions>
       </Dialog>
 
-        {/* Dialog: lançar fiado no caderno */}
-        <Dialog open={fiadoDialog} onClose={() => setFiadoDialog(false)} maxWidth="xs" fullWidth>
-          <DialogTitle>Lançar fiado no caderno</DialogTitle>
-          <DialogContent>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Cliente: <strong>{cliente?.nome}</strong>
-              {cliente?.cpfCnpj ? ` · ${cliente.cpfCnpj}` : ''}
-              {situacao && Number(situacao.totalDivida ?? 0) > 0 && (
-                <> · já deve {formatCurrency(Number(situacao.totalDivida ?? 0))}</>
-              )}
-            </Typography>
-            <TextField fullWidth label="Valor da dívida (R$)" value={maskCurrency(fiadoValor)}
-              onChange={(e) => setFiadoValor(maskCurrency(e.target.value))} placeholder="0,00" inputMode="decimal" sx={{ mb: 2 }} />
-            <TextField fullWidth type="date" label="Vencimento (opcional)" InputLabelProps={{ shrink: true }}
-              value={fiadoVencimento} onChange={(e) => setFiadoVencimento(e.target.value)} sx={{ mb: 2 }} />
-            <TextField fullWidth label="Descrição" value={fiadoDescricao}
-              onChange={(e) => setFiadoDescricao(e.target.value)} placeholder="Ex.: compra do dia" />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setFiadoDialog(false)}>Cancelar</Button>
-            <Button variant="contained" color="warning" onClick={lancarFiado}>Lançar dívida</Button>
-          </DialogActions>
-        </Dialog>
+      {/* Dialog: lançar fiado no caderno */}
+      <Dialog open={fiadoDialog} onClose={() => setFiadoDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Lançar fiado no caderno</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Cliente: <strong>{cliente?.nome}</strong>
+            {cliente?.cpfCnpj ? ` · ${cliente.cpfCnpj}` : ''}
+            {situacao && Number(situacao.totalDivida ?? 0) > 0 && (
+              <> · já deve {formatCurrency(Number(situacao.totalDivida ?? 0))}</>
+            )}
+          </Typography>
+          <TextField fullWidth label="Valor da dívida (R$)" value={maskCurrency(fiadoValor)}
+            onChange={(e) => setFiadoValor(maskCurrency(e.target.value))} placeholder="0,00" inputMode="decimal" sx={{ mb: 2 }} />
+          <TextField fullWidth type="date" label="Vencimento (opcional)" InputLabelProps={{ shrink: true }}
+            value={fiadoVencimento} onChange={(e) => setFiadoVencimento(e.target.value)} sx={{ mb: 2 }} />
+          <TextField fullWidth label="Descrição" value={fiadoDescricao}
+            onChange={(e) => setFiadoDescricao(e.target.value)} placeholder="Ex.: compra do dia" />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFiadoDialog(false)}>Cancelar</Button>
+          <Button variant="contained" color="warning" onClick={lancarFiado}>Lançar dívida</Button>
+        </DialogActions>
+      </Dialog>
 
-        {/* Dialog: cadastrar cliente inexistente ao finalizar a venda */}
-        <Dialog open={cadClienteDialog} onClose={() => setCadClienteDialog(false)} maxWidth="xs" fullWidth>
-          <DialogTitle>Cadastrar cliente</DialogTitle>
-          <DialogContent>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              O cliente <strong>{maskCpfCnpj(documento)}</strong> não está cadastrado. Informe o nome para concluir a venda:
-            </Typography>
-            <TextField fullWidth label="Nome do cliente" value={cadClienteForm.nome}
-              onChange={(e) => setCadClienteForm({ ...cadClienteForm, nome: e.target.value })} sx={{ mb: 2 }} autoFocus />
-            <TextField fullWidth label="Telefone (opcional)" value={cadClienteForm.telefone}
-              onChange={(e) => setCadClienteForm({ ...cadClienteForm, telefone: e.target.value })} placeholder="(00) 00000-0000" />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setCadClienteDialog(false)}>Cancelar</Button>
-            <Button variant="contained" onClick={confirmarCadastroCliente}>Cadastrar e finalizar</Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
+      {/* Dialog: cadastrar cliente inexistente ao finalizar a venda */}
+      <Dialog open={cadClienteDialog} onClose={() => setCadClienteDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Cadastrar cliente</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            O cliente <strong>{maskCpfCnpj(documento)}</strong> não está cadastrado. Informe o nome para concluir a venda:
+          </Typography>
+          <TextField fullWidth label="Nome do cliente" value={cadClienteForm.nome}
+            onChange={(e) => setCadClienteForm({ ...cadClienteForm, nome: e.target.value })} sx={{ mb: 2 }} autoFocus />
+          <TextField fullWidth label="Telefone (opcional)" value={cadClienteForm.telefone}
+            onChange={(e) => setCadClienteForm({ ...cadClienteForm, telefone: e.target.value })} placeholder="(00) 00000-0000" />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCadClienteDialog(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={confirmarCadastroCliente}>Cadastrar e finalizar</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }
 export default PdvPage;
