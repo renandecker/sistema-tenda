@@ -17,7 +17,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { apiBuffet, apiClientes, apiCaderno, apiFruteira, apiPdv } from '@/services/api';
+import { api, apiBuffet, apiClientes, apiCaderno, apiFruteira, apiPdv } from '@/services/api';
 import { PageHeader } from '@/components/PageHeader';
 import { formatCurrency, formatNumber } from '@/utils/formatters';
 import { maskCurrency, maskCpfCnpj, maskQuantity, parseCurrency, parseDecimal, parseDocument } from '@/utils/masks';
@@ -472,6 +472,16 @@ export function PdvPage() {
     }
   };
 
+  const removerItem = async (itemId: string) => {
+    if (!venda) return;
+    setVenda((v) => {
+      if (!v) return v;
+      const itens = v.itens?.filter((i) => i.id !== itemId) ?? [];
+      const subtotal = itens.reduce((s, i) => s + (i.valorTotal ?? 0), 0);
+      return { ...v, itens, subtotal, valorTotal: subtotal - (v.desconto ?? 0) + (v.acrescimo ?? 0) };
+    });
+  };
+
   const aplicarDesconto = async () => {
     if (!venda) return;
     const v = parseCurrency(desconto);
@@ -612,8 +622,15 @@ export function PdvPage() {
 
   const saldo = (venda?.valorTotal ?? 0) - (venda?.valorPago ?? 0);
   const vendaIniciada = !!venda && ((venda.itens?.length ?? 0) > 0 || !!cliente);
-  const itensBuffetTab = buscou ? resultados.filter((p) => p.origem === 'BUFFET') : estoqueBuffet;
-  const itensFruteiraTab = buscou ? resultados.filter((p) => p.origem === 'FRUTEIRA') : estoqueFruteira;
+  const filtrarProdutosDaAbas = (tab: 'buffet' | 'fruteira' | 'mesas') => {
+    if (tab === 'buffet') {
+      return buscou ? resultados.filter((p) => p.origem === 'BUFFET') : estoqueBuffet;
+    }
+    if (tab === 'fruteira') {
+      return buscou ? resultados.filter((p) => p.origem === 'FRUTEIRA') : estoqueFruteira;
+    }
+    return mesasFiltradas;
+  };
   const mesasFiltradas = busca.trim() ? mesasComComanda.filter((m) => mesaCorresponde(m, busca)) : mesasComComanda;
 
   const renderProdutos = (produtos: ProdutoBusca[], vazio: string) => (
@@ -639,7 +656,7 @@ export function PdvPage() {
         title="PDV — Frente de Caixa"
         subtitle="Venda de produtos da fruteira e buffet por código de barras, peso e múltiplos pagamentos"
         icon={<PointOfSaleIcon />}
-         action={
+        action={
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button variant="outlined" color="warning" startIcon={<MenuBookIcon />} onClick={abrirFiado}>Caderno (fiado)</Button>
             <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => venda && recarregarVenda(venda.id)} disabled={!venda || venda.id.startsWith('local-')}>Atualizar</Button>
@@ -667,7 +684,7 @@ export function PdvPage() {
         </Alert>
       )}
       <Grid container spacing={2}>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={8}>
           <Card sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Buscar produto / mesa / comanda</Typography>
@@ -680,9 +697,42 @@ export function PdvPage() {
               </Box>
             </CardContent>
           </Card>
+          <Tabs value={tabValue} onChange={(_, v) => setTabValue(v as 'buffet' | 'fruteira' | 'mesas')} sx={{ mb: 2 }}>
+            <Tab label="Buffet" />
+            <Tab label="Fruteira" />
+            <Tab label="Mesas" />
+          </Tabs>
+          <Card>
+            <CardContent>
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Itens a venda</Typography>
+{tabValue === 'buffet' ? renderProdutos(filtrarProdutosDaAbas('buffet'), 'Nenhum produto do buffet encontrado') :
+                 tabValue === 'fruteira' ? renderProdutos(filtrarProdutosDaAbas('fruteira'), 'Nenhum produto da fruteira encontrado') :
+                (() => {
+                  const mesas = mesasFiltradas;
+                  if (mesas.length === 0) return <Typography variant="caption" color="text.secondary">Nenhuma mesa com comanda aberta encontrada</Typography>;
+                  return (
+                    <Box>
+                      {mesas.map((m: any) => (
+                        <Box key={m.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="body2" fontWeight={600} noWrap>Mesa {m.numero}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {m.nome ?? '—'} · {m.comandaAtiva?.clienteNome ?? 'sem cliente'} · comanda {m.comandaAtiva?.numero ?? '—'}
+                            </Typography>
+                          </Box>
+                          <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => carregarMesaPdv(m.comandaAtiva?.id ?? m.id, String(m.numero))} disabled={!venda}>Adicionar</Button>
+                        </Box>
+                      ))}
+                    </Box>
+                  );
+                })()}
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={4}>
           <Card sx={{ mb: 2 }}>
             <CardContent>
-              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Cliente</Typography>
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Busca do cliente</Typography>
               <TextField
                 fullWidth size="small" label="CPF/CNPJ do cliente"
                 value={documento}
@@ -748,39 +798,37 @@ export function PdvPage() {
           </Card>
           <Card sx={{ mb: 2 }}>
             <CardContent>
-              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Itens da venda</Typography>
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Itens adicionados</Typography>
               {venda?.itens && venda.itens.length > 0 && (
-                <Box sx={{ mt: 1, mb: 1, maxHeight: 160, overflow: 'auto' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 1 }}>
                   {venda.itens.map((it) => (
-                    <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: 1, borderColor: 'divider' }}>
+                    <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 1, py: 0.5, border: 1, borderColor: 'divider' }}>
                       <Typography variant="caption">{it.quantidade}x {it.nomeProduto}</Typography>
+                      <Button size="small" variant="outlined" onClick={() => removerItem(it.id!)} startIcon={<CancelIcon />} sx={{ p: 0 }}>
+                        Remover
+                      </Button>
                       <Typography variant="caption" fontWeight={600}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
                     </Box>
                   ))}
+                  {venda.itens.length === 0 && <Typography variant="caption" color="text.secondary">Nenhum item adicionado</Typography>}
                 </Box>
               )}
-
+              {venda?.itens && venda.itens.length === 0 && (
+                <Typography variant="caption" color="text.secondary">Nenhum item adicionado</Typography>
+              )}
             </CardContent>
           </Card>
           <Card sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Resumo</Typography>
-              {venda?.itens && venda.itens.length > 0 && (
-                <Box sx={{ mt: 1, mb: 1, maxHeight: 160, overflow: 'auto' }}>
-                  {venda.itens.map((it) => (
-                    <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: 1, borderColor: 'divider' }}>
-                      <Typography variant="caption">{it.quantidade}x {it.nomeProduto}</Typography>
-                      <Typography variant="caption" fontWeight={600}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
-                    </Box>
-                  ))}
-                </Box>
+              {venda?.subtotal !== undefined && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}><Typography variant="body2">Subtotal</Typography><Typography fontWeight={600}>{formatCurrency(venda?.subtotal ?? 0)}</Typography></Box>
               )}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}><Typography variant="body2">Subtotal</Typography><Typography fontWeight={600}>{formatCurrency(venda?.subtotal ?? 0)}</Typography></Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">Desconto</Typography><Typography>{formatCurrency(venda?.desconto ?? 0)}</Typography></Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">Pago</Typography><Typography>{formatCurrency(venda?.valorPago ?? 0)}</Typography></Box>
               <Divider sx={{ my: 1 }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}><Typography variant="h6">Total</Typography><Typography variant="h6" color="primary">{formatCurrency(venda?.valorTotal ?? 0)}</Typography></Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}><Typography variant="body2">Saldo devedor</Typography><Chip size="small" label={formatCurrency(saldo)} color={saldo <= 0 ? 'success' : 'warning'} /></Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">Saldo devedor</Typography><Chip size="small" label={formatCurrency(saldo)} color={saldo <= 0 ? 'success' : 'warning'} /></Box>
               <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
                 <TextField size="small" label="Desconto (R$)" value={maskCurrency(desconto)} onChange={(e) => setDesconto(maskCurrency(e.target.value))} placeholder="0,00" sx={{ flex: 1 }} inputMode="decimal" />
                 <Button variant="outlined" onClick={aplicarDesconto} disabled={!venda}>Aplicar</Button>

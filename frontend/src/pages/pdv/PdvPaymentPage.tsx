@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -75,6 +75,26 @@ const FORMA_PAGAMENTO_LABELS: Record<string, string> = {
   VALE_CULTURA: 'Vale Cultura',
 };
 
+const FORMA_SHORTCUTS: Record<string, { label: string; shortcut: string }> = {
+  DINHEIRO: { label: 'Dinheiro', shortcut: 'F1' },
+  CARTAO_CREDITO: { label: 'Cartão Crédito', shortcut: 'F2' },
+  CARTAO_DEBITO: { label: 'Cartão Débito', shortcut: 'F3' },
+  PIX: { label: 'PIX', shortcut: 'F4' },
+  VALE_ALIMENTACAO: { label: 'Vale Alimentação', shortcut: 'F5' },
+  VALE_REFEICAO: { label: 'Vale Refeição', shortcut: 'F6' },
+  VALE_CULTURA: { label: 'Vale Cultura', shortcut: 'F7' },
+};
+
+const SHORTCUT_TO_FORMA: Record<string, string> = {
+  F1: 'DINHEIRO',
+  F2: 'CARTAO_CREDITO',
+  F3: 'CARTAO_DEBITO',
+  F4: 'PIX',
+  F5: 'VALE_ALIMENTACAO',
+  F6: 'VALE_REFEICAO',
+  F7: 'VALE_CULTURA',
+};
+
 const STATUS_LABELS: Record<string, string> = {
   ABERTA: 'Aberta',
   PAGA: 'Paga',
@@ -102,6 +122,19 @@ export function PdvPaymentPage() {
   const [tefDialogOpen, setTefDialogOpen] = useState(false);
   const [tefBandeira, setTefBandeira] = useState<BandeiraCartao>(BandeiraCartao.ALELO_ALIMENTACAO);
 
+  useEffect(() => {
+    if (!paymentDialogOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      const forma = SHORTCUT_TO_FORMA[e.key];
+      if (forma) {
+        e.preventDefault();
+        setPaymentForm((prev) => ({ ...prev, formaPagamento: forma }));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [paymentDialogOpen]);
+
   const loadVendas = async () => {
     setLoading(true);
     try {
@@ -128,8 +161,15 @@ export function PdvPaymentPage() {
     try {
       const response = await apiPdv.processarPagamento(selectedVenda.id, paymentForm);
       toast.success('Pagamento processado com sucesso!');
-      setPaymentDialogOpen(false);
-      loadVendas();
+      // Mantém o diálogo aberto para permitir mais de uma forma de pagamento
+      const updated = response.data as Venda;
+      setSelectedVenda(updated);
+      setPaymentForm((prev) => ({
+        ...prev,
+        valor: Math.max(0, getSaldoDevedor(updated)),
+        parcelas: 1,
+        cpfConsumidor: '',
+      }));
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Erro ao processar pagamento');
     }
@@ -367,27 +407,56 @@ export function PdvPaymentPage() {
             <Typography variant="body2" color="text.secondary" gutterBottom>
               Saldo devedor: <strong>{formatCurrency(selectedVenda ? getSaldoDevedor(selectedVenda) : 0)}</strong>
             </Typography>
+            <Box sx={{ mb: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Valor deste pagamento: <strong>{formatCurrency(paymentForm.valor)}</strong>
+              </Typography>
+            </Box>
             <Divider sx={{ mb: 2 }} />
-            
+
+            <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+              Forma de pagamento (atalhos F1–F7)
+            </Typography>
+            <Grid container spacing={1.5}>
+              {Object.entries(FORMA_SHORTCUTS).map(([forma, { label, shortcut }]) => (
+                <Grid item xs={12} sm={6} md={3} key={forma}>
+                  <Button
+                    fullWidth
+                    onClick={() => setPaymentForm((prev) => ({ ...prev, formaPagamento: forma }))}
+                    variant={paymentForm.formaPagamento === forma ? 'contained' : 'outlined'}
+                    sx={{
+                      height: 72,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 13,
+                      fontWeight: paymentForm.formaPagamento === forma ? 700 : 400,
+                      color: paymentForm.formaPagamento === forma ? 'contrastText' : 'text.primary',
+                      backgroundColor: paymentForm.formaPagamento === forma ? 'primary.main' : 'transparent',
+                      border: paymentForm.formaPagamento === forma ? 'none' : '1px solid',
+                      borderColor: paymentForm.formaPagamento === forma ? 'primary.main' : 'divider',
+                      '&:hover': {
+                        backgroundColor: paymentForm.formaPagamento === forma
+                          ? 'primary.dark'
+                          : 'action.hover',
+                      },
+                    }}
+                  >
+                    <Typography variant="subtitle1" component="span" gutterBottom>
+                      {label}
+                    </Typography>
+                    <Typography variant="overline" component="span">
+                      {shortcut}
+                    </Typography>
+                  </Button>
+                </Grid>
+              ))}
+            </Grid>
+
+            <Divider sx={{ my: 2 }} />
+
             <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  select
-                  label="Forma de Pagamento"
-                  value={paymentForm.formaPagamento}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, formaPagamento: e.target.value })}
-                  fullWidth
-                  SelectProps={{ native: true }}
-                >
-                  <option value="DINHEIRO">Dinheiro</option>
-                  <option value="CARTAO_CREDITO">Cartão Crédito</option>
-                  <option value="CARTAO_DEBITO">Cartão Débito</option>
-                  <option value="PIX">PIX</option>
-                  <option value="VALE_ALIMENTACAO">Vale Alimentação</option>
-                  <option value="VALE_REFEICAO">Vale Refeição</option>
-                  <option value="VALE_CULTURA">Vale Cultura</option>
-                </TextField>
-              </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
                   label="Valor (R$)"
@@ -458,19 +527,43 @@ export function PdvPaymentPage() {
                 />
               </Grid>
             </Grid>
+
+            {selectedVenda?.pagamentos && selectedVenda.pagamentos.length > 0 && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                  Pagamentos registrados nesta venda
+                </Typography>
+                <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1, mb: 1 }}>
+                  {selectedVenda.pagamentos.map((p, i) => (
+                    <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: 1, borderColor: 'divider', lastChild: { borderBottom: 'none' } }}>
+                      <Typography variant="body2">{FORMA_PAGAMENTO_LABELS[p.formaPagamento] || p.formaPagamento}</Typography>
+                      <Typography variant="body2" align="right">
+                        {formatCurrency(p.valor)}
+                      </Typography>
+                    </Box>
+                  ))}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, mt: 0.5 }}>
+                    <Typography variant="body2">Total pago</Typography>
+                    <Typography variant="body2" align="right">
+                      {formatCurrency(selectedVenda.valorPago)}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPaymentDialogOpen(false)}>Cancelar</Button>
           <Button variant="contained" onClick={handlePayment} disabled={paymentForm.valor <= 0}>
-            Confirmar Pagamento
+            Adicionar Pagamento
           </Button>
           <Button 
             variant="contained" 
             color="secondary"
             startIcon={<ReceiptPrintIcon />}
             onClick={handleFinalizarVenda} 
-            disabled={finalizing || getSaldoDevedor(selectedVenda!) <= 0}
+            disabled={finalizing || (selectedVenda ? getSaldoDevedor(selectedVenda) > 0 : true)}
           >
             {finalizing ? 'Finalizando...' : 'Finalizar Venda e Emitir NFC-e'}
           </Button>

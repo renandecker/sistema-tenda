@@ -74,6 +74,7 @@ export function SessoesCaixaPage() {
     try {
       const { data } = await apiPdv.listPdvs({ size: 200, ativo: true });
       const list = data?.content ?? (Array.isArray(data) ? data : []);
+      if (list.length === 0) return null;
       const match = list.find((p: any) => p.codigo?.toLowerCase().includes(user?.nome?.toLowerCase() || ''));
       return match?.id ?? list[0]?.id ?? null;
     } catch {
@@ -94,18 +95,22 @@ export function SessoesCaixaPage() {
           setVinculoOk(!!v?.vinculado);
         }
       } catch { setVinculoOk(null); }
-      load();
     } catch (e: any) {
       const msg = e?.response?.data?.message || '';
       if (!msg.includes('Já existe caixa aberto')) {
         toast.error(msg || 'Erro ao abrir caixa automaticamente');
-      } else {
-        load();
       }
+    } finally {
+      load();
     }
   }, [user, resolverPdvId, load]);
 
-  useEffect(() => { load(); autoAbrir(); }, [load, autoAbrir]);
+  useEffect(() => {
+    (async () => {
+      await autoAbrir();
+      load();
+    })();
+  }, [load, autoAbrir]);
 
   const abrirDialogManual = async () => {
     try {
