@@ -142,11 +142,35 @@ public class Nfe extends BaseEntity {
     @Column(name = "venda_id")
     public UUID vendaId;
 
-    @Column(name = "ambiente", length = 20)
+@Column(name = "ambiente", length = 20)
     @Size(max = 20)
     public String ambiente = "HOMOLOGACAO";
 
-    // --- Campos para Produtor Rural ---
+    @Column(name = "codigo_cfop", length = 4)
+    @Size(max = 4)
+    public String codigoCfop;
+
+    @Column(name = "codigo_ncm", length = 20)
+    @Size(max = 20)
+    public String codigoNcm;
+
+    @Column(name = "cst_icms", length = 3)
+    @Size(max = 3)
+    public String cstIcms;
+
+    @Column(name = "cst_pis", length = 2)
+    @Size(max = 2)
+    public String cstPis;
+
+    @Column(name = "cst_cofins", length = 2)
+    @Size(max = 2)
+    public String cstCofins;
+
+    @Column(name = "meio_pagamento", length = 20)
+    @Size(max = 20)
+    public String meioPagamento;
+
+// --- Campos para Produtor Rural ---
     
     @Column(name = "eh_produtor_rural")
     public Boolean ehProdutoRural = false;

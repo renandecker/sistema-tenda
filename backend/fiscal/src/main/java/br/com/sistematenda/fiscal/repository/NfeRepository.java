@@ -84,7 +84,48 @@ public class NfeRepository implements PanacheRepositoryBase<Nfe, UUID> {
     }
 
     private Sort buildSort(String sortBy, String sortDirection) {
-        String column = (sortBy != null && !sortBy.isBlank()) ? sortBy : "dataEmissao";
+        String column = "dataEmissao";
+        if (sortBy != null && !sortBy.isBlank()) {
+            switch (sortBy) {
+                case "dataEmissao":
+                case "status":
+                case "modelo":
+                case "serie":
+                case "numero":
+                case "chaveAcesso":
+                case "clienteNome":
+                case "cnpjProdutor":
+                case "ambiente":
+                case "cfopProdutoRural":
+                case "naturezaOperacao":
+                case "dataSaidaEntrada":
+                case "dataColheita":
+                case "volumeProducao":
+                case "areaProducao":
+                case "tipoProducao":
+                case "gradeProducao":
+                case "ehProdutoRural":
+                case "modalidadeAcre":
+                case "ruralIe":
+                case "meioPagamento":
+                case "codigoNcm":
+                case "cstIcms":
+                case "cstPis":
+                case "cstCofins":
+                case "valorIcms":
+                case "valorPis":
+                case "valorCofins":
+                case "valorIpi":
+                case "total":
+                case "deleted":
+                case "version":
+                case "vendaId":
+                    column = sortBy;
+                    break;
+                default:
+                    column = "dataEmissao";
+            }
+        }
         Sort.Direction direction = "ASC".equalsIgnoreCase(sortDirection)
                 ? Sort.Direction.Ascending
                 : Sort.Direction.Descending;

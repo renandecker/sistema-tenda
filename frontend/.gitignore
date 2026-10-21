@@ -1,0 +1,11 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+e2e/.auth/
+.env.e2e
+.env.e2e.local
+.env
+

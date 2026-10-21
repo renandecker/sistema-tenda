@@ -298,12 +298,31 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
         entity.valorPago = totalPago;
 
         // Emitir NFC-e se configurado
-        if (cpfConsumidor != null && !cpfConsumidor.trim().isEmpty()) {
-            String cpfLimpo = CpfUtils.clean(cpfConsumidor);
-            if (!CpfUtils.isValid(cpfLimpo)) {
-                throw new ValidationException("CPF inválido para NFC-e");
+        // Coletar dados fiscais dos itens da venda
+        String cfop = null;
+        String ncm = null;
+        String cstIcms = null;
+        String meioPagamento = null;
+
+        if (entity.itens != null && !entity.itens.isEmpty()) {
+            for (ItemVenda item : entity.itens) {
+                if (item.produtoFruteira != null) {
+                    Produto produto = item.produtoFruteira;
+                    ncm = produto.ncm;
+                    if (produto.cstIcms != null) {
+                        cstIcms = produto.cstIcms.name();
+                    }
+                    // CFOP virá do cadastro do produto ou da operação; usando padrão se não tiver
+                    break;
+                }
+                if (item.produtoBuffet != null) {
+                    break;
+                }
             }
-            entity.clienteDocumento = cpfLimpo;
+        }
+        // CFOP padrão se não encontrado
+        if (cfop == null || cfop.isEmpty()) {
+            cfop = "5102"; // CFOP para operação interna
         }
 
         getRepository().persist(entity);
@@ -317,6 +336,22 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
             nfceRequest.setSubtotal(entity.subtotal);
             nfceRequest.setDesconto(entity.desconto);
             nfceRequest.setAcrescimo(entity.acrescimo);
+            nfceRequest.setNaturezaOperacao("VENDA");
+            nfceRequest.setCodigoCfop(cfop);
+            nfceRequest.setCodigoNcm(ncm);
+            nfceRequest.setCstIcms(cstIcms);
+
+            // Determinar meio de pagamento
+            if (entity.observacoes != null) {
+                if (entity.observacoes.contains("PIX")) {
+                    meioPagamento = "PIX";
+                } else if (entity.observacoes.contains("Cartão")) {
+                    meioPagamento = "CARTÃO";
+                } else if (entity.observacoes.contains("Dinheiro")) {
+                    meioPagamento = "DINHEIRO";
+                }
+            }
+            nfceRequest.setMeioPagamento(meioPagamento);
 
             Nfe nfe = nfceService.emitirNfce(nfceRequest);
             entity.nfce = nfe;

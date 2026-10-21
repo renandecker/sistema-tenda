@@ -14,4 +14,13 @@ public class NfceRequest {
     private BigDecimal subtotal;
     private BigDecimal desconto;
     private BigDecimal acrescimo;
+
+    // Informações da operação
+    private String naturezaOperacao;
+    private String codigoCfop;
+    private String codigoNcm;
+    private String cstIcms;
+    private String cstPis;
+    private String cstCofins;
+    private String meioPagamento;
 }
