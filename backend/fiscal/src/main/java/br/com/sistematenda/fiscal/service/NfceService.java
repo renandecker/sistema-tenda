@@ -108,18 +108,35 @@ public class NfceService {
         }
     }
 
+    private String getUfCode(String uf) {
+        if (uf == null) return "43";
+        return switch (uf.toUpperCase()) {
+            case "RS" -> "43";
+            case "SP" -> "35";
+            case "RJ" -> "33";
+            case "MG" -> "31";
+            case "PR" -> "41";
+            case "SC" -> "42";
+            default -> "43";
+        };
+    }
+
     private String gerarChaveAcesso(Integer serie, long numero) {
         StringBuilder sb = new StringBuilder();
-        // Formato da chave de acesso NFC-e: UF(2) + Ano(4) + Mês(2) + Modelo(2) + Série(3) + NF(9) + DV(1) + CNPJ(14) = 44
+        // Formato da chave de acesso NFC-e: UF(2) + AAMM(4) + CNPJ(14) + Mod(2) + Serie(3) + nNF(9) + tpEmis(1) + cNF/DV(9) = 44
         java.time.LocalDate hoje = LocalDate.now();
-        sb.append("35"); // UF placeholder (ex: 35 = RS)
-        sb.append(hoje.getYear()); // Ano (4 dígitos)
-        sb.append(String.format("%02d", hoje.getMonthValue())); // Mês (2 dígitos)
+        sb.append(getUfCode(fiscalConfig.uf())); // UF (ex: 43 = RS)
+        sb.append(String.format("%02d%02d", hoje.getYear() % 100, hoje.getMonthValue())); // AAMM
+        String cnpj = fiscalConfig.cnpj().orElse("19393430000149");
+        cnpj = cnpj.replaceAll("[^0-9]", "");
+        if (cnpj.length() < 14) {
+            cnpj = String.format("%-14s", cnpj).replace(' ', '0');
+        }
+        sb.append(cnpj.substring(0, 14)); // CNPJ (14)
         sb.append("65"); // Modelo NFC-e
-        sb.append(String.format("%03d", serie != null ? serie : 1)); // Série (3 dígitos)
-        sb.append(String.format("%09d", numero)); // Número da NF (9 dígitos)
-        // DV (1 dígito) + CNPJ (14 dígitos) = 15 dígitos restantes
-        // Em stub, preencher com zeros
+        sb.append(String.format("%03d", serie != null ? serie : 1)); // Série (3)
+        sb.append(String.format("%09d", numero)); // Número da NF (9)
+        sb.append("1"); // tpEmis
         while (sb.length() < 44) {
             sb.append("0");
         }

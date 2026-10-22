@@ -23,8 +23,26 @@ public interface FiscalConfig {
     @WithName("csc-id")
     Optional<String> cscId();
 
-    @WithDefault("SP")
+    @WithDefault("RS")
     String uf();
+
+    @WithName("razao-social")
+    Optional<String> razaoSocial();
+
+    @WithName("nome-fantasia")
+    Optional<String> nomeFantasia();
+
+    @WithName("endereco")
+    Optional<String> endereco();
+
+    @WithName("cep")
+    Optional<String> cep();
+
+    @WithName("fone")
+    Optional<String> fone();
+
+    @WithName("email")
+    Optional<String> email();
 
     @WithName("municipio-codigo")
     Optional<Integer> municipioCodigo();
