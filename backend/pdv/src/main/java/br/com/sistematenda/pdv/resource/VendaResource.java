@@ -8,6 +8,7 @@ import br.com.sistematenda.pdv.pix.PixService;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.enums.StatusVenda;
 import jakarta.inject.Inject;
+import org.jboss.logging.Logger;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -21,6 +22,8 @@ import java.util.UUID;
 @Path("/pdv/vendas")
 @Produces(MediaType.APPLICATION_JSON)
 public class VendaResource {
+
+    private static final Logger LOG = Logger.getLogger(VendaResource.class);
 
     @Inject
     VendaService service;
@@ -147,8 +150,26 @@ public class VendaResource {
 
     @POST
     @Path("/{id}/finalizar")
-    public VendaDTO finalizar(@PathParam("id") UUID id, @QueryParam("cpfConsumidor") String cpfConsumidor) {
-        return service.finalizarVenda(id, cpfConsumidor);
+    public VendaDTO finalizar(@PathParam("id") UUID id,
+                              @QueryParam("cpfConsumidor") String cpfConsumidor,
+                              @QueryParam("emitirNfce") @DefaultValue("false") boolean emitirNfce) {
+        VendaDTO venda = service.finalizarVenda(id, cpfConsumidor);
+        if (emitirNfce) {
+            try {
+                venda = service.emitirNfceVenda(id, cpfConsumidor);
+            } catch (Exception e) {
+                LOG.warnf(e, "Falha ao emitir NFC-e da venda %s", id);
+                venda.setNfceErro(e.getMessage() != null ? e.getMessage() : "Falha ao emitir NFC-e");
+            }
+        }
+        return venda;
+    }
+
+    @POST
+    @Path("/{id}/nfce")
+    public VendaDTO emitirNfce(@PathParam("id") UUID id,
+                               @QueryParam("cpfConsumidor") String cpfConsumidor) {
+        return service.emitirNfceVenda(id, cpfConsumidor);
     }
 
     @POST

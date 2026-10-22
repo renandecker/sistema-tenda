@@ -45,6 +45,7 @@ public class VendaDTO extends BaseDTO {
     private UUID pdvId;
     private String numeroNfce;
     private String chaveNfce;
+    private String nfceErro;
     private NfeResumoDTO nfce;
     private List<ItemVendaResumoDTO> itens;
     private List<PagamentoResumoDTO> pagamentos;

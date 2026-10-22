@@ -8,6 +8,8 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -169,6 +171,24 @@ public class Nfe extends BaseEntity {
     @Column(name = "meio_pagamento", length = 20)
     @Size(max = 20)
     public String meioPagamento;
+
+    @Column(name = "valor_desconto", precision = 15, scale = 4)
+    public BigDecimal valorDesconto = BigDecimal.ZERO;
+
+    @Column(name = "valor_acrescimo", precision = 15, scale = 4)
+    public BigDecimal valorAcrescimo = BigDecimal.ZERO;
+
+    @Column(name = "valor_troco", precision = 15, scale = 4)
+    public BigDecimal valorTroco = BigDecimal.ZERO;
+
+    @Column(name = "informacoes_complementares", columnDefinition = "TEXT")
+    public String informacoesComplementares;
+
+    @OneToMany(mappedBy = "nfe", cascade = CascadeType.ALL, orphanRemoval = true)
+    public List<NfeItem> itens = new ArrayList<>();
+
+    @OneToMany(mappedBy = "nfe", cascade = CascadeType.ALL, orphanRemoval = true)
+    public List<NfePagamento> pagamentos = new ArrayList<>();
 
 // --- Campos para Produtor Rural ---
     

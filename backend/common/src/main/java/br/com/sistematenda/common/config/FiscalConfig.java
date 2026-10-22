@@ -4,6 +4,7 @@ import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 @ConfigMapping(prefix = "fiscal")
@@ -87,6 +88,26 @@ public interface FiscalConfig {
     @WithName("webservice-timeout")
     @WithDefault("30000")
     int webserviceTimeout();
+
+    @WithName("cfop-padrao")
+    @WithDefault("5102")
+    String cfopPadrao();
+
+    @WithName("cfop-interestadual")
+    @WithDefault("6102")
+    String cfopInterestadual();
+
+    @WithName("aliquota-icms-padrao")
+    @WithDefault("18.00")
+    BigDecimal aliquotaIcmsPadrao();
+
+    @WithName("aliquota-pis-padrao")
+    @WithDefault("1.65")
+    BigDecimal aliquotaPisPadrao();
+
+    @WithName("aliquota-cofins-padrao")
+    @WithDefault("7.60")
+    BigDecimal aliquotaCofinsPadrao();
 
     @WithName("schemas-path")
     @WithDefault("schemas/")

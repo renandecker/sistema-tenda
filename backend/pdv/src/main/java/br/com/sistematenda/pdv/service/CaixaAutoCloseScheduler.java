@@ -17,7 +17,7 @@ public class CaixaAutoCloseScheduler {
     @ConfigProperty(name = "caixa.auto-close.hora", defaultValue = "23:30")
     String horaFechamento;
 
-    @Scheduled(every = "60s")
+    @Scheduled(cron = "0 0 23 * * *")
     void verificarFechamentoAutomatico() {
         try {
             LocalTime agora = LocalTime.now();

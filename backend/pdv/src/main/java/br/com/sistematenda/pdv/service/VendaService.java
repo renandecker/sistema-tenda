@@ -4,6 +4,8 @@ import br.com.sistematenda.pdv.dto.VendaDTO;
 import br.com.sistematenda.pdv.entity.Venda;
 import br.com.sistematenda.pdv.entity.ItemVenda;
 import br.com.sistematenda.pdv.mapper.VendaMapper;
+import br.com.sistematenda.pdv.entity.Pagamento;
+import br.com.sistematenda.pdv.repository.PagamentoRepository;
 import br.com.sistematenda.pdv.repository.VendaRepository;
 import br.com.sistematenda.pdv.repository.ItemVendaRepository;
 import br.com.sistematenda.buffet.entity.Comanda;
@@ -31,6 +33,7 @@ import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -66,6 +69,9 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
 
     @Inject
     NfceService nfceService;
+
+    @Inject
+    PagamentoRepository pagamentoRepository;
 
     @Override
     protected VendaRepository getRepository() {
@@ -282,6 +288,14 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
             throw new BusinessException("VENDA_JA_FINALIZADA", "Venda já está finalizada");
         }
 
+        if (cpfConsumidor != null && !cpfConsumidor.isBlank()) {
+            String cpf = CpfUtils.clean(cpfConsumidor);
+            if (!CpfUtils.isValid(cpf)) {
+                throw new BusinessException("CPF_INVALIDO", "CPF do consumidor inválido");
+            }
+            entity.clienteDocumento = cpf;
+        }
+
         if (entity.valorTotal.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException("VENDA_SEM_VALOR", "Venda não possui itens");
         }
@@ -297,75 +311,7 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
         entity.troco = totalPago.subtract(entity.valorTotal);
         entity.valorPago = totalPago;
 
-        // Emitir NFC-e se configurado
-        // Coletar dados fiscais dos itens da venda
-        String cfop = null;
-        String ncm = null;
-        String cstIcms = null;
-        String meioPagamento = null;
-
-        if (entity.itens != null && !entity.itens.isEmpty()) {
-            for (ItemVenda item : entity.itens) {
-                if (item.produtoFruteira != null) {
-                    Produto produto = item.produtoFruteira;
-                    ncm = produto.ncm;
-                    if (produto.cstIcms != null) {
-                        cstIcms = produto.cstIcms.name();
-                    }
-                    // CFOP virá do cadastro do produto ou da operação; usando padrão se não tiver
-                    break;
-                }
-                if (item.produtoBuffet != null) {
-                    break;
-                }
-            }
-        }
-        // CFOP padrão se não encontrado
-        if (cfop == null || cfop.isEmpty()) {
-            cfop = "5102"; // CFOP para operação interna
-        }
-
         getRepository().persist(entity);
-
-        try {
-            NfceRequest nfceRequest = new NfceRequest();
-            nfceRequest.setVendaId(entity.id);
-            nfceRequest.setClienteNome(entity.clienteNome);
-            nfceRequest.setClienteDocumento(entity.clienteDocumento);
-            nfceRequest.setValorTotal(entity.valorTotal);
-            nfceRequest.setSubtotal(entity.subtotal);
-            nfceRequest.setDesconto(entity.desconto);
-            nfceRequest.setAcrescimo(entity.acrescimo);
-            nfceRequest.setNaturezaOperacao("VENDA");
-            nfceRequest.setCodigoCfop(cfop);
-            nfceRequest.setCodigoNcm(ncm);
-            nfceRequest.setCstIcms(cstIcms);
-
-            // Determinar meio de pagamento
-            if (entity.observacoes != null) {
-                if (entity.observacoes.contains("PIX")) {
-                    meioPagamento = "PIX";
-                } else if (entity.observacoes.contains("Cartão")) {
-                    meioPagamento = "CARTÃO";
-                } else if (entity.observacoes.contains("Dinheiro")) {
-                    meioPagamento = "DINHEIRO";
-                }
-            }
-            nfceRequest.setMeioPagamento(meioPagamento);
-
-            Nfe nfe = nfceService.emitirNfce(nfceRequest);
-            entity.nfce = nfe;
-            entity.numeroNfce = nfe.numero.toString();
-            entity.chaveNfce = nfe.chaveAcesso;
-            entity.xmlNfce = nfe.xmlAutorizado;
-            entity.danfeNfce = nfe.danfe;
-            getRepository().persist(entity);
-        } catch (BusinessException e) {
-            // Log error but don't fail the sale - allow manual NFC-e emission later
-            entity.observacoes = (entity.observacoes != null ? entity.observacoes + "\n" : "")
-                + "ERRO NFCE: " + e.getMessage();
-            getRepository().persist(entity);
-        }
 
         // Se tiver comanda, marcar como paga
         if (entity.comanda != null) {
@@ -376,6 +322,149 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
         }
 
         return mapper.toDTO(entity);
+    }
+
+    @Transactional
+    public VendaDTO emitirNfceVenda(UUID vendaId, String cpfConsumidor) {
+        Venda entity = getRepository().findById(vendaId);
+        if (entity == null || entity.deleted) {
+            throw new NotFoundException("Venda", vendaId);
+        }
+        if (!entity.isFinalizada()) {
+            throw new BusinessException("VENDA_NAO_FINALIZADA", "Finalize a venda antes de emitir a NFC-e");
+        }
+        if (entity.nfce != null
+            && entity.nfce.status != Nfe.StatusNfe.CANCELADA
+            && entity.nfce.status != Nfe.StatusNfe.REJEITADA) {
+            throw new BusinessException("NFCE_JA_EXISTE", "Esta venda já possui NFC-e em andamento ou autorizada");
+        }
+
+        if (cpfConsumidor != null && !cpfConsumidor.isBlank()) {
+            String cpf = CpfUtils.clean(cpfConsumidor);
+            if (!CpfUtils.isValid(cpf)) {
+                throw new BusinessException("CPF_INVALIDO", "CPF do consumidor inválido");
+            }
+            entity.clienteDocumento = cpf;
+        }
+
+        NfceRequest request = montarNfceRequest(entity);
+        Nfe nfe = nfceService.emitirNfce(request);
+
+        entity.nfce = nfe;
+        entity.numeroNfce = nfe.numero.toString();
+        entity.chaveNfce = nfe.chaveAcesso;
+        entity.xmlNfce = nfe.xmlAutorizado != null ? nfe.xmlAutorizado : nfe.xmlOriginal;
+        entity.danfeNfce = nfe.danfe;
+        getRepository().persist(entity);
+
+        return mapper.toDTO(entity);
+    }
+
+    private NfceRequest montarNfceRequest(Venda entity) {
+        NfceRequest request = new NfceRequest();
+        request.setVendaId(entity.id);
+        request.setClienteNome(entity.clienteNome);
+        request.setClienteDocumento(entity.clienteDocumento);
+        request.setValorTotal(entity.valorTotal);
+        request.setSubtotal(entity.subtotal);
+        request.setDesconto(entity.desconto);
+        request.setAcrescimo(entity.acrescimo);
+        request.setValorTroco(entity.troco);
+        request.setNaturezaOperacao("VENDA");
+        request.setInformacoesComplementares(entity.observacoes);
+        request.setItens(montarItensNfce(entity));
+        request.setPagamentos(montarPagamentosNfce(entity));
+        return request;
+    }
+
+    private List<NfceRequest.ItemNfceRequest> montarItensNfce(Venda entity) {
+        List<NfceRequest.ItemNfceRequest> itens = new ArrayList<>();
+        if (entity.itens == null) {
+            return itens;
+        }
+
+        int numeroItem = 1;
+        for (ItemVenda item : entity.itens) {
+            if (item.cancelado) {
+                continue;
+            }
+
+            String ncm = null;
+            String cstIcms = null;
+            String cstPis = null;
+            String cstCofins = null;
+            String unidade = "UN";
+            Integer origem = 0;
+
+            if (item.produtoFruteira != null) {
+                Produto produto = item.produtoFruteira;
+                ncm = produto.ncm;
+                cstIcms = produto.cstIcms != null ? produto.cstIcms.getCodigo() : null;
+                cstPis = produto.cstPis != null ? produto.cstPis.getCodigo() : null;
+                cstCofins = produto.cstCofins != null ? produto.cstCofins.getCodigo() : null;
+                unidade = produto.unidadeMedida != null ? produto.unidadeMedida.getSigla() : "UN";
+                origem = produto.origemMercadoria;
+            } else if (item.produtoBuffet != null) {
+                ProdutoBuffet produto = item.produtoBuffet;
+                ncm = produto.ncm;
+                cstIcms = produto.cstIcms != null ? produto.cstIcms.getCodigo() : null;
+                cstPis = produto.cstPis != null ? produto.cstPis.getCodigo() : null;
+                cstCofins = produto.cstCofins != null ? produto.cstCofins.getCodigo() : null;
+                unidade = produto.unidadeMedida != null ? produto.unidadeMedida.getSigla() : "UN";
+                origem = produto.origemMercadoria;
+            }
+
+            NfceRequest.ItemNfceRequest nfceItem = new NfceRequest.ItemNfceRequest();
+            nfceItem.setNumeroItem(numeroItem++);
+            nfceItem.setCodigoProduto(item.codigoProduto);
+            nfceItem.setDescricao(item.nomeProduto);
+            nfceItem.setNcm(ncm);
+            nfceItem.setCstIcms(cstIcms);
+            nfceItem.setCstPis(cstPis);
+            nfceItem.setCstCofins(cstCofins);
+            nfceItem.setUnidadeComercial(unidade);
+            nfceItem.setQuantidade(item.quantidade);
+            nfceItem.setValorUnitario(item.precoUnitario);
+            nfceItem.setValorTotal(item.valorTotal);
+            nfceItem.setOrigemMercadoria(origem);
+            itens.add(nfceItem);
+        }
+        return itens;
+    }
+
+    private List<NfceRequest.PagamentoNfceRequest> montarPagamentosNfce(Venda entity) {
+        List<NfceRequest.PagamentoNfceRequest> pagamentos = new ArrayList<>();
+        for (Pagamento pagamento : pagamentoRepository.findByVenda(entity)) {
+            if (pagamento.status != Pagamento.StatusPagamento.AUTORIZADO) {
+                continue;
+            }
+            NfceRequest.PagamentoNfceRequest nfcePagamento = new NfceRequest.PagamentoNfceRequest();
+            nfcePagamento.setFormaPagamento(mapearFormaPagamento(pagamento.formaPagamento));
+            nfcePagamento.setDescricao(pagamento.formaPagamento != null
+                ? pagamento.formaPagamento.getDescricao()
+                : "Outros");
+            nfcePagamento.setValor(pagamento.valor);
+            pagamentos.add(nfcePagamento);
+        }
+        return pagamentos;
+    }
+
+    private String mapearFormaPagamento(FormaPagamento forma) {
+        if (forma == null) {
+            return "99";
+        }
+        return switch (forma) {
+            case DINHEIRO -> "01";
+            case CHEQUE -> "02";
+            case CARTAO_CREDITO -> "03";
+            case CARTAO_DEBITO -> "04";
+            case VALE_ALIMENTACAO -> "10";
+            case VALE_REFEICAO -> "11";
+            case PIX -> "17";
+            case TRANSFERENCIA -> "18";
+            case BOLETO -> "15";
+            case VALE_CULTURA, OUTROS -> "99";
+        };
     }
 
     @Transactional

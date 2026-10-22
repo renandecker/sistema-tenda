@@ -80,9 +80,8 @@ public class NfeResource {
         if (justificativa == null || justificativa.trim().length() < 15) {
             throw new BusinessException("JUSTIFICATIVA_INVALIDA", "Justificativa deve ter no mínimo 15 caracteres");
         }
-        nfceService.cancelarNfce(nfe, justificativa);
-        repository.persist(nfe);
-        return mapper.toDTO(nfe);
+        Nfe atual = nfceService.cancelarNfce(nfe, justificativa);
+        return mapper.toDTO(atual);
     }
 
     @POST
@@ -93,7 +92,6 @@ public class NfeResource {
             throw new NotFoundException("Nfe", id);
         }
         nfe = nfceService.consultarStatus(nfe);
-        repository.persist(nfe);
         return mapper.toDTO(nfe);
     }
 
