@@ -1,9 +1,18 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 chcp 65001 >nul
 title Sistema Tenda - Iniciar Ambiente Local
 
 set "ROOT=%~dp0"
+
+rem Carrega as variaveis de ambiente do arquivo .env (se existir)
+if exist "%ROOT%.env" (
+    for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%ROOT%.env") do (
+        set "%%~A=%%~B"
+    )
+)
+setlocal enabledelayedexpansion
+
 set "BACKEND=%ROOT%backend"
 set "FRONTEND=%ROOT%frontend"
 set "LOG_DIR=%ROOT%.logs"

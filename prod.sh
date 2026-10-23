@@ -58,6 +58,10 @@ if [ -d "$FRONTEND/dist" ]; then
   cp -r "$FRONTEND/dist" "$PROD_DIR/frontend/"
 fi
 
+if [ -f "$ROOT/.env" ]; then
+  cp "$ROOT/.env" "$PROD_DIR/.env"
+fi
+
 info "  Arquivos organizados."
 echo
 
@@ -66,8 +70,8 @@ cat << 'EOF' > "$PROD_DIR/start-prod.sh"
 #!/usr/bin/env bash
 set -euo pipefail
 echo "Iniciando Sistema Tenda em Modo Producao..."
-cd "$(dirname "$0")/backend/quarkus-app"
-exec java -jar quarkus-run.jar
+cd "$(dirname "$0")"
+exec java -jar backend/quarkus-app/quarkus-run.jar
 EOF
 chmod +x "$PROD_DIR/start-prod.sh"
 

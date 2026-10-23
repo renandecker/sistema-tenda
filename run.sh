@@ -8,6 +8,17 @@ LOG_DIR="$ROOT/.logs"
 QUARKUS_VERSION="3.12.0"
 DB_PORT="5433"
 
+# Carrega as variaveis de ambiente do arquivo .env (se existir)
+if [ -f "$ROOT/.env" ]; then
+  while IFS='=' read -r key value || [ -n "$key" ]; do
+    key="${key%$'\r'}"
+    value="${value%$'\r'}"
+    [ -z "$key" ] && continue
+    case "$key" in \#*) continue ;; esac
+    export "$key=$value"
+  done < "$ROOT/.env"
+fi
+
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 info(){ printf "${GREEN}%s${NC}\n" "$*"; }
 warn(){ printf "${YELLOW}%s${NC}\n" "$*"; }

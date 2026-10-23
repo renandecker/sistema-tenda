@@ -71,6 +71,11 @@ if exist "%FRONTEND%\dist" (
     xcopy /e /i /q "%FRONTEND%\dist" "%PROD_DIR%\frontend\dist" >nul
 )
 
+:: Copiar variaveis de ambiente
+if exist "%ROOT%.env" (
+    copy "%ROOT%.env" "%PROD_DIR%\.env" >nul
+)
+
 echo    Arquivos organizados.
 echo.
 
@@ -80,8 +85,8 @@ echo @echo off
 echo setlocal
 echo title Sistema Tenda - Producao
 echo echo Iniciando Sistema Tenda em Modo Producao...
-echo cd /d %%~dp0backend\quarkus-app
-echo java -jar quarkus-run.jar
+echo cd /d %%~dp0
+echo java -jar backend\quarkus-app\quarkus-run.jar
 echo pause
 ) > "%PROD_DIR%\start-prod.bat"
 

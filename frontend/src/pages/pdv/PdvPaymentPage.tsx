@@ -245,8 +245,17 @@ export function PdvPaymentPage() {
     setFinalizing(true);
     try {
       const cpfConsumidor = paymentForm.emitirNfce ? paymentForm.cpfConsumidor : '';
-      await apiPdv.finalizarVenda(selectedVenda.id, cpfConsumidor);
-      toast.success('Venda finalizada com sucesso!');
+      const response = await apiPdv.finalizarVenda(
+        selectedVenda.id,
+        cpfConsumidor,
+        paymentForm.emitirNfce
+      );
+      const vendaFinalizada = response.data;
+      if (paymentForm.emitirNfce && vendaFinalizada?.nfceErro) {
+        toast.warning(`Venda finalizada, mas a NFC-e não foi emitida: ${vendaFinalizada.nfceErro}`);
+      } else {
+        toast.success('Venda finalizada com sucesso!');
+      }
       setPaymentDialogOpen(false);
       loadVendas();
     } catch (error: any) {
@@ -565,7 +574,11 @@ export function PdvPaymentPage() {
             onClick={handleFinalizarVenda} 
             disabled={finalizing || (selectedVenda ? getSaldoDevedor(selectedVenda) > 0 : true)}
           >
-            {finalizing ? 'Finalizando...' : 'Finalizar Venda e Emitir NFC-e'}
+            {finalizing
+              ? 'Finalizando...'
+              : paymentForm.emitirNfce
+                ? 'Finalizar Venda e Emitir NFC-e'
+                : 'Finalizar Venda'}
           </Button>
         </DialogActions>
       </Dialog>

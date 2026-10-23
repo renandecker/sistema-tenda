@@ -36,6 +36,18 @@ public interface FiscalConfig {
     @WithName("endereco")
     Optional<String> endereco();
 
+    @WithName("logradouro")
+    Optional<String> logradouro();
+
+    @WithName("numero")
+    Optional<String> numero();
+
+    @WithName("bairro")
+    Optional<String> bairro();
+
+    @WithName("complemento")
+    Optional<String> complemento();
+
     @WithName("cep")
     Optional<String> cep();
 
@@ -112,6 +124,52 @@ public interface FiscalConfig {
     @WithName("schemas-path")
     @WithDefault("schemas/")
     String schemasPath();
+
+    @WithName("cacerts-path")
+    Optional<String> cacertsPath();
+
+    @WithName("ssl-insecure")
+    @WithDefault("false")
+    boolean sslInsecure();
+
+    @WithName("sefaz-autorizacao-url")
+    Optional<String> sefazAutorizacaoUrl();
+
+    @WithName("sefaz-retorno-url")
+    Optional<String> sefazRetornoUrl();
+
+    @WithName("sefaz-consulta-url")
+    Optional<String> sefazConsultaUrl();
+
+    @WithName("sefaz-evento-url")
+    Optional<String> sefazEventoUrl();
+
+    @WithName("sefaz-inutilizacao-url")
+    Optional<String> sefazInutilizacaoUrl();
+
+    @WithName("sefaz-status-url")
+    Optional<String> sefazStatusUrl();
+
+    @WithName("qrcode-url")
+    Optional<String> qrcodeUrl();
+
+    @WithName("resp-tecnico-cnpj")
+    Optional<String> respTecnicoCnpj();
+
+    @WithName("resp-tecnico-contato")
+    Optional<String> respTecnicoContato();
+
+    @WithName("resp-tecnico-email")
+    Optional<String> respTecnicoEmail();
+
+    @WithName("resp-tecnico-fone")
+    Optional<String> respTecnicoFone();
+
+    @WithName("resp-tecnico-id-csrt")
+    Optional<String> respTecnicoIdCsrt();
+
+    @WithName("resp-tecnico-hash-csrt")
+    Optional<String> respTecnicoHashCsrt();
 
     Nfce nfce();
 

@@ -184,7 +184,10 @@ export const apiPdv = {
   aplicarDesconto: (id: string, valor: number) => api.put(`/pdv/vendas/${id}/desconto`, null, { params: { valor } }),
   aplicarAcrescimo: (id: string, valor: number) => api.put(`/pdv/vendas/${id}/acrescimo`, null, { params: { valor } }),
   processarPagamento: (id: string, data: any) => api.post(`/pdv/vendas/${id}/pagamento`, data),
-  finalizarVenda: (id: string, cpfConsumidor?: string) => api.post(`/pdv/vendas/${id}/finalizar`, null, { params: { cpfConsumidor } }),
+  finalizarVenda: (id: string, cpfConsumidor?: string, emitirNfce = false) =>
+    api.post(`/pdv/vendas/${id}/finalizar`, null, { params: { cpfConsumidor, emitirNfce } }),
+  emitirNfce: (id: string, cpfConsumidor?: string) =>
+    api.post(`/pdv/vendas/${id}/nfce`, null, { params: { cpfConsumidor } }),
   cancelarVenda: (id: string, motivo: string) => api.post(`/pdv/vendas/${id}/cancelar`, null, { params: { motivo } }),
   getTotalVendas: (dataInicio: string, dataFim: string) => api.get('/pdv/vendas/total-vendas', { params: { dataInicio, dataFim } }),
   getTotalFruteira: (dataInicio: string, dataFim: string) => api.get('/pdv/vendas/total-fruteira', { params: { dataInicio, dataFim } }),
@@ -272,12 +275,14 @@ export const apiFiscal = {
   listNfe: (params?: any) => api.get('/fiscal/nfe', { params }),
   getNfe: (id: string) => api.get(`/fiscal/nfe/${id}`),
   getNfeByChave: (chaveAcesso: string) => api.get(`/fiscal/nfe/chave/${chaveAcesso}`),
+  emitirNfe: (data: any) => api.post('/fiscal/nfe', data),
   cancelarNfe: (id: string, justificativa: string) => api.post(`/fiscal/nfe/${id}/cancelar`, null, { params: { justificativa } }),
   consultarNfe: (id: string) => api.post(`/fiscal/nfe/${id}/consultar`),
+  statusServico: (modelo: string = '65') => api.get('/fiscal/nfe/status-servico', { params: { modelo } }),
   downloadXml: (id: string) => api.get(`/fiscal/nfe/${id}/xml`, { responseType: 'blob' }),
   downloadDanfe: (id: string) => api.get(`/fiscal/nfe/${id}/danfe`, { responseType: 'blob' }),
-  inutilizarNumeracao: (justificativa: string, numeroInicial: number, numeroFinal: number) => 
-    api.post('/fiscal/nfe/inutilizar', null, { params: { justificativa, numeroInicial, numeroFinal } }),
+  inutilizarNumeracao: (justificativa: string, numeroInicial: number, numeroFinal: number, modelo: string = '65', serie: number = 1) =>
+    api.post('/fiscal/nfe/inutilizar', null, { params: { justificativa, numeroInicial, numeroFinal, modelo, serie } }),
   listSpedFiscal: (params?: any) => api.get('/fiscal/sped-fiscal', { params }),
   listDre: (params?: any) => api.get('/fiscal/dre', { params }),
   listAtivos: (params?: any) => api.get('/fiscal/ativos', { params }),

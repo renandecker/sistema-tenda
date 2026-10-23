@@ -7,6 +7,7 @@ import br.com.sistematenda.fiscal.dto.NfceRequest;
 import br.com.sistematenda.fiscal.entity.Nfe;
 import br.com.sistematenda.fiscal.entity.NfeItem;
 import br.com.sistematenda.fiscal.entity.NfePagamento;
+import br.com.sistematenda.fiscal.nfe.NfeEmissor;
 import br.com.sistematenda.fiscal.repository.NfeRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -34,6 +35,9 @@ public class NfceService {
 
     @Inject
     EntityManager entityManager;
+
+    @Inject
+    NfeEmissor nfeEmissor;
 
     @Transactional
     public Nfe emitirNfce(NfceRequest request) {
@@ -127,7 +131,7 @@ public class NfceService {
         nfe.meioPagamento = limitar(nfe.pagamentos.get(0).descricao, 20);
 
         nfeRepository.persist(nfe);
-        return nfe;
+        return nfeEmissor.emitir(nfe);
     }
 
     @Transactional
@@ -145,13 +149,12 @@ public class NfceService {
         if (justificativa == null || justificativa.trim().length() < 15) {
             throw new BusinessException("JUSTIFICATIVA_INVALIDA", "A justificativa deve ter no minimo 15 caracteres");
         }
-        throw new BusinessException("CANCELAMENTO_NAO_IMPLEMENTADO",
-            "Cancelamento na SEFAZ sera habilitado na proxima etapa da integracao fiscal");
+        return nfeEmissor.cancelar(atual, justificativa);
     }
 
     public void inutilizarNumeracao(String justificativa, int numeroInicial, int numeroFinal) {
-        throw new BusinessException("INUTILIZACAO_NAO_IMPLEMENTADA",
-            "Inutilizacao de numeracao sera habilitada na proxima etapa da integracao fiscal");
+        int serie = fiscalConfig.serieNfce() != null ? fiscalConfig.serieNfce() : 1;
+        nfeEmissor.inutilizar(justificativa, numeroInicial, numeroFinal, MODELO_NFCE, serie);
     }
 
     public Nfe consultarStatus(Nfe nfe) {
@@ -162,7 +165,7 @@ public class NfceService {
         if (atual == null || atual.deleted) {
             throw new BusinessException("NFCE_NAO_ENCONTRADA", "NFC-e nao encontrada");
         }
-        return atual;
+        return nfeEmissor.consultar(atual);
     }
 
     private NfeItem montarItem(Nfe nfe, NfceRequest.ItemNfceRequest request, int numeroItem) {
@@ -247,6 +250,14 @@ public class NfceService {
         }
         if (fiscalConfig.crt() == null || fiscalConfig.crt() < 1 || fiscalConfig.crt() > 3) {
             throw new BusinessException("CRT_INVALIDO", "Configure o CRT em fiscal.crt (1, 2 ou 3)");
+        }
+        if (fiscalConfig.csc().isEmpty() || fiscalConfig.csc().orElse("").isBlank()) {
+            throw new BusinessException("CSC_NAO_CONFIGURADO",
+                "Configure o CSC da NFC-e em fiscal.csc");
+        }
+        if (fiscalConfig.cscId().isEmpty() || fiscalConfig.cscId().orElse("").isBlank()) {
+            throw new BusinessException("CSC_ID_NAO_CONFIGURADO",
+                "Configure o identificador do CSC em fiscal.csc-id");
         }
     }
 

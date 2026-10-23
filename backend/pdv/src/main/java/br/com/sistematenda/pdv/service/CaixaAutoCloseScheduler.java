@@ -1,9 +1,9 @@
 package br.com.sistematenda.pdv.service;
 
+import br.com.sistematenda.common.config.CaixaConfig;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -14,12 +14,13 @@ public class CaixaAutoCloseScheduler {
     @Inject
     SessaoCaixaService sessaoCaixaService;
 
-    @ConfigProperty(name = "caixa.auto-close.hora", defaultValue = "23:30")
-    String horaFechamento;
+    @Inject
+    CaixaConfig caixaConfig;
 
-    @Scheduled(cron = "0 0 23 * * *")
+    @Scheduled(every = "1m")
     void verificarFechamentoAutomatico() {
         try {
+            String horaFechamento = caixaConfig.autoClose().hora();
             LocalTime agora = LocalTime.now();
             LocalTime alvo = LocalTime.parse(horaFechamento, DateTimeFormatter.ofPattern("HH:mm"));
             // Janela de 1 minuto a partir do horário configurado

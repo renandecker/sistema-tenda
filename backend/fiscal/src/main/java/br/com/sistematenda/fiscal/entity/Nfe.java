@@ -116,6 +116,28 @@ public class Nfe extends BaseEntity {
     @Size(max = 50)
     public String protocoloAutorizacao;
 
+    @Column(name = "recibo_lote", length = 20)
+    @Size(max = 20)
+    public String reciboLote;
+
+    @Column(name = "data_autorizacao")
+    public LocalDateTime dataAutorizacao;
+
+    @Column(name = "codigo_status", length = 10)
+    @Size(max = 10)
+    public String codigoStatus;
+
+    @Column(name = "versao_xml", length = 10)
+    @Size(max = 10)
+    public String versaoXml;
+
+    @Column(name = "protocolo_cancelamento", length = 50)
+    @Size(max = 50)
+    public String protocoloCancelamento;
+
+    @Column(name = "data_cancelamento")
+    public LocalDateTime dataCancelamento;
+
     @Column(name = "digito_validador")
     public Integer digitoValidador;
 
@@ -183,6 +205,89 @@ public class Nfe extends BaseEntity {
 
     @Column(name = "informacoes_complementares", columnDefinition = "TEXT")
     public String informacoesComplementares;
+
+    @Column(name = "informacoes_fisco", columnDefinition = "TEXT")
+    public String informacoesFisco;
+
+    // Destinatario completo (NF-e modelo 55)
+    @Column(name = "destinatario_ie", length = 20)
+    public String destinatarioIe;
+
+    @Column(name = "destinatario_logradouro", length = 60)
+    public String destinatarioLogradouro;
+
+    @Column(name = "destinatario_numero", length = 60)
+    public String destinatarioNumero;
+
+    @Column(name = "destinatario_complemento", length = 60)
+    public String destinatarioComplemento;
+
+    @Column(name = "destinatario_bairro", length = 60)
+    public String destinatarioBairro;
+
+    @Column(name = "destinatario_codigo_municipio")
+    public Integer destinatarioCodigoMunicipio;
+
+    @Column(name = "destinatario_municipio", length = 60)
+    public String destinatarioMunicipio;
+
+    @Column(name = "destinatario_uf", length = 2)
+    public String destinatarioUf;
+
+    @Column(name = "destinatario_cep", length = 8)
+    public String destinatarioCep;
+
+    @Column(name = "destinatario_email", length = 60)
+    public String destinatarioEmail;
+
+    // Transporte
+    @Column(name = "modalidade_frete")
+    public Integer modalidadeFrete = 9;
+
+    @Column(name = "transportadora_nome", length = 60)
+    public String transportadoraNome;
+
+    @Column(name = "transportadora_documento", length = 20)
+    public String transportadoraDocumento;
+
+    @Column(name = "transportadora_ie", length = 20)
+    public String transportadoraIe;
+
+    @Column(name = "transportadora_endereco", length = 60)
+    public String transportadoraEndereco;
+
+    @Column(name = "transportadora_municipio", length = 60)
+    public String transportadoraMunicipio;
+
+    @Column(name = "transportadora_uf", length = 2)
+    public String transportadoraUf;
+
+    @Column(name = "volume_quantidade", precision = 15, scale = 4)
+    public BigDecimal volumeQuantidade;
+
+    @Column(name = "volume_especie", length = 60)
+    public String volumeEspecie;
+
+    @Column(name = "volume_peso_liquido", precision = 15, scale = 3)
+    public BigDecimal volumePesoLiquido;
+
+    @Column(name = "volume_peso_bruto", precision = 15, scale = 3)
+    public BigDecimal volumePesoBruto;
+
+    @Column(name = "finalidade_nfe")
+    public Integer finalidadeNfe = 1;
+
+    @Column(name = "tipo_operacao")
+    public Integer tipoOperacao = 1;
+
+    @Column(name = "consumidor_final")
+    public Integer consumidorFinal = 1;
+
+    @Column(name = "presenca_comprador")
+    public Integer presencaComprador = 1;
+
+    @Column(name = "tipo_emissao")
+    public Integer tipoEmissao = 1;
 
     @OneToMany(mappedBy = "nfe", cascade = CascadeType.ALL, orphanRemoval = true)
     public List<NfeItem> itens = new ArrayList<>();
