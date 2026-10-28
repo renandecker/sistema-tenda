@@ -61,7 +61,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             </ThemeProvider>
           </BrowserRouter>
         </QueryClientProvider>
-      </BugsnagBoundary>
+        </BugsnagBoundary>
+      </RollbarErrorBoundary>
     </SentryErrorBoundary>
   </React.StrictMode>
 );
