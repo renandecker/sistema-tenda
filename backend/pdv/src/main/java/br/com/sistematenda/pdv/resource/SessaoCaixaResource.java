@@ -69,6 +69,13 @@ public class SessaoCaixaResource {
     }
 
     @POST
+    @Path("/abrir-usuario")
+    public Response abrirCaixaUsuario(@Valid AbrirCaixaRequest request) {
+        SessaoCaixaDTO sessao = service.abrirCaixaPorUsuario(request.operador, request.pdvId, request.valorInicial);
+        return Response.ok(sessao).build();
+    }
+
+    @POST
     @Path("/abrir-automatico")
     public Response abrirCaixaAutomatico(@Valid AbrirCaixaRequest request) {
         SessaoCaixaDTO sessao = service.abrirCaixaAutomatico(request.pdvId, request.operador, request.valorInicial);

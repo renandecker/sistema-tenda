@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert, Autocomplete, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-  Divider, Grid, IconButton, MenuItem, Paper, Tabs, Tab, TextField, Tooltip, Typography,
+  Divider, Grid, IconButton, MenuItem, Tabs, Tab, TextField, Tooltip, Typography,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -14,6 +14,8 @@ import {
   CheckCircle as CheckIcon,
   MenuBook as MenuBookIcon,
   Warning as WarningIcon,
+  Keyboard as KeyboardIcon,
+  ListAlt as ListAltIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -85,52 +87,12 @@ export function PdvPage() {
   const [tabValue, setTabValue] = useState<'buffet' | 'fruteira' | 'mesas'>('buffet');
   const [contadorItens, setContadorItens] = useState({ BUFFET: 0, FRUTEIRA: 0 });
   const [mesasComComanda, setMesasComComanda] = useState<any[]>([]);
-  const [mesasLoading, setMesasLoading] = useState(false);
   const [estoqueBuffet, setEstoqueBuffet] = useState<ProdutoBusca[]>([]);
   const [estoqueFruteira, setEstoqueFruteira] = useState<ProdutoBusca[]>([]);
-  const [estoqueLoading, setEstoqueLoading] = useState(false);
   const [buscou, setBuscou] = useState(false);
+  const [shortcutDialog, setShortcutDialog] = useState(false);
+  const [itensModalOpen, setItensModalOpen] = useState(false);
   const navigate = useNavigate();
-
-  const [saude, setSaude] = useState<{
-    pix: {
-      status: 'funcionando' | 'atencao' | 'problema' | 'nao_configurado';
-      icone: string;
-      cor: string;
-      mensagem: string;
-      detalhe: string;
-      horaVerificacao: string;
-    };
-    tef: {
-      status: 'funcionando' | 'atencao' | 'problema' | 'nao_configurado';
-      icone: string;
-      cor: string;
-      mensagem: string;
-      detalhe: string;
-      horaVerificacao: string;
-    };
-    ultimaVerificacao: string | null;
-    verificando: boolean;
-  }>({
-    pix: {
-      status: 'nao_configurado',
-      icone: '',
-      cor: 'gray',
-      mensagem: '',
-      detalhe: '',
-      horaVerificacao: '',
-    },
-    tef: {
-      status: 'nao_configurado',
-      icone: '',
-      cor: 'gray',
-      mensagem: '',
-      detalhe: '',
-      horaVerificacao: '',
-    },
-    ultimaVerificacao: null,
-    verificando: false,
-  });
 
   const [cliente, setCliente] = useState<any>(null);
   const [opcoesClientes, setOpcoesClientes] = useState<any[]>([]);
@@ -234,20 +196,16 @@ export function PdvPage() {
   };
 
   const carregarMesas = useCallback(async () => {
-    setMesasLoading(true);
     try {
       const { data } = await apiBuffet.listMesas({ size: 200 });
       const list = data?.content ?? (Array.isArray(data) ? data : []);
       setMesasComComanda(list.filter((m: any) => m.comandaAtiva));
     } catch {
       setMesasComComanda([]);
-    } finally {
-      setMesasLoading(false);
     }
   }, []);
 
   const carregarEstoque = useCallback(async () => {
-    setEstoqueLoading(true);
     try {
       const [f, b] = await Promise.allSettled([
         apiFruteira.listProdutos({ size: 200, ativo: true }),
@@ -265,52 +223,13 @@ export function PdvPage() {
           .map((p) => ({ ...p, origem: 'BUFFET' as const }))
           .filter((p) => p.controlaEstoque === false || Number(p.estoqueAtual ?? 0) > 0),
       );
-    } finally {
-      setEstoqueLoading(false);
+    } catch {
+      // ignore
     }
   }, []);
 
   useEffect(() => { carregarEstoque(); }, [carregarEstoque]);
   useEffect(() => { carregarMesas(); }, [carregarMesas]);
-
-  // Health check PIX/TEF a cada atualização
-  useEffect(() => {
-    let active = true;
-    const carregarSaude = async () => {
-      try {
-        const response = await api.get('/saude-check');
-        const data = response.data;
-        if (active && data?.pix && data?.tef) {
-          const agora = new Date().toISOString();
-          setSaude({
-            pix: {
-              status: data.pix.status || 'problema',
-              icone: data.pix.icone || '💠',
-              cor: data.pix.cor || 'red',
-              mensagem: data.pix.mensagem || 'PIX fora do ar',
-              detalhe: data.pix.detalhe || '',
-              horaVerificacao: agora,
-            },
-            tef: {
-              status: data.tef.status || 'problema',
-              icone: data.tef.icone || '📟',
-              cor: data.tef.cor || 'red',
-              mensagem: data.tef.mensagem || 'TEF fora do ar',
-              detalhe: data.tef.detalhe || '',
-              horaVerificacao: agora,
-            },
-            ultimaVerificacao: agora,
-            verificando: false,
-          });
-        }
-      } catch (error) {
-        console.error('Erro ao verificar saúde:', error);
-      }
-    };
-    carregarSaude();
-    const intervalo = setInterval(carregarSaude, 300000); // 5 minutos
-    return () => { active = false; clearInterval(intervalo); };
-  }, []);
 
   const mesaCorresponde = (m: any, termo: string) => {
     const t = termo.trim().toLowerCase();
@@ -323,6 +242,22 @@ export function PdvPage() {
     );
   };
 
+  const carregarVendaComItens = useCallback(async (vendaId: string) => {
+    try {
+      const [resVenda, resItens, resPags] = await Promise.all([
+        apiPdv.getVenda(vendaId),
+        apiPdv.listItensVenda(vendaId).catch(() => ({ data: [] })),
+        apiPdv.listPagamentos(vendaId).catch(() => ({ data: [] })),
+      ]);
+      const v = resVenda.data;
+      const itens = Array.isArray(resItens.data) ? resItens.data : (resItens.data?.content ?? []);
+      const pagamentos = Array.isArray(resPags.data) ? resPags.data : (resPags.data?.content ?? []);
+      setVenda({ ...v, itens, pagamentos });
+    } catch {
+      // fallback
+    }
+  }, []);
+
   const carregarMesaPdv = async (comandaId: string, mesaNumero: string) => {
     let vendaAtualId = venda?.id;
     try {
@@ -332,8 +267,8 @@ export function PdvPage() {
         setVenda(novaV);
       }
       const idToUse = vendaAtualId || 'local-temp';
-      const { data } = await apiPdv.addItemComanda(idToUse, comandaId);
-      setVenda(data);
+      await apiPdv.addItemComanda(idToUse, comandaId);
+      await carregarVendaComItens(idToUse);
       toast.success(`Consumo da Mesa ${mesaNumero} carregado para pagamento!`);
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Erro ao carregar comanda da mesa');
@@ -341,13 +276,8 @@ export function PdvPage() {
   };
 
   const recarregarVenda = useCallback(async (id: string) => {
-    try {
-      const { data } = await apiPdv.getVenda(id);
-      setVenda(data);
-    } catch {
-      /* mantém estado local */
-    }
-  }, []);
+    await carregarVendaComItens(id);
+  }, [carregarVendaComItens]);
 
   const limparEstado = () => {
     setBusca('');
@@ -370,7 +300,7 @@ export function PdvPage() {
     limparEstado();
     try {
       const { data } = await apiPdv.createVenda({ observacoes: 'Venda PDV' });
-      setVenda(data);
+      await carregarVendaComItens(data.id);
       toast.success(`Venda ${data?.numero ?? ''} iniciada`);
     } catch {
       // fallback local para operar mesmo sem backend
@@ -429,14 +359,26 @@ export function PdvPage() {
   };
 
   const adicionarItem = async (p: ProdutoBusca) => {
-    if (!venda) { toast.warning('Inicie uma venda primeiro'); return; }
+    let currentVenda = venda;
+    if (!currentVenda) {
+      try {
+        const { data: novaV } = await apiPdv.createVenda({ observacoes: 'Venda PDV' });
+        currentVenda = novaV;
+        setVenda(novaV);
+      } catch {
+        const local: VendaAtual = { id: `local-${Date.now()}`, numero: 'LOCAL', subtotal: 0, valorTotal: 0, valorPago: 0, status: 'ABERTA', itens: [], pagamentos: [] };
+        currentVenda = local;
+        setVenda(local);
+      }
+    }
+    if (!currentVenda) return;
     const qtd = parseDecimal(quantidade, 3) || 1;
     const novoContador = { ...contadorItens } as { BUFFET: number; FRUTEIRA: number };
     const origem = p.origem ?? 'FRUTEIRA';
     novoContador[origem] = (novoContador[origem] ?? 0) + 1;
     setContadorItens(novoContador);
     const codigoProd = obterCodigoProduto(origem, (contadorItens[origem] ?? 0) as number);
-    if (venda.id.startsWith('local-')) {
+    if (currentVenda.id.startsWith('local-')) {
       const item: ItemResumo = { id: `i-${Date.now()}`, codigoProduto: codigoProd, nomeProduto: p.nome, quantidade: qtd, precoUnitario: p.precoVenda ?? 0, valorTotal: (p.precoVenda ?? 0) * qtd, origem: p.origem };
       setVenda((v) => {
         if (!v) return v;
@@ -447,9 +389,9 @@ export function PdvPage() {
       return;
     }
     try {
-      const api = p.origem === 'BUFFET' ? apiPdv.addItemBuffet(venda.id, p.id, qtd) : apiPdv.addItemFruteira(venda.id, p.id, qtd);
-      const { data } = await api;
-      setVenda(data);
+      const apiCall = p.origem === 'BUFFET' ? apiPdv.addItemBuffet(currentVenda.id, p.id, qtd) : apiPdv.addItemFruteira(currentVenda.id, p.id, qtd);
+      await apiCall;
+      await carregarVendaComItens(currentVenda.id);
       toast.success('Item adicionado');
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Erro ao adicionar item');
@@ -462,8 +404,8 @@ export function PdvPage() {
     if (!peso || peso <= 0) { toast.warning('Informe o peso válido'); return; }
     if (venda.id.startsWith('local-')) { toast.info('Balança disponível apenas com backend conectado'); setPesoDialog(false); return; }
     try {
-      const { data } = await apiPdv.addPratoBalanca(venda.id, peso);
-      setVenda(data);
+      await apiPdv.addPratoBalanca(venda.id, peso);
+      await carregarVendaComItens(venda.id);
       setPesoDialog(false);
       setPesoBruto('');
       toast.success('Prato por peso lançado');
@@ -474,12 +416,22 @@ export function PdvPage() {
 
   const removerItem = async (itemId: string) => {
     if (!venda) return;
-    setVenda((v) => {
-      if (!v) return v;
-      const itens = v.itens?.filter((i) => i.id !== itemId) ?? [];
-      const subtotal = itens.reduce((s, i) => s + (i.valorTotal ?? 0), 0);
-      return { ...v, itens, subtotal, valorTotal: subtotal - (v.desconto ?? 0) + (v.acrescimo ?? 0) };
-    });
+    if (venda.id.startsWith('local-')) {
+      setVenda((v) => {
+        if (!v) return v;
+        const itens = v.itens?.filter((i) => i.id !== itemId) ?? [];
+        const subtotal = itens.reduce((s, i) => s + (i.valorTotal ?? 0), 0);
+        return { ...v, itens, subtotal, valorTotal: subtotal - (v.desconto ?? 0) + (v.acrescimo ?? 0) };
+      });
+      return;
+    }
+    try {
+      await api.post(`/pdv/itens-venda/${itemId}/cancelar`, null, { params: { motivo: 'Removido no PDV' } });
+      await carregarVendaComItens(venda.id);
+      toast.success('Item removido');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao remover item');
+    }
   };
 
   const aplicarDesconto = async () => {
@@ -491,8 +443,8 @@ export function PdvPage() {
       return;
     }
     try {
-      const { data } = await apiPdv.aplicarDesconto(venda.id, v);
-      setVenda(data);
+      await apiPdv.aplicarDesconto(venda.id, v);
+      await carregarVendaComItens(venda.id);
       setDesconto('');
       toast.success('Desconto aplicado');
     } catch (e: any) {
@@ -511,8 +463,8 @@ export function PdvPage() {
       return;
     }
     try {
-      const { data } = await apiPdv.processarPagamento(venda.id, { formaPagamento, valor });
-      setVenda(data);
+      await apiPdv.processarPagamento(venda.id, { formaPagamento, valor });
+      await carregarVendaComItens(venda.id);
       setPagDialog(false);
       setValorPagamento('');
       toast.success('Pagamento registrado');
@@ -580,47 +532,64 @@ export function PdvPage() {
     toast.success("Venda cancelada - nova venda iniciada");
   };
 
-  const cancelarVenda = async () => {
-    if (!venda) return;
-    if (!window.confirm('Cancelar esta venda?')) return;
-    if (venda.id.startsWith('local-')) { setVenda(null); return; }
-    try {
-      await apiPdv.cancelarVenda(venda.id, 'Cancelada no PDV');
-      toast.success('Venda cancelada');
-      setVenda(null);
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Erro ao cancelar');
-    }
-  };
+  const saldo = (venda?.valorTotal ?? 0) - (venda?.valorPago ?? 0);
 
   useEffect(() => {
     const handler = (_e: KeyboardEvent) => {
-      // F1-F12 shortcuts for all buttons
       if (_e.key >= 'F1' && _e.key <= 'F12') {
+        _e.preventDefault();
         const keyNum = parseInt(_e.key.replace('F', ''), 10);
-        // Atalho para alternar abas: F1=buffet, F2=fruteira, F3=mesas
-        if (keyNum === 1) { setTabValue('buffet'); _e.preventDefault(); }
-        else if (keyNum === 2) { setTabValue('fruteira'); _e.preventDefault(); }
-        else if (keyNum === 3) { setTabValue('mesas'); _e.preventDefault(); }
-        // Atalho para adicionar item da busca: F4-F12 correspondem a índices 0-8
-        else if (keyNum >= 4 && keyNum <= 12 && venda && resultados) {
-          const idx = keyNum - 4;
-          if (resultados[idx]) {
-            adicionarItem(resultados[idx]);
-            _e.preventDefault();
-          }
+        switch (keyNum) {
+          case 1:
+            novaVenda();
+            break;
+          case 2:
+            document.getElementById('pdv-busca-input')?.focus();
+            break;
+          case 3:
+            document.getElementById('pdv-doc-input')?.focus();
+            break;
+          case 4:
+            if (venda) setPesoDialog(true);
+            else toast.warning('Inicie uma venda primeiro');
+            break;
+          case 5:
+            break;
+          case 6:
+            if (venda) {
+              setValorPagamento(saldo > 0 ? maskCurrency(saldo) : '');
+              setPagDialog(true);
+            } else {
+              toast.warning('Inicie uma venda primeiro');
+            }
+            break;
+          case 7:
+            finalizar();
+            break;
+          case 8:
+            cancelar();
+            break;
+          case 9:
+            abrirFiado();
+            break;
+          case 10:
+            if (venda && !venda.id.startsWith('local-')) recarregarVenda(venda.id);
+            break;
+          case 11:
+            setTabValue((prev) => (prev === 'buffet' ? 'fruteira' : prev === 'fruteira' ? 'mesas' : 'buffet'));
+            break;
+          case 12:
+            setShortcutDialog(true);
+            break;
+          default:
+            break;
         }
-        // Atalho para finalizar venda: F2
-        else if (keyNum === 2) { finalizar(); _e.preventDefault(); }
-        // Atalho para cancelar venda: F3
-        else if (keyNum === 3) { cancelar(); _e.preventDefault(); }
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [tabValue, resultados, venda, adicionarItem, finalizar, cancelar]);
+  }, [venda, saldo, recarregarVenda, finalizar, cancelar, abrirFiado, novaVenda]);
 
-  const saldo = (venda?.valorTotal ?? 0) - (venda?.valorPago ?? 0);
   const vendaIniciada = !!venda && ((venda.itens?.length ?? 0) > 0 || !!cliente);
   const filtrarProdutosDaAbas = (tab: 'buffet' | 'fruteira' | 'mesas') => {
     if (tab === 'buffet') {
@@ -658,38 +627,21 @@ export function PdvPage() {
         icon={<PointOfSaleIcon />}
         action={
           <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button variant="outlined" color="info" startIcon={<KeyboardIcon />} onClick={() => setShortcutDialog(true)}>Atalhos</Button>
             <Button variant="outlined" color="warning" startIcon={<MenuBookIcon />} onClick={abrirFiado}>Caderno (fiado)</Button>
             <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => venda && recarregarVenda(venda.id)} disabled={!venda || venda.id.startsWith('local-')}>Atualizar</Button>
             <Button variant="contained" startIcon={<AddIcon />} onClick={novaVenda} disabled={loading}>Nova venda</Button>
           </Box>
         }
       />
-      {/* Banner de status PIX/TEF */}
-      {saude.verificando ? (
-        <Box sx={{ p: 1, backgroundColor: '#fff3e0', color: '#ef6c00', borderRadius: 1, mb: 2 }}>
-          <Typography variant="body1">Verificando saúde dos pagamentos...</Typography>
-        </Box>
-      ) : (
-        <Alert
-          severity={saude.pix.cor === 'red' || saude.tef.cor === 'red' ? 'error' : saude.pix.cor === 'orange' || saude.tef.cor === 'orange' ? 'warning' : 'success'}
-          sx={{ p: 1, mb: 2, display: saude.pix.status === 'nao_configurado' && saude.tef.status === 'nao_configurado' ? 'none' : 'block' }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {saude.pix.cor !== 'gray' && <span>💠 PIX {saude.pix.mensagem}</span>}
-            {saude.tef.cor !== 'gray' && <span>📟 TEF {saude.tef.mensagem}</span>}
-          </Box>
-          <Typography variant="caption" color="text.secondary">
-            Última verificação: {saude.ultimaVerificacao ? new Date(saude.ultimaVerificacao).toLocaleString('pt-BR') : 'Nunca'}
-          </Typography>
-        </Alert>
-      )}
+
       <Grid container spacing={2}>
         <Grid item xs={12} md={8}>
           <Card sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Buscar produto / mesa / comanda</Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField fullWidth size="small" placeholder="Código, código de barras, nome, mesa ou comanda + Enter" value={busca}
+                <TextField id="pdv-busca-input" fullWidth size="small" placeholder="Código, código de barras, nome, mesa ou comanda + Enter" value={busca}
                   onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' || (e.altKey && e.key === 'Enter')) { e.preventDefault(); buscarProdutos(); carregarMesas(); } }} />
                 <TextField size="small" label="Qtd" value={maskQuantity(quantidade)} onChange={(e) => setQuantidade(maskQuantity(e.target.value))} sx={{ width: 90 }} inputMode="decimal" />
                 <Button variant="contained" onClick={() => { buscarProdutos(); carregarMesas(); }} disabled={buscando} startIcon={<SearchIcon />}>Buscar</Button>
@@ -698,9 +650,9 @@ export function PdvPage() {
             </CardContent>
           </Card>
           <Tabs value={tabValue} onChange={(_, v) => setTabValue(v as 'buffet' | 'fruteira' | 'mesas')} sx={{ mb: 2 }}>
-            <Tab label="Buffet" />
-            <Tab label="Fruteira" />
-            <Tab label="Mesas" />
+            <Tab value="buffet" label="Buffet" />
+            <Tab value="fruteira" label="Fruteira" />
+            <Tab value="mesas" label="Mesas" />
           </Tabs>
           <Card>
             <CardContent>
@@ -733,8 +685,9 @@ export function PdvPage() {
           <Card sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Busca do cliente</Typography>
-              <TextField
-                fullWidth size="small" label="CPF/CNPJ do cliente"
+               <TextField
+                 id="pdv-doc-input"
+                 fullWidth size="small" label="CPF/CNPJ do cliente"
                 value={documento}
                 onChange={(e) => onDocumentoChange(e.target.value)}
                 placeholder="000.000.000-00"
@@ -798,29 +751,16 @@ export function PdvPage() {
           </Card>
           <Card sx={{ mb: 2 }}>
             <CardContent>
-              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Itens adicionados</Typography>
-              {venda?.itens && venda.itens.length > 0 && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 1 }}>
-                  {venda.itens.map((it) => (
-                    <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 1, py: 0.5, border: 1, borderColor: 'divider' }}>
-                      <Typography variant="caption">{it.quantidade}x {it.nomeProduto}</Typography>
-                      <Button size="small" variant="outlined" onClick={() => removerItem(it.id!)} startIcon={<CancelIcon />} sx={{ p: 0 }}>
-                        Remover
-                      </Button>
-                      <Typography variant="caption" fontWeight={600}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
-                    </Box>
-                  ))}
-                  {venda.itens.length === 0 && <Typography variant="caption" color="text.secondary">Nenhum item adicionado</Typography>}
-                </Box>
-              )}
-              {venda?.itens && venda.itens.length === 0 && (
-                <Typography variant="caption" color="text.secondary">Nenhum item adicionado</Typography>
-              )}
-            </CardContent>
-          </Card>
-          <Card sx={{ mb: 2 }}>
-            <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Resumo</Typography>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<ListAltIcon />}
+                onClick={() => setItensModalOpen(true)}
+                sx={{ mb: 2 }}
+              >
+                Itens adicionados ({venda?.itens?.length ?? 0})
+              </Button>
               {venda?.subtotal !== undefined && (
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}><Typography variant="body2">Subtotal</Typography><Typography fontWeight={600}>{formatCurrency(venda?.subtotal ?? 0)}</Typography></Box>
               )}
@@ -861,7 +801,7 @@ export function PdvPage() {
         <DialogTitle>Registrar pagamento</DialogTitle>
         <DialogContent>
           <TextField select fullWidth label="Forma de pagamento" value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)} sx={{ mt: 1, mb: 2 }}>
-            {FORMAS_PAGAMENTO.map(function (f) { return <Button key={f} variant="outline" sx={{ mr: 1, mb: 1 }} onClick={() => setFormaPagamento(f)}>{f}</Button>; })}
+            {FORMAS_PAGAMENTO.map((f) => <MenuItem key={f} value={f}>{f}</MenuItem>)}
           </TextField>
           <TextField fullWidth label="Valor recebido (R$)" value={maskCurrency(valorPagamento)} onChange={(e) => setValorPagamento(maskCurrency(e.target.value))} placeholder="0,00" inputMode="decimal" />
         </DialogContent>
@@ -916,6 +856,64 @@ export function PdvPage() {
         <DialogActions>
           <Button onClick={() => setCadClienteDialog(false)}>Cancelar</Button>
           <Button variant="contained" onClick={confirmarCadastroCliente}>Cadastrar e finalizar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog: Itens Adicionados */}
+      <Dialog open={itensModalOpen} onClose={() => setItensModalOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Itens adicionados</DialogTitle>
+        <DialogContent dividers>
+          {venda?.itens && venda.itens.length > 0 ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {venda.itens.map((it) => (
+                <Box key={it.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+                  <Box sx={{ minWidth: 0, flex: 1, mr: 1 }}>
+                    <Typography variant="body2" fontWeight={600} noWrap>{it.nomeProduto}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {it.quantidade}x {formatCurrency(it.precoUnitario ?? 0)} · Código: {it.codigoProduto ?? '—'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body2" fontWeight={700}>{formatCurrency(it.valorTotal ?? 0)}</Typography>
+                    <Button size="small" color="error" variant="outlined" onClick={() => removerItem(it.id!)} startIcon={<CancelIcon />}>
+                      Remover
+                    </Button>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 3 }}>
+              Nenhum item adicionado nesta venda.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button variant="contained" onClick={() => setItensModalOpen(false)}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog: Ajuda de Atalhos F1 a F12 */}
+      <Dialog open={shortcutDialog} onClose={() => setShortcutDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Teclas de Atalho do PDV (F1 - F12)</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Typography variant="body2"><strong>[F1]</strong> Nova Venda — Inicia uma nova venda no PDV.</Typography>
+            <Typography variant="body2"><strong>[F2]</strong> Focar Busca — Move o cursor para o campo de código/nome do produto.</Typography>
+            <Typography variant="body2"><strong>[F3]</strong> Focar Cliente — Move o cursor para o campo CPF/CNPJ do cliente.</Typography>
+            <Typography variant="body2"><strong>[F4]</strong> Prato por Peso (Balança) — Abre o diálogo para lançamento de peso em kg.</Typography>
+            <Typography variant="body2"><strong>[F5]</strong> Desconto — Atalho para campo de desconto.</Typography>
+            <Typography variant="body2"><strong>[F6]</strong> Registrar Pagamento — Abre a tela de formas de pagamento (Dinheiro, PIX, Cartão, etc.).</Typography>
+            <Typography variant="body2"><strong>[F7]</strong> Finalizar Venda — Conclui a venda atual e emite comprovante.</Typography>
+            <Typography variant="body2"><strong>[F8]</strong> Cancelar Venda — Cancela a venda em andamento.</Typography>
+            <Typography variant="body2"><strong>[F9]</strong> Caderno / Fiado — Lança a dívida no caderno do cliente selecionado.</Typography>
+            <Typography variant="body2"><strong>[F10]</strong> Atualizar — Atualiza os dados da venda no servidor.</Typography>
+            <Typography variant="body2"><strong>[F11]</strong> Alternar Abas — Alterna entre Buffet, Fruteira e Mesas.</Typography>
+            <Typography variant="body2"><strong>[F12]</strong> Ajuda de Atalhos — Exibe esta janela de ajuda.</Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="contained" onClick={() => setShortcutDialog(false)}>Fechar</Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '@/services/api';
+import { api, apiPdv } from '@/services/api';
 
 interface User {
   id: string;
@@ -62,6 +62,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       setUser(userData);
+      try {
+        await apiPdv.abrirCaixaUsuario({
+          operador: userData?.nome ?? 'SISTEMA',
+          pdvId: userData?.pdvId,
+          valorInicial: 0,
+        });
+      } catch {
+        // caixa já criado ou erro ignorado no login
+      }
     } catch (error: any) {
       const message = error.response?.data?.message || 'Credenciais inválidas';
       throw new Error(message);

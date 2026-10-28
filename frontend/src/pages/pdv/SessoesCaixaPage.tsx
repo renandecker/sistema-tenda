@@ -82,24 +82,22 @@ export function SessoesCaixaPage() {
     }
   }, [user?.pdvId, user?.nome]);
 
-  // Abertura automática focada no caixa do usuário logado
+  // Abertura automática focada no caixa do usuário logado (1 caixa por usuário por dia)
   const autoAbrir = useCallback(async () => {
     const pdvId = await resolverPdvId();
-    if (!pdvId) return;
     try {
-      await apiPdv.abrirCaixaAutomatico({ pdvId, operador: user?.nome ?? 'SISTEMA', valorInicial: 0 });
-      try {
-        const { data: aberta } = await apiPdv.getAbertaByPdv(pdvId);
-        if (aberta?.id) {
-          const { data: v } = await apiPdv.validarVinculoPdv(aberta.id, pdvId);
-          setVinculoOk(!!v?.vinculado);
-        }
-      } catch { setVinculoOk(null); }
-    } catch (e: any) {
-      const msg = e?.response?.data?.message || '';
-      if (!msg.includes('Já existe caixa aberto')) {
-        toast.error(msg || 'Erro ao abrir caixa automaticamente');
+      await apiPdv.abrirCaixaUsuario({ pdvId, operador: user?.nome ?? 'SISTEMA', valorInicial: 0 });
+      if (pdvId) {
+        try {
+          const { data: aberta } = await apiPdv.getAbertaByPdv(pdvId);
+          if (aberta?.id) {
+            const { data: v } = await apiPdv.validarVinculoPdv(aberta.id, pdvId);
+            setVinculoOk(!!v?.vinculado);
+          }
+        } catch { setVinculoOk(null); }
       }
+    } catch {
+      // já criado ou ignorado
     } finally {
       load();
     }

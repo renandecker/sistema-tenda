@@ -230,6 +230,10 @@ export function Layout() {
             <MenuIcon />
           </IconButton>
           <Box sx={{ flexGrow: 1 }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1.5 }}>
+            <Chip size="small" label="PIX" color="success" variant="outlined" sx={{ height: 22, fontSize: '0.65rem', fontWeight: 700 }} />
+            <Chip size="small" label="TEF" color="success" variant="outlined" sx={{ height: 22, fontSize: '0.65rem', fontWeight: 700 }} />
+          </Box>
           <Tooltip title={selectedPdv ? `${selectedPdv.nome} - ${sessaoAtiva ? 'Caixa Aberto' : 'Caixa Fechado'}` : 'Nenhum PDV selecionado'}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 2, cursor: 'pointer', px: 1.5, py: 0.5, borderRadius: 2, bgcolor: 'rgba(245,168,0,0.10)', border: '1px solid rgba(245,168,0,0.20)' }}>
               <PointOfSaleIcon color="primary" fontSize="small" />

@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND="$ROOT/backend"
 FRONTEND="$ROOT/frontend"
 PROD_DIR="$ROOT/production"
+RESOURCES_DIR="$BACKEND/pdv/src/main/resources/META-INF/resources"
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 info(){ printf "${GREEN}%s${NC}\n" "$*"; }
@@ -27,12 +28,7 @@ done
 info "  Pre-requisitos OK."
 echo
 
-info "[2/5] Compilando Backend (Maven - Package Production)..."
-( cd "$BACKEND" && mvn clean package -DskipTests )
-info "  Backend compilado com sucesso."
-echo
-
-info "[3/5] Compilando Frontend (Vite Build)..."
+info "[2/5] Compilando Frontend (Vite Build)..."
 ( 
   cd "$FRONTEND"
   if [ ! -d "node_modules" ]; then
@@ -41,21 +37,30 @@ info "[3/5] Compilando Frontend (Vite Build)..."
   fi
   npm run build
 )
-info "  Frontend compilado com sucesso (pasta dist gerada)."
+info "  Frontend compilado com sucesso."
 echo
 
-info "[4/5] Organizando pacote de producao em '$PROD_DIR'..."
+info "[3/5] Integrando Frontend ao Backend (META-INF/resources)..."
+mkdir -p "$RESOURCES_DIR"
+cp -r "$FRONTEND/dist/." "$RESOURCES_DIR/"
+info "  Arquivos estaticos copiados para o backend."
+echo
+
+info "[4/5] Compilando Backend (Maven - Package Production)..."
+( cd "$BACKEND" && mvn clean package -DskipTests )
+info "  Backend compilado com sucesso."
+echo
+
+info "[5/5] Organizando pacote de producao em '$PROD_DIR'..."
 rm -rf "$PROD_DIR"
-mkdir -p "$PROD_DIR/backend" "$PROD_DIR/frontend"
+mkdir -p "$PROD_DIR/backend/quarkus-app/config"
 
 if [ -d "$BACKEND/pdv/target/quarkus-app" ]; then
   cp -r "$BACKEND/pdv/target/quarkus-app" "$PROD_DIR/backend/"
-elif [ -f "$BACKEND/pdv/target/sistema-tenda-pdv-1.0.0-SNAPSHOT-runner.jar" ]; then
-  cp "$BACKEND/pdv/target/sistema-tenda-pdv-1.0.0-SNAPSHOT-runner.jar" "$PROD_DIR/backend/"
 fi
 
-if [ -d "$FRONTEND/dist" ]; then
-  cp -r "$FRONTEND/dist" "$PROD_DIR/frontend/"
+if [ -f "$BACKEND/pdv/src/main/resources/application.prod.properties" ]; then
+  cp "$BACKEND/pdv/src/main/resources/application.prod.properties" "$PROD_DIR/backend/quarkus-app/config/application.properties"
 fi
 
 if [ -f "$ROOT/.env" ]; then
@@ -65,7 +70,7 @@ fi
 info "  Arquivos organizados."
 echo
 
-info "[5/5] Criando script de inicializacao em producao..."
+info "Criando script de inicializacao em producao..."
 cat << 'EOF' > "$PROD_DIR/start-prod.sh"
 #!/usr/bin/env bash
 set -euo pipefail

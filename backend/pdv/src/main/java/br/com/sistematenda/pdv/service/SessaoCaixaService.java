@@ -133,6 +133,48 @@ public class SessaoCaixaService extends BaseCrudServiceImpl<SessaoCaixa, SessaoC
         return mapper.toDTO(entity);
     }
 
+    @Transactional
+    public SessaoCaixaDTO abrirCaixaPorUsuario(String operador, UUID pdvId, BigDecimal valorInicial) {
+        String op = operador != null && !operador.isBlank() ? operador : "SISTEMA";
+        LocalDate hoje = LocalDate.now();
+
+        // 1 caixa por usuário e por dia (idempotente: se já foi criado, não recria)
+        java.util.Optional<SessaoCaixa> existente = repository.findPorOperadorEData(op, hoje);
+        if (existente.isPresent()) {
+            return mapper.toDTO(existente.get());
+        }
+
+        Pdv pdv = null;
+        if (pdvId != null) {
+            pdv = pdvService.getRepository().findById(pdvId);
+        }
+        if (pdv == null) {
+            List<Pdv> pdvsAtivos = pdvService.getRepository().list("ativo = true and deleted = false");
+            if (!pdvsAtivos.isEmpty()) {
+                pdv = pdvsAtivos.get(0);
+            }
+        }
+        if (pdv == null) {
+            throw new BusinessException("PDV_NAO_ENCONTRADO", "Nenhum PDV disponível para abrir o caixa");
+        }
+
+        SessaoCaixa entity = new SessaoCaixa();
+        entity.pdv = pdv;
+        entity.operadorAbertura = op;
+        entity.valorInicial = valorInicial != null ? valorInicial : BigDecimal.ZERO;
+        entity.status = SessaoCaixa.StatusSessao.ABERTA;
+        entity.dataAbertura = LocalDateTime.now();
+        entity.numeroUltimaVenda = pdv.numeroUltimaVenda != null ? pdv.numeroUltimaVenda : 0L;
+
+        getRepository().persist(entity);
+
+        pdv.status = Pdv.StatusPdv.EM_USO;
+        pdv.ultimaAbertura = LocalDateTime.now();
+        pdvService.getRepository().persist(pdv);
+
+        return mapper.toDTO(entity);
+    }
+
     /**
      * Abertura automática (idempotente): se já existe sessão aberta para o PDV,
      * retorna a existente; caso contrário cria uma nova.

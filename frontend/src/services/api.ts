@@ -217,6 +217,7 @@ export const apiPdv = {
   getSessao: (id: string) => api.get(`/pdv/sessoes-caixa/${id}`),
   getAbertaByPdv: (pdvId: string) => api.get(`/pdv/sessoes-caixa/pdv/${pdvId}/aberta`),
   abrirCaixa: (data: any) => api.post('/pdv/sessoes-caixa/abrir', data),
+  abrirCaixaUsuario: (data: any) => api.post('/pdv/sessoes-caixa/abrir-usuario', data),
   abrirCaixaAutomatico: (data: any) => api.post('/pdv/sessoes-caixa/abrir-automatico', data),
   validarVinculoPdv: (sessaoId: string, pdvId: string) => api.get(`/pdv/sessoes-caixa/validar-vinculo/${sessaoId}/${pdvId}`),
   fecharCaixa: (id: string, data: any) => api.post(`/pdv/sessoes-caixa/${id}/fechar`, data),

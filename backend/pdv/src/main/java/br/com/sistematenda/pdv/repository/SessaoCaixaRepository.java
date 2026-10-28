@@ -21,6 +21,12 @@ public class SessaoCaixaRepository implements PanacheRepositoryBase<SessaoCaixa,
         return find("pdv = ?1 and status = 'ABERTA' and deleted = false", pdv).firstResultOptional();
     }
 
+    public Optional<SessaoCaixa> findPorOperadorEData(String operador, LocalDate data) {
+        LocalDateTime inicio = data.atStartOfDay();
+        LocalDateTime fim = data.atTime(23, 59, 59);
+        return find("operadorAbertura = ?1 and dataAbertura >= ?2 and dataAbertura <= ?3 and deleted = false", operador, inicio, fim).firstResultOptional();
+    }
+
     public List<SessaoCaixa> findAllAbertas() {
         return find("status = 'ABERTA' and deleted = false").list();
     }

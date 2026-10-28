@@ -7,6 +7,7 @@ set "ROOT=%~dp0"
 set "BACKEND=%ROOT%backend"
 set "FRONTEND=%ROOT%frontend"
 set "PROD_DIR=%ROOT%production"
+set "RESOURCES_DIR=%BACKEND%\pdv\src\main\resources\META-INF\resources"
 
 echo ============================================================
 echo    SISTEMA TENDA - PREPARACAO PARA PRODUCAO
@@ -25,19 +26,7 @@ if errorlevel 1 (echo [ERRO] npm nao encontrado no PATH. & goto :fail)
 echo    Pre-requisitos OK.
 echo.
 
-echo [2/5] Compilando Backend (Maven - Package Production)...
-pushd "%BACKEND%"
-call mvn clean package -DskipTests
-set "MVN_ERR=!errorlevel!"
-popd
-if not "!MVN_ERR!"=="0" (
-    echo [ERRO] Falha na compilacao do Maven.
-    goto :fail
-)
-echo    Backend compilado com sucesso.
-echo.
-
-echo [3/5] Compilando Frontend (Vite Build)...
+echo [2/5] Compilando Frontend (Vite Build)...
 pushd "%FRONTEND%"
 if not exist "node_modules" (
     echo    Instalando dependencias do frontend...
@@ -50,25 +39,41 @@ if not "!NPM_ERR!"=="0" (
     echo [ERRO] Falha no build do frontend.
     goto :fail
 )
-echo    Frontend compilado com sucesso (pasta dist gerada).
+echo    Frontend compilado com sucesso.
 echo.
 
-echo [4/5] Organizando pacote de producao em "%PROD_DIR%"...
+echo [3/5] Integrando Frontend ao Backend (META-INF/resources)...
+if not exist "%RESOURCES_DIR%" mkdir "%RESOURCES_DIR%"
+xcopy /e /i /q /y "%FRONTEND%\dist\*" "%RESOURCES_DIR%\" >nul
+echo    Arquivos estaticos copiados para o backend.
+echo.
+
+echo [4/5] Compilando Backend (Maven - Package Production)...
+pushd "%BACKEND%"
+call mvn clean package -DskipTests
+set "MVN_ERR=!errorlevel!"
+popd
+if not "!MVN_ERR!"=="0" (
+    echo [ERRO] Falha na compilacao do Maven.
+    goto :fail
+)
+echo    Backend compilado com sucesso.
+echo.
+
+echo [5/5] Organizando pacote de producao em "%PROD_DIR%"...
 if exist "%PROD_DIR%" rmdir /s /q "%PROD_DIR%"
 mkdir "%PROD_DIR%"
 mkdir "%PROD_DIR%\backend"
-mkdir "%PROD_DIR%\frontend"
+mkdir "%PROD_DIR%\backend\quarkus-app\config"
 
-:: Copiar artefatos do backend (quarkus-app ou jar runner)
+:: Copiar artefatos do backend (quarkus-app)
 if exist "%BACKEND%\pdv\target\quarkus-app" (
     xcopy /e /i /q "%BACKEND%\pdv\target\quarkus-app" "%PROD_DIR%\backend\quarkus-app" >nul
-) else if exist "%BACKEND%\pdv\target\sistema-tenda-pdv-1.0.0-SNAPSHOT-runner.jar" (
-    copy "%BACKEND%\pdv\target\sistema-tenda-pdv-1.0.0-SNAPSHOT-runner.jar" "%PROD_DIR%\backend\" >nul
 )
 
-:: Copiar build do frontend
-if exist "%FRONTEND%\dist" (
-    xcopy /e /i /q "%FRONTEND%\dist" "%PROD_DIR%\frontend\dist" >nul
+:: Copiar application.prod.properties como application.properties na pasta config
+if exist "%BACKEND%\pdv\src\main\resources\application.prod.properties" (
+    copy "%BACKEND%\pdv\src\main\resources\application.prod.properties" "%PROD_DIR%\backend\quarkus-app\config\application.properties" >nul
 )
 
 :: Copiar variaveis de ambiente
@@ -76,10 +81,7 @@ if exist "%ROOT%.env" (
     copy "%ROOT%.env" "%PROD_DIR%\.env" >nul
 )
 
-echo    Arquivos organizados.
-echo.
-
-echo [5/5] Criando script de inicializacao em producao...
+:: Criar script de inicializacao em producao
 (
 echo @echo off
 echo setlocal
