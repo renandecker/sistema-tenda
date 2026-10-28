@@ -6,27 +6,43 @@ import { initBugsnag } from './bugsnag';
 import { initPostHog } from './posthog';
 import { initRollbar } from './rollbar';
 
+const isEnabled = (key: string) => import.meta.env[key] === 'true';
+
 export function initializeMonitoring() {
   // 1. React Scan (Development render visualizer)
-  initReactScan();
+  if (import.meta.env.DEV || isEnabled('VITE_ENABLE_REACT_SCAN')) {
+    initReactScan();
+  }
 
   // 2. OpenTelemetry (Tracing) - also forwards to Dynatrace via OTLP
-  initOpenTelemetry();
+  if (isEnabled('VITE_ENABLE_OPENTELEMETRY') || isEnabled('VITE_ENABLE_DYNATRACE_OTEL')) {
+    initOpenTelemetry();
+  }
 
   // 3. Grafana Faro (Frontend Observability)
-  initGrafanaFaro();
+  if (isEnabled('VITE_ENABLE_GRAFANA_FARO')) {
+    initGrafanaFaro();
+  }
 
   // 4. Sentry (Error Tracking & Replays)
-  initSentry();
+  if (isEnabled('VITE_ENABLE_SENTRY')) {
+    initSentry();
+  }
 
   // 5. Bugsnag (Error Monitoring)
-  initBugsnag();
+  if (isEnabled('VITE_ENABLE_BUGSNAG')) {
+    initBugsnag();
+  }
 
   // 6. PostHog (Product Analytics & Session Recording)
-  initPostHog();
+  if (isEnabled('VITE_ENABLE_POSTHOG')) {
+    initPostHog();
+  }
 
   // 7. Rollbar (Error Monitoring - alongside Bugsnag)
-  initRollbar();
+  if (isEnabled('VITE_ENABLE_ROLLBAR')) {
+    initRollbar();
+  }
 
-  console.log('[Monitoring Suite] All observability services initialized.');
+  console.log('[Monitoring Suite] Monitoring initialization completed (respecting enable flags).');
 }

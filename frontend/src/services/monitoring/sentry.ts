@@ -2,8 +2,16 @@ import * as Sentry from '@sentry/react';
 
 export function initSentry() {
   try {
+    if (import.meta.env.VITE_ENABLE_SENTRY !== 'true') {
+      return;
+    }
+    const dsn = import.meta.env.VITE_SENTRY_DSN;
+    if (!dsn) {
+      console.warn('[Sentry] VITE_SENTRY_DSN not set, skipping initialization');
+      return;
+    }
     Sentry.init({
-      dsn: import.meta.env.VITE_SENTRY_DSN || 'https://examplePublicKey@o0.ingest.sentry.io/0',
+      dsn,
       integrations: [
         Sentry.browserTracingIntegration(),
         Sentry.replayIntegration({

@@ -1,0 +1,36 @@
+==================================================
+SISTEMA TENDA - PACOTE DE PRODUÇÃO
+==================================================
+
+REQUISITOS PARA RODAR NO SERVIDOR:
+  - Java 17 ou superior
+  - PostgreSQL
+
+NÃO SÃO NECESSÁRIOS NO SERVIDOR:
+  - Node.js
+  - Maven
+  - Docker
+
+ESTRUTURA DA PASTA:
+  app/                    -> Aplicação Quarkus (quarkus-run.jar com React embutido)
+  config/                 -> Configurações de produção
+  logs/                   -> Diretório para logs
+  start.bat               -> Script para iniciar no Windows
+  start.sh                -> Script para iniciar no Linux/Mac
+  .env                    -> Variáveis de ambiente (edite antes de iniciar)
+  .env.example            -> Exemplo de variáveis
+  certificado.pfx         -> Certificado (opcional)
+  LEIA-ME.txt             -> Este arquivo
+
+COMANDOS PARA INICIAR:
+
+  Windows:  start.bat
+  Linux/Mac: chmod +x start.sh && ./start.sh
+
+CONFIGURAÇÃO:
+  1. Edite .env com os dados do PostgreSQL
+  2. Edite config/application.properties se necessário
+  3. Certifique-se que o banco PostgreSQL está acessível
+  4. Inicie com start.bat ou start.sh
+
+ACESSO: http://localhost:8080 (ou conforme quarkus.http.port)

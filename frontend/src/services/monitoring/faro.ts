@@ -3,8 +3,16 @@ import { TracingInstrumentation } from '@grafana/faro-web-tracing';
 
 export function initGrafanaFaro() {
   try {
+    if (import.meta.env.VITE_ENABLE_GRAFANA_FARO !== 'true') {
+      return;
+    }
+    const url = import.meta.env.VITE_GRAFANA_FARO_URL;
+    if (!url) {
+      console.warn('[Grafana Faro] VITE_GRAFANA_FARO_URL not set, skipping initialization');
+      return;
+    }
     initializeFaro({
-      url: import.meta.env.VITE_GRAFANA_FARO_URL || 'https://faro-collector-prod-us-east-0.grafana.net/collect/your-faro-key',
+      url,
       app: {
         name: 'sistema-tenda-frontend',
         version: '1.0.0',

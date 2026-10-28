@@ -9,9 +9,17 @@ import { DocumentLoadInstrumentation } from '@opentelemetry/instrumentation-docu
 
 export function initOpenTelemetry() {
   try {
+    if (import.meta.env.VITE_ENABLE_OPENTELEMETRY !== 'true' && import.meta.env.VITE_ENABLE_DYNATRACE_OTEL !== 'true') {
+      return;
+    }
+    const endpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
+    if (!endpoint) {
+      console.warn('[OpenTelemetry] VITE_OTEL_EXPORTER_OTLP_ENDPOINT not set, skipping initialization');
+      return;
+    }
     const provider = new WebTracerProvider();
     const exporter = new OTLPTraceExporter({
-      url: import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
+      url: endpoint,
     });
 
     (provider as any).addSpanProcessor(new BatchSpanProcessor(exporter) as any);

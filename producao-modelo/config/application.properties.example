@@ -1,0 +1,32 @@
+# Sistema Tenda - Configuracao de Producao
+# Copie este arquivo para application.properties e ajuste conforme seu ambiente
+# Ou utilize o arquivo gerado automaticamente a partir de application.prod.properties
+
+# HTTP
+quarkus.http.port=8080
+quarkus.http.host=0.0.0.0
+
+# Banco de dados PostgreSQL
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/sistema_tenda
+quarkus.datasource.username=seu_usuario
+quarkus.datasource.password=sua_senha
+
+# Hibernate
+quarkus.hibernate-orm.database.generation=update
+quarkus.hibernate-orm.log.sql=false
+
+# Logs
+quarkus.log.level=INFO
+quarkus.log.file.enable=true
+quarkus.log.file.path=logs/app.log
+quarkus.log.file.rotation.file-suffix=.yyyy-MM-dd
+quarkus.log.file.rotation.max-backup-index=7
+
+# CORS (ajuste se necessario)
+quarkus.http.cors=true
+quarkus.http.cors.origins=*
+quarkus.http.cors.methods=GET,POST,PUT,DELETE,OPTIONS,PATCH
+
+# Configuracoes adicionais conforme integrações (TEF, PIX)
+# Veja TEF_INTEGRATION_README.md e PIX_INTEGRATION_README.md
