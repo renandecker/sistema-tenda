@@ -4,7 +4,14 @@ let rollbarInstance: any = null;
 
 export function initRollbar() {
   try {
-    const accessToken = import.meta.env.VITE_ROLLBAR_ACCESS_KEY || 'your-rollbar-access-token';
+    if (import.meta.env.VITE_ENABLE_ROLLBAR !== 'true') {
+      return null;
+    }
+    const accessToken = import.meta.env.VITE_ROLLBAR_ACCESS_KEY;
+    if (!accessToken) {
+      console.warn('[Rollbar] VITE_ROLLBAR_ACCESS_KEY not set, skipping initialization');
+      return null;
+    }
     const rollbar = {
       accessToken,
       captureUncaught: true,

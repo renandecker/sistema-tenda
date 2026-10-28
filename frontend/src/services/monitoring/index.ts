@@ -9,8 +9,8 @@ import { initRollbar } from './rollbar';
 const isEnabled = (key: string) => import.meta.env[key] === 'true';
 
 export function initializeMonitoring() {
-  // 1. React Scan (Development render visualizer)
-  if (import.meta.env.DEV || isEnabled('VITE_ENABLE_REACT_SCAN')) {
+  // 1. React Scan (render visualizer overlay) — off unless explicitly enabled
+  if (isEnabled('VITE_ENABLE_REACT_SCAN')) {
     initReactScan();
   }
 

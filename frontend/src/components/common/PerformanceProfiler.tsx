@@ -14,6 +14,10 @@ interface PerformanceProfilerProps {
 }
 
 export const PerformanceProfiler: React.FC<PerformanceProfilerProps> = ({ id, children, onRender }) => {
+  if (import.meta.env.VITE_ENABLE_REACT_PROFILER !== 'true') {
+    return <>{children}</>;
+  }
+
   const handleRender: React.ProfilerOnRenderCallback = (
     id,
     phase,
