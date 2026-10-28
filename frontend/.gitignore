@@ -7,4 +7,5 @@ e2e/.auth/
 .env.e2e
 .env.e2e.local
 .env
+.env.tef
 
