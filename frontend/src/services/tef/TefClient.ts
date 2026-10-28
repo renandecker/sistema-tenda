@@ -1,39 +1,54 @@
-import { EventEmitter } from 'events';
 import {
   TefConfig,
   TEF_CONFIG_DEFAULT,
   IniciarTransacaoParams,
   TransacaoTEF,
-  TefEvent,
   TefResponse,
   ComprovanteTEF,
-  TipoTransacaoTEF,
   MAPEAMENTO_FORMA_PAGAMENTO_TEF,
   MAPEAMENTO_BANDEIRA_TEF
 } from './types';
 
-type TefClientEventMap = {
-  connected: []; 
-  disconnected: []; 
-  event: [TefEvent];
-  response: [TefResponse];
-  error: [Error];
-};
-
-export class TefClient extends EventEmitter<TefClientEventMap> {
+export class TefClient {
   private config: TefConfig;
   private ws: WebSocket | null = null;
-  private reconnectTimer: NodeJS.Timeout | null = null;
+  private reconnectTimer: any = null;
   private pendingRequests: Map<string, { resolve: (v: TefResponse) => void; reject: (e: Error) => void }> = new Map();
   private requestCounter = 0;
   private isConnecting = false;
   private shouldReconnect = false;
+  private listeners: { [key: string]: Function[] } = {};
 
   constructor(config: Partial<TefConfig> = {}) {
-    super();
     this.config = { ...TEF_CONFIG_DEFAULT, ...config };
-    this.setMaxListeners(50);
   }
+
+  on(event: string, listener: Function) {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event].push(listener);
+  }
+
+  off(event: string, listener: Function) {
+    if (!this.listeners[event]) return;
+    this.listeners[event] = this.listeners[event].filter(l => l !== listener);
+  }
+
+  once(event: string, listener: Function) {
+    const onceWrapper = (...args: any[]) => {
+      this.off(event, onceWrapper);
+      listener(...args);
+    };
+    this.on(event, onceWrapper);
+  }
+
+  emit(event: string, ...args: any[]) {
+    if (!this.listeners[event]) return;
+    this.listeners[event].forEach(listener => listener(...args));
+  }
+
+  setMaxListeners(_n: number) {}
 
   connect(): Promise<void> {
     if (this.ws?.readyState === WebSocket.OPEN) {
@@ -76,7 +91,7 @@ export class TefClient extends EventEmitter<TefClientEventMap> {
           }
         };
 
-        this.ws.onerror = (error) => {
+        this.ws.onerror = () => {
           this.isConnecting = false;
           const err = new Error('WebSocket connection error');
           this.emit('error', err);
@@ -145,7 +160,7 @@ export class TefClient extends EventEmitter<TefClientEventMap> {
   }
 
   private async sendHttpCommand(command: string, params: Record<string, any>): Promise<TefResponse> {
-    const requestId = this.generateRequestId();
+    this.generateRequestId();
     
     const response = await fetch(`${this.config.httpUrl}/tef/command`, {
       method: 'POST',
@@ -289,7 +304,7 @@ export class TefClient extends EventEmitter<TefClientEventMap> {
   }
 
   // Helpers para mapear formas de pagamento do frontend para TEF
-  static formaPagamentoParaTef(formaPagamento: string): TipoTransacaoTEF {
+  static formaPagamentoParaTef(formaPagamento: string): any {
     return MAPEAMENTO_FORMA_PAGAMENTO_TEF[formaPagamento] || 'DEBITO';
   }
 

@@ -23,7 +23,7 @@ export const PerformanceProfiler: React.FC<PerformanceProfilerProps> = ({ id, ch
     commitTime
   ) => {
     if (onRender) {
-      onRender(id, phase, actualDuration, baseDuration, startTime, commitTime);
+      onRender(id, phase as "mount" | "update", actualDuration, baseDuration, startTime, commitTime);
     } else if (import.meta.env.DEV && actualDuration > 16) {
       console.warn(`[React Profiler] Slow render detected in "${id}" (${phase}): ${actualDuration.toFixed(2)}ms (Base: ${baseDuration.toFixed(2)}ms)`);
     }

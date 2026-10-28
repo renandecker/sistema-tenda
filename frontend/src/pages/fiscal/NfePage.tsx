@@ -17,14 +17,10 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   Chip,
   IconButton,
   Alert,
-  Divider,
   InputAdornment,
-  Menu,
-  MenuItem,
   Tooltip,
   TablePagination,
   TableSortLabel,
@@ -92,13 +88,7 @@ interface Nfe {
   vendaId: string;
 }
 
-interface PageResponse {
-  content: Nfe[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-  size: number;
-}
+
 
 export function NfePage() {
   const [nfeList, setNfeList] = useState<Nfe[]>([]);
@@ -422,8 +412,8 @@ export function NfePage() {
                         color={STATUS_COLORS[nfe.status] || 'default'}
                         icon={
                           nfe.status === 'AUTORIZADA' ? <CheckCircleIcon fontSize="small" /> :
-                          nfe.status === 'REJEITADA' || nfe.status === 'CANCELADA' || nfe.status === 'DENEGADA' ? <ErrorIcon fontSize="small" /> :
-                          nfe.status === 'PENDENTE' || nfe.status === 'EM_PROCESSAMENTO' ? <HourglassIcon fontSize="small" /> : null
+                          (nfe.status === 'REJEITADA' || nfe.status === 'CANCELADA' || nfe.status === 'DENEGADA') ? <ErrorIcon fontSize="small" /> :
+                          (nfe.status === 'PENDENTE' || nfe.status === 'EM_PROCESSAMENTO') ? <HourglassIcon fontSize="small" /> : undefined
                         }
                       />
                       {nfe.motivoRejeicao && (

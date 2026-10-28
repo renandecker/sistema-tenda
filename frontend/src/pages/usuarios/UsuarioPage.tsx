@@ -13,30 +13,27 @@ import {
   TextField,
   Select,
   MenuItem,
-  InputLabel,
-  IconButton,
 } from '@mui/material';
 import {
   Person as PersonIcon,
   AccountBalance as CashIcon,
   SwapHoriz as PanVertIcon,
   CheckCircle as CheckCircleIcon,
-  CalendarMonth as CalendarMonthIcon,
   Email as EmailIcon,
   Security as SecurityIcon,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { usePdv } from '@/contexts/PdvContext';
-import { brand } from '@/theme';
+
 import { apiPdv } from '@/services/api';
 
 export function UsuarioPage() {
   const { user } = useAuth();
   const userData = user as any;
-  const { selectedPdv, sessaoAtiva, abrirCaixa, fecharCaixa } = usePdv();
+  const { selectedPdv, sessaoAtiva } = usePdv();
 
   const [aberto, setAberto] = React.useState(false);
-  const [valorInicial, setValorInicial] = React.useState('');
+  const [valorInicial] = React.useState('');
   const [operador, setOperador] = React.useState(userData?.nome || '');
 
   const handleAbrirCaixa = async () => {

@@ -17,29 +17,23 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   Chip,
   IconButton,
-  Alert,
   Divider,
   InputAdornment,
   FormControlLabel,
   Checkbox,
 } from '@mui/material';
 import {
-  Add as AddIcon,
   PointOfSale as PosIcon,
-  ReceiptLong as ReceiptIcon,
-  Payments as PaymentIcon,
+  Payment as PaymentIcon,
   QrCode as QrCodeIcon,
-  Close as CloseIcon,
-  Search as SearchIcon,
   Refresh as RefreshIcon,
   Receipt as ReceiptPrintIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { apiPdv } from '@/services/api';
-import { PixPaymentModal, PixQrCode } from '@/components/pix';
+import { PixPaymentModal } from '@/components/pix';
 import { TefPaymentModal } from '@/components/tef';
 import { BandeiraCartao } from '@/constants/bandeiras';
 import { maskCurrency, parseCurrency } from '@/utils/masks';
@@ -224,13 +218,10 @@ export function PdvPaymentPage() {
     setTefDialogOpen(true);
   };
 
-  const handleTefSuccess = async (comprovante: { cliente: string; estabelecimento: string }) => {
+  const handleTefSuccess = async () => {
     if (!selectedVenda) return;
 
     try {
-      // O backend já processou a confirmação via webhook, só precisamos registrar o pagamento
-      // O pagamento já foi persistido no backend quando a transação foi confirmada
-      // Aqui apenas fechamos o modal e recarregamos
       setTefDialogOpen(false);
       toast.success('Pagamento TEF confirmado com sucesso!');
       loadVendas();

@@ -11,8 +11,8 @@ import { toast } from 'react-toastify';
 import { apiFruteira } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
-import { formatCurrency, formatNumber } from '@/utils/formatters';
-import { maskCurrency, maskQuantity, parseCurrency, parseDecimal } from '@/utils/masks';
+import { formatCurrency } from '@/utils/formatters';
+import { maskCurrency, parseCurrency } from '@/utils/masks';
 
 interface Produto {
   id: string;

@@ -35,7 +35,7 @@ const BugsnagBoundary = getBugsnagErrorBoundary();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <SentryErrorBoundary fallback={({ error }: { error: any }) => <div>Ocorreu um erro inesperado. O reporte foi enviado para a equipe de suporte.</div>}>
+    <SentryErrorBoundary fallback={() => <div>Ocorreu um erro inesperado. O reporte foi enviado para a equipe de suporte.</div>}>
       <RollbarErrorBoundary>
         <BugsnagBoundary>
         <QueryClientProvider client={queryClient}>

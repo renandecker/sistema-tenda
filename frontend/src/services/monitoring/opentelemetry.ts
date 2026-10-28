@@ -14,7 +14,7 @@ export function initOpenTelemetry() {
       url: import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
     });
 
-    provider.addSpanProcessor(new BatchSpanProcessor(exporter) as any);
+    (provider as any).addSpanProcessor(new BatchSpanProcessor(exporter) as any);
     provider.register({
       contextManager: new ZoneContextManager(),
     });

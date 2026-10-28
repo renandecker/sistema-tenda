@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiPdv } from '@/services/api';
+import { api, apiPdv } from '@/services/api';
 
 interface Pdv {
   id: string;

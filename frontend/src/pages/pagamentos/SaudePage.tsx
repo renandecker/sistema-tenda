@@ -9,12 +9,7 @@ import {
   Alert,
   Button,
 } from '@mui/material';
-import {
-  Dashboard as DashboardIcon,
-  Refresh as RefreshIcon,
-  Lock as LockIcon,
-  Person as PersonIcon,
-} from '@mui/icons-material';
+
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationModal, NotificationSeverity } from '@/components/NotificationModal';
 
@@ -44,17 +39,8 @@ const statusInicial: StatusItem = {
   horaVerificacao: '',
 };
 
-function useStatusClass(status: string) {
-  switch (status) {
-    case 'funcionando': return 'bg-green-100 text-green-800';
-    case 'atencao': return 'bg-orange-100 text-orange-800';
-    case 'problema': return 'bg-red-100 text-red-800';
-    default: return 'bg-gray-100 text-gray-800';
-  }
-}
-
 export function SaudePage() {
-  const { user, isAuthenticated, hasPermission, isInRole } = useAuth();
+  const { isAuthenticated, hasPermission, isInRole }: any = useAuth();
   const [state, setState] = useState<SaudeState>({
     pix: { ...statusInicial },
     tef: { ...statusInicial },

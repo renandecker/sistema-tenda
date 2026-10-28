@@ -10,7 +10,6 @@ import {
   Alert,
   LinearProgress,
   Chip,
-  IconButton,
   Divider,
 } from '@mui/material';
 import {
@@ -21,11 +20,6 @@ import {
   HourglassEmpty as HourglassIcon,
   Print as PrintIcon,
   Cancel as CancelIcon,
-  Refresh as RefreshIcon,
-  SignalCellularConnectedNoInternet0Bar as TefForteIcon,
-  SignalCellularOff as TefFracoIcon,
-  Wifi as PixDentroIcon,
-  WifiOff as PixForteIcon,
 } from '@mui/icons-material';
 import { useTef } from '@/services/tef';
 import { toast } from 'react-toastify';
@@ -191,8 +185,6 @@ export function TefPaymentModal({
     }
   };
 
-  const canConfirm = transacaoAtual?.status === 'AUTORIZADA';
-  const canDesfazer = transacaoAtual?.status === 'AUTORIZADA' || transacaoAtual?.status === 'NEGADA';
   const isFinalizado = transacaoAtual && ['AUTORIZADA', 'NEGADA', 'CANCELADA', 'CONFIRMADA', 'DESFEITA', 'ERRO'].includes(transacaoAtual.status);
 
   return (

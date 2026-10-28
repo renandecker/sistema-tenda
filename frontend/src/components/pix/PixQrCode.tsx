@@ -9,13 +9,10 @@ import {
   Alert,
   CircularProgress,
   Divider,
-  Snackbar,
   Chip,
-  Grid,
   Paper,
 } from '@mui/material';
 import {
-  QrCode as QrCodeIcon,
   ContentCopy as CopyIcon,
   CheckCircle as CheckIcon,
   Error as ErrorIcon,
@@ -207,7 +204,7 @@ export const PixQrCode: React.FC<PixQrCodeProps> = ({
           <Chip
             label={getStatusLabel(currentStatus)}
             icon={
-              currentStatus.toUpperCase() === 'CONCLUIDA' || currentStatus.toUpperCase() === 'CONCLUDED' ? (
+              (currentStatus.toUpperCase() === 'CONCLUIDA' || currentStatus.toUpperCase() === 'CONCLUDED') ? (
                 <CheckIcon fontSize="small" />
               ) : currentStatus.toUpperCase() === 'EXPIRADA' ? (
                 <ErrorIcon fontSize="small" />
@@ -215,8 +212,8 @@ export const PixQrCode: React.FC<PixQrCodeProps> = ({
                 <TimerIcon fontSize="small" />
               )
             }
-            color={getStatusColor(currentStatus)}
-            size="large"
+            color={getStatusColor(currentStatus) as any}
+            size="medium"
             sx={{ mb: 2, width: '100%', justifyContent: 'center', fontWeight: 600 }}
           />
 
@@ -249,7 +246,7 @@ export const PixQrCode: React.FC<PixQrCodeProps> = ({
                 level="M"
                 includeMargin={true}
                 imageSettings={{
-                  src: require('@/assets/logo.png'),
+                  src: '/logo.png',
                   height: 40,
                   width: 40,
                   excavate: true,

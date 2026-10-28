@@ -5,9 +5,7 @@ import {
   TransacaoTEF, 
   TefEvent, 
   IniciarTransacaoParams, 
-  TipoTransacaoTEF,
-  ComprovanteTEF,
-  TefConfig
+  ComprovanteTEF
 } from './types';
 
 interface UseTefReturn {
@@ -35,7 +33,6 @@ export function useTef(config?: {
   const [tefStatus, setTefStatus] = useState<{ status: string; detail: string }>({ status: 'unknown', detail: 'unknown' });
   const [pixStatus, setPixStatus] = useState<{ status: string; detail: string }>({ status: 'unknown', detail: 'unknown' });
   const clientRef = useRef<TefClient>(tefClient);
-  const initializedRef = useRef(false);
 
   useEffect(() => {
     if (config?.httpUrl || config?.wsUrl) {
@@ -89,6 +86,7 @@ export function useTef(config?: {
       client.off('disconnected', handleDisconnected);
       client.off('event', handleEvent);
       client.off('error', handleError);
+      client.off('saudeAtualizada', handleSaudeAtualizada);
     };
   }, [config?.httpUrl, config?.wsUrl, config?.autoConnect]);
 
