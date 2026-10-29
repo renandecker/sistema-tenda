@@ -105,6 +105,7 @@ export function PdvPage() {
   const [estoqueBuffet, setEstoqueBuffet] = useState<ProdutoBusca[]>([]);
   const [estoqueFruteira, setEstoqueFruteira] = useState<ProdutoBusca[]>([]);
   const [buscou, setBuscou] = useState(false);
+  const [itensModalOpen, setItensModalOpen] = useState(false);
   const navigate = useNavigate();
 
   const [cliente, setCliente] = useState<any>(null);
