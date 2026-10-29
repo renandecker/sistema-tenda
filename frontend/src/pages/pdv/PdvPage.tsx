@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert, Autocomplete, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
   Divider, Grid, IconButton, Tabs, Tab, TextField, Tooltip, Typography,
@@ -84,6 +84,8 @@ const SHORTCUTS_PAGAMENTO = [
   { forma: 'VALE_CULTURA', label: 'Vale Cultura', shortcut: 'F7' },
 ];
 
+const TAB_ORDER: Array<'buffet' | 'fruteira' | 'mesas'> = ['buffet', 'fruteira', 'mesas'];
+
 export function PdvPage() {
   const [venda, setVenda] = useState<VendaAtual | null>(null);
   const [loading, setLoading] = useState(false);
@@ -119,6 +121,42 @@ export function PdvPage() {
   const [fiadoVencimento, setFiadoVencimento] = useState('');
   const [fiadoDescricao, setFiadoDescricao] = useState('');
 
+  const shortcutSequenceRef = useRef<{ type: 'b' | 'f' | 'm'; timestamp: number } | null>(null);
+
+  const focusClienteField = useCallback(() => {
+    requestAnimationFrame(() => {
+      const docInput = document.getElementById('pdv-doc-input') as HTMLInputElement | null;
+      if (docInput) {
+        docInput.focus();
+        docInput.select();
+        return;
+      }
+
+      const clientSearch = document.querySelector('input[placeholder="Ou busque cliente por nome"]') as HTMLInputElement | null;
+      if (clientSearch) {
+        clientSearch.focus();
+        clientSearch.select();
+      }
+    });
+  }, []);
+
+  const focusBuscaField = useCallback(() => {
+    requestAnimationFrame(() => {
+      const input = document.getElementById('pdv-busca-input') as HTMLInputElement | null;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
+  }, []);
+
+  const focusItensModalClose = useCallback(() => {
+    requestAnimationFrame(() => {
+      const btn = document.getElementById('pdv-itens-modal-close') as HTMLButtonElement | null;
+      if (btn) btn.focus();
+    });
+  }, []);
+
   const buscarClientes = async (termo: string) => {
     if (!termo || termo.trim().length < 2) { setOpcoesClientes([]); return; }
     try {
@@ -153,8 +191,6 @@ export function PdvPage() {
     carregarSituacao(c);
   };
 
-  // CPF/CNPJ com máscara: ao completar 11 ou 14 dígitos, busca o cliente e o mantém
-  // vinculado à venda enquanto os produtos são adicionados
   const onDocumentoChange = async (valor: string) => {
     const masked = maskCpfCnpj(valor);
     setDocumento(masked);
@@ -178,7 +214,11 @@ export function PdvPage() {
   };
 
   const abrirFiado = () => {
-    if (!cliente) { toast.warning('Selecione o cliente para lançar a dívida'); return; }
+    if (!cliente) {
+      focusClienteField();
+      toast.warning('Selecione o cliente para lançar a dívida');
+      return;
+    }
     setFiadoValor(''); setFiadoVencimento(''); setFiadoDescricao('');
     setFiadoDialog(true);
   };
@@ -316,7 +356,6 @@ export function PdvPage() {
       await carregarVendaComItens(data.id);
       toast.success(`Venda ${data?.numero ?? ''} iniciada`);
     } catch {
-      // fallback local para operar mesmo sem backend
       const local: VendaAtual = { id: `local-${Date.now()}`, numero: 'LOCAL', subtotal: 0, valorTotal: 0, valorPago: 0, status: 'ABERTA', itens: [], pagamentos: [] };
       setVenda(local);
       toast.info('Backend indisponível — operando em modo local');
@@ -336,7 +375,6 @@ export function PdvPage() {
       const listF: ProdutoBusca[] = (f.status === 'fulfilled' ? (Array.isArray(f.value.data) ? f.value.data : f.value.data?.content ?? []) : []).map((p: any) => ({ ...p, origem: 'FRUTEIRA' as const }));
       const listB: ProdutoBusca[] = (b.status === 'fulfilled' ? (Array.isArray(b.value.data) ? b.value.data : b.value.data?.content ?? []) : []).map((p: any) => ({ ...p, origem: 'BUFFET' as const }));
       let combined = [...listF, ...listB];
-      // fallback por código de barras exato
       if (combined.length === 0) {
         const byCode = await Promise.allSettled([
           apiFruteira.getByCodigoBarras(busca).catch(() => apiFruteira.getByCodigo(busca)),
@@ -350,7 +388,6 @@ export function PdvPage() {
       setResultados(combined.slice(0, 30));
       setBuscou(true);
 
-      // Exibe nas abas a origem onde o item/mesa foi encontrado
       const hasB = combined.some((p) => p.origem === 'BUFFET');
       const hasF = combined.some((p) => p.origem === 'FRUTEIRA');
       const hasM = mesasComComanda.some((m) => mesaCorresponde(m, busca));
@@ -392,7 +429,7 @@ export function PdvPage() {
     setContadorItens(novoContador);
     const codigoProd = obterCodigoProduto(origem, (contadorItens[origem] ?? 0) as number);
     if (currentVenda.id.startsWith('local-')) {
-      const item: ItemResumo = { id: `i-${Date.now()}`, codigoProduto: codigoProd, nomeProduto: p.nome, quantidade: qtd, precoUnitario: p.precoVenda ?? 0, valorTotal: (p.precoVenda ?? 0) * qtd, origem: p.origem };
+      const item: ItemResumo = { id: `i-${Date.now()}`, codigoProduto: codigoProd, nomeProduto: p.nome, quantidade: qtd, precoUnitario: p.precoVenda ?? 0, valorTotal: (p.precoVenda ?? 0) * qtd, origem };
       setVenda((v) => {
         if (!v) return v;
         const itens = [...(v.itens ?? []), item];
@@ -472,7 +509,6 @@ export function PdvPage() {
     if (venda.id.startsWith('local-')) {
       setPagDialog(false);
       setValorPagamento('');
-      // Add payment to the existing payments or create new array
       const novoPagamento: { forma: string; valor: number; shortcut: string } = { forma: formaPagamento, valor, shortcut: '' };
       setVenda((s) => s ? { ...s, pagamentos: [...(s.pagamentos ?? []), novoPagamento] } : s);
       return;
@@ -509,7 +545,6 @@ export function PdvPage() {
     const docDigits = parseDocument(documento);
     const docCliente = cliente?.cpfCnpj ? parseDocument(cliente.cpfCnpj) : '';
     if (docDigits && !cliente) {
-      // Cliente informado mas não cadastrado: pede o nome para cadastro
       setCadClienteForm({ nome: '', telefone: '' });
       setCadClienteDialog(true);
       return;
@@ -540,29 +575,96 @@ export function PdvPage() {
 
   const cancelar = async () => {
     if (!venda) return;
-    if (!window.confirm("Cancelar esta venda?")) return;
-    // Clear all fields and start new venda
+    if (!window.confirm('Cancelar esta venda?')) return;
     limparEstado();
     setVenda(null);
-    toast.success("Venda cancelada - nova venda iniciada");
+    toast.success('Venda cancelada - nova venda iniciada');
   };
 
   const saldo = (venda?.valorTotal ?? 0) - (venda?.valorPago ?? 0);
 
+  const alternarAba = useCallback((direcao: 1 | -1) => {
+    setTabValue((prevTab) => {
+      const idx = TAB_ORDER.indexOf(prevTab);
+      const nextIdx = (idx + direcao + TAB_ORDER.length) % TAB_ORDER.length;
+      return TAB_ORDER[nextIdx];
+    });
+  }, []);
+
+  const quickAddFromTab = useCallback((tipo: 'b' | 'f' | 'm', numero: number) => {
+    const targetTab: 'buffet' | 'fruteira' | 'mesas' = tipo === 'b' ? 'buffet' : tipo === 'f' ? 'fruteira' : 'mesas';
+    const visible = targetTab === 'buffet'
+      ? (buscou ? resultados.filter((p) => p.origem === 'BUFFET') : estoqueBuffet)
+      : targetTab === 'fruteira'
+        ? (buscou ? resultados.filter((p) => p.origem === 'FRUTEIRA') : estoqueFruteira)
+        : (busca.trim() ? mesasComComanda.filter((m) => mesaCorresponde(m, busca)) : mesasComComanda);
+
+    const item = visible[numero - 1];
+    if (!item) return;
+
+    if (targetTab !== tabValue) {
+      setTabValue(targetTab);
+      requestAnimationFrame(() => {
+        const nextVisible = targetTab === 'buffet'
+          ? (buscou ? resultados.filter((p) => p.origem === 'BUFFET') : estoqueBuffet)
+          : targetTab === 'fruteira'
+            ? (buscou ? resultados.filter((p) => p.origem === 'FRUTEIRA') : estoqueFruteira)
+            : (busca.trim() ? mesasComComanda.filter((m) => mesaCorresponde(m, busca)) : mesasComComanda);
+        const nextItem = nextVisible[numero - 1];
+        if (!nextItem) return;
+        if ('origem' in nextItem && (nextItem as any).origem) {
+          adicionarItem(nextItem as ProdutoBusca);
+        } else if ('comandaAtiva' in nextItem) {
+          const mesa = nextItem as any;
+          if (mesa?.comandaAtiva?.id) {
+            carregarMesaPdv(mesa.comandaAtiva.id, String(mesa.numero));
+          }
+        }
+      });
+      return;
+    }
+
+    if ('origem' in item && (item as any).origem) {
+      adicionarItem(item as ProdutoBusca);
+      return;
+    }
+
+    const mesa = item as any;
+    if (mesa?.comandaAtiva?.id) {
+      carregarMesaPdv(mesa.comandaAtiva.id, String(mesa.numero));
+    }
+  }, [tabValue, busca, buscou, resultados, estoqueBuffet, estoqueFruteira, mesasComComanda]);
+
   useEffect(() => {
-    const handler = (_e: KeyboardEvent) => {
-      if (_e.key >= 'F1' && _e.key <= 'F12') {
-        _e.preventDefault();
-        const keyNum = parseInt(_e.key.replace('F', ''), 10);
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTypingField = !!target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
+      );
+
+      if (event.ctrlKey && (event.key === 'ArrowRight' || event.key === 'ArrowLeft' || event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+        event.preventDefault();
+        alternarAba(event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1);
+        return;
+      }
+
+      if (isTypingField) return;
+
+      if (event.key >= 'F1' && event.key <= 'F12') {
+        event.preventDefault();
+        const keyNum = parseInt(event.key.replace('F', ''), 10);
         switch (keyNum) {
           case 1:
             novaVenda();
             break;
           case 2:
-            document.getElementById('pdv-busca-input')?.focus();
+            focusBuscaField();
             break;
           case 3:
-            document.getElementById('pdv-doc-input')?.focus();
+            focusClienteField();
             break;
           case 4:
             if (venda) setPesoDialog(true);
@@ -591,7 +693,7 @@ export function PdvPage() {
             if (venda && !venda.id.startsWith('local-')) recarregarVenda(venda.id);
             break;
           case 11:
-            setTabValue((prev) => (prev === 'buffet' ? 'fruteira' : prev === 'fruteira' ? 'mesas' : 'buffet'));
+            alternarAba(1);
             break;
           case 12:
             setShortcutDialog(true);
@@ -599,11 +701,31 @@ export function PdvPage() {
           default:
             break;
         }
+        return;
+      }
+
+      const letterKey = event.key.toLowerCase();
+      if (['b', 'f', 'm'].includes(letterKey) && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
+        event.preventDefault();
+        shortcutSequenceRef.current = { type: letterKey as 'b' | 'f' | 'm', timestamp: Date.now() };
+        return;
+      }
+
+      if (/^[0-9]$/.test(event.key) && shortcutSequenceRef.current && Date.now() - shortcutSequenceRef.current.timestamp < 600) {
+        event.preventDefault();
+        quickAddFromTab(shortcutSequenceRef.current.type, Number(event.key) === 0 ? 10 : Number(event.key));
+        shortcutSequenceRef.current = null;
+        return;
+      }
+
+      if (!['b', 'f', 'm', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(event.key.toLowerCase())) {
+        shortcutSequenceRef.current = null;
       }
     };
+
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [venda, saldo, recarregarVenda, finalizar, cancelar, abrirFiado, novaVenda]);
+  }, [venda, saldo, recarregarVenda, finalizar, cancelar, abrirFiado, novaVenda, alternarAba, quickAddFromTab, focusBuscaField, focusClienteField]);
 
   const vendaIniciada = !!venda && ((venda.itens?.length ?? 0) > 0 || !!cliente);
   const filtrarProdutosDaAbas = (tab: 'buffet' | 'fruteira' | 'mesas') => {
@@ -613,7 +735,7 @@ export function PdvPage() {
     if (tab === 'fruteira') {
       return buscou ? resultados.filter((p) => p.origem === 'FRUTEIRA') : estoqueFruteira;
     }
-    return mesasFiltradas;
+    return busca.trim() ? mesasComComanda.filter((m) => mesaCorresponde(m, busca)) : mesasComComanda;
   };
   const mesasFiltradas = busca.trim() ? mesasComComanda.filter((m) => mesaCorresponde(m, busca)) : mesasComComanda;
 
@@ -655,8 +777,15 @@ export function PdvPage() {
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Buscar produto / mesa / comanda</Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField id="pdv-busca-input" fullWidth size="small" placeholder="Código, código de barras, nome, mesa ou comanda + Enter" value={busca}
-                  onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' || (e.altKey && e.key === 'Enter')) { e.preventDefault(); buscarProdutos(); carregarMesas(); } }} />
+                <TextField
+                  id="pdv-busca-input"
+                  fullWidth
+                  size="small"
+                  placeholder="Código, código de barras, nome, mesa ou comanda + Enter"
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || (e.altKey && e.key === 'Enter')) { e.preventDefault(); buscarProdutos(); carregarMesas(); } }}
+                />
                 <TextField size="small" label="Qtd" value={maskQuantity(quantidade)} onChange={(e) => setQuantidade(maskQuantity(e.target.value))} sx={{ width: 90 }} inputMode="decimal" />
                 <Button variant="contained" onClick={() => { buscarProdutos(); carregarMesas(); }} disabled={buscando} startIcon={<SearchIcon />}>Buscar</Button>
                 <Tooltip title="Lançar prato por peso (balança)"><span><IconButton color="primary" onClick={() => setPesoDialog(true)} disabled={!venda}><ScaleIcon /></IconButton></span></Tooltip>
@@ -671,8 +800,8 @@ export function PdvPage() {
           <Card>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Itens a venda</Typography>
-{tabValue === 'buffet' ? renderProdutos(filtrarProdutosDaAbas('buffet'), 'Nenhum produto do buffet encontrado') :
-                 tabValue === 'fruteira' ? renderProdutos(filtrarProdutosDaAbas('fruteira'), 'Nenhum produto da fruteira encontrado') :
+              {tabValue === 'buffet' ? renderProdutos(filtrarProdutosDaAbas('buffet'), 'Nenhum produto do buffet encontrado') :
+                tabValue === 'fruteira' ? renderProdutos(filtrarProdutosDaAbas('fruteira'), 'Nenhum produto da fruteira encontrado') :
                 (() => {
                   const mesas = mesasFiltradas;
                   if (mesas.length === 0) return <Typography variant="caption" color="text.secondary">Nenhuma mesa com comanda aberta encontrada</Typography>;
@@ -699,9 +828,11 @@ export function PdvPage() {
           <Card sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Busca do cliente</Typography>
-               <TextField
-                 id="pdv-doc-input"
-                 fullWidth size="small" label="CPF/CNPJ do cliente"
+              <TextField
+                id="pdv-doc-input"
+                fullWidth
+                size="small"
+                label="CPF/CNPJ do cliente"
                 value={documento}
                 onChange={(e) => onDocumentoChange(e.target.value)}
                 placeholder="000.000.000-00"
@@ -767,10 +898,14 @@ export function PdvPage() {
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Resumo</Typography>
               <Button
+                id="pdv-itens-adicionados-btn"
                 fullWidth
                 variant="outlined"
                 startIcon={<ListAltIcon />}
-                onClick={() => setItensModalOpen(true)}
+                onClick={() => {
+                  setItensModalOpen(true);
+                  focusItensModalClose();
+                }}
                 sx={{ mb: 2 }}
               >
                 Itens adicionados ({venda?.itens?.length ?? 0})
@@ -788,8 +923,8 @@ export function PdvPage() {
                 <Button variant="outlined" onClick={aplicarDesconto} disabled={!venda}>Aplicar <Typography variant="caption" color="text.secondary">(F5)</Typography></Button>
               </Box>
               <Grid container spacing={1}>
-                <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={() => { setValorPagamento(saldo > 0 ? maskCurrency(saldo) : ''); setPagDialog(true); }} disabled={!venda}>Pagamento <Typography variant="caption" color="text.secondary">(F6)</Typography></Button></Grid>
-                <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={venda == null || (venda?.pagamentos?.length === 0 && venda?.valorPago === 0)}>Finalizar <Typography variant="caption" color="text.secondary">(F7)</Typography></Button></Grid>
+                <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={() => { setValorPagamento(saldo > 0 ? maskCurrency(saldo) : ''); setPagDialog(true); }}>Pagar</Button></Grid>
+                <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={venda == null || (venda?.pagamentos?.length === 0 && venda?.valorPago === 0 && (venda?.valorTotal ?? 0) > 0)}>Finalizar</Button></Grid>
                 <Grid item xs={12}><Button fullWidth color="error" startIcon={<CancelIcon />} onClick={cancelar} disabled={!vendaIniciada && !venda}>Cancelar venda <Typography variant="caption" color="text.secondary">(F8)</Typography></Button></Grid>
               </Grid>
               {venda?.pagamentos && venda.pagamentos.length > 0 && (
@@ -819,9 +954,7 @@ export function PdvPage() {
               <Button key={item.forma} variant="outlined" sx={{ width: '100%' }} onClick={() => setFormaPagamento(item.forma)}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="body2" fontWeight={600}>{item.label}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {item.shortcut}
-                  </Typography>
+                  <Typography variant="caption" color="text.secondary">{item.shortcut}</Typography>
                 </Box>
               </Button>
             ))}
@@ -840,7 +973,6 @@ export function PdvPage() {
         <DialogActions><Button onClick={() => setPesoDialog(false)}>Fechar</Button><Button variant="contained" onClick={lancarPeso}>Lançar</Button></DialogActions>
       </Dialog>
 
-      {/* Dialog: lançar fiado no caderno */}
       <Dialog open={fiadoDialog} onClose={() => setFiadoDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Lançar fiado no caderno</DialogTitle>
         <DialogContent>
@@ -851,12 +983,9 @@ export function PdvPage() {
               <> · já deve {formatCurrency(Number(situacao.totalDivida ?? 0))}</>
             )}
           </Typography>
-          <TextField fullWidth label="Valor da dívida (R$)" value={maskCurrency(fiadoValor)}
-            onChange={(e) => setFiadoValor(maskCurrency(e.target.value))} placeholder="0,00" inputMode="decimal" sx={{ mb: 2 }} />
-          <TextField fullWidth type="date" label="Vencimento (opcional)" InputLabelProps={{ shrink: true }}
-            value={fiadoVencimento} onChange={(e) => setFiadoVencimento(e.target.value)} sx={{ mb: 2 }} />
-          <TextField fullWidth label="Descrição" value={fiadoDescricao}
-            onChange={(e) => setFiadoDescricao(e.target.value)} placeholder="Ex.: compra do dia" />
+          <TextField fullWidth label="Valor da dívida (R$)" value={maskCurrency(fiadoValor)} onChange={(e) => setFiadoValor(maskCurrency(e.target.value))} placeholder="0,00" inputMode="decimal" sx={{ mb: 2 }} autoFocus />
+          <TextField fullWidth type="date" label="Vencimento (opcional)" InputLabelProps={{ shrink: true }} value={fiadoVencimento} onChange={(e) => setFiadoVencimento(e.target.value)} sx={{ mb: 2 }} />
+          <TextField fullWidth label="Descrição" value={fiadoDescricao} onChange={(e) => setFiadoDescricao(e.target.value)} placeholder="Ex.: compra do dia" />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setFiadoDialog(false)}>Cancelar</Button>
@@ -864,17 +993,14 @@ export function PdvPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog: cadastrar cliente inexistente ao finalizar a venda */}
       <Dialog open={cadClienteDialog} onClose={() => setCadClienteDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Cadastrar cliente</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             O cliente <strong>{maskCpfCnpj(documento)}</strong> não está cadastrado. Informe o nome para concluir a venda:
           </Typography>
-          <TextField fullWidth label="Nome do cliente" value={cadClienteForm.nome}
-            onChange={(e) => setCadClienteForm({ ...cadClienteForm, nome: e.target.value })} sx={{ mb: 2 }} autoFocus />
-          <TextField fullWidth label="Telefone (opcional)" value={cadClienteForm.telefone}
-            onChange={(e) => setCadClienteForm({ ...cadClienteForm, telefone: e.target.value })} placeholder="(00) 00000-0000" />
+          <TextField fullWidth label="Nome do cliente" value={cadClienteForm.nome} onChange={(e) => setCadClienteForm({ ...cadClienteForm, nome: e.target.value })} sx={{ mb: 2 }} autoFocus />
+          <TextField fullWidth label="Telefone (opcional)" value={cadClienteForm.telefone} onChange={(e) => setCadClienteForm({ ...cadClienteForm, telefone: e.target.value })} placeholder="(00) 00000-0000" />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCadClienteDialog(false)}>Cancelar</Button>
@@ -882,7 +1008,6 @@ export function PdvPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog: Itens Adicionados */}
       <Dialog open={itensModalOpen} onClose={() => setItensModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Itens adicionados</DialogTitle>
         <DialogContent dividers>
@@ -912,11 +1037,10 @@ export function PdvPage() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button variant="contained" onClick={() => setItensModalOpen(false)}>Fechar</Button>
+          <Button id="pdv-itens-modal-close" variant="contained" onClick={() => setItensModalOpen(false)}>Fechar</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Dialog: Ajuda de Atalhos F1 a F12 */}
       <Dialog open={shortcutDialog} onClose={() => setShortcutDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Teclas de Atalho do PDV (F1 - F12)</DialogTitle>
         <DialogContent dividers>
@@ -932,6 +1056,10 @@ export function PdvPage() {
             <Typography variant="body2"><strong>[F9]</strong> Caderno / Fiado — Lança a dívida no caderno do cliente selecionado.</Typography>
             <Typography variant="body2"><strong>[F10]</strong> Atualizar — Atualiza os dados da venda no servidor.</Typography>
             <Typography variant="body2"><strong>[F11]</strong> Alternar Abas — Alterna entre Buffet, Fruteira e Mesas.</Typography>
+            <Typography variant="body2"><strong>[Ctrl + ←/→]</strong> Troca de abas com atalho de teclado.</Typography>
+            <Typography variant="body2"><strong>[b + 1..9]</strong> Adiciona item/mesa do Buffet rapidamente.</Typography>
+            <Typography variant="body2"><strong>[f + 1..9]</strong> Adiciona item/mesa da Fruteira rapidamente.</Typography>
+            <Typography variant="body2"><strong>[m + 1..9]</strong> Adiciona mesa rapidamente.</Typography>
             <Typography variant="body2"><strong>[F12]</strong> Ajuda de Atalhos — Exibe esta janela de ajuda.</Typography>
           </Box>
         </DialogContent>
