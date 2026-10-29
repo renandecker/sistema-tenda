@@ -136,6 +136,6 @@ public class Venda extends BaseEntity {
     }
 
     public boolean isPaga() {
-        return valorPago.compareTo(valorTotal) >= 0;
+        return valorTotal != null && valorTotal.compareTo(BigDecimal.ZERO) > 0 && valorPago != null && valorPago.compareTo(valorTotal) >= 0;
     }
 }

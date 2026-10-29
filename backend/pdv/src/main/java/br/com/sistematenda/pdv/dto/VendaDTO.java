@@ -59,7 +59,7 @@ public class VendaDTO extends BaseDTO {
     }
 
     public boolean isPaga() {
-        return valorPago != null && valorTotal != null && valorPago.compareTo(valorTotal) >= 0;
+        return valorTotal != null && valorTotal.compareTo(BigDecimal.ZERO) > 0 && valorPago != null && valorTotal != null && valorPago.compareTo(valorTotal) >= 0;
     }
 
     @Data
