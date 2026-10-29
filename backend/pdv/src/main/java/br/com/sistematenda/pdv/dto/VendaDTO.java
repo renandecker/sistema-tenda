@@ -49,6 +49,7 @@ public class VendaDTO extends BaseDTO {
     private NfeResumoDTO nfce;
     private List<ItemVendaResumoDTO> itens;
     private List<PagamentoResumoDTO> pagamentos;
+    private List<FormaPagamentoDTO> formasPagamento;
 
     public BigDecimal getSaldoDevedor() {
         return valorTotal != null ? valorTotal.subtract(valorPago != null ? valorPago : BigDecimal.ZERO) : BigDecimal.ZERO;
@@ -97,5 +98,11 @@ public class VendaDTO extends BaseDTO {
         private String status;
         private String protocoloAutorizacao;
         private String xmlAutorizado;
+    }
+
+    @Data
+    public static class FormaPagamentoDTO {
+        private FormaPagamento formaPagamento;
+        private BigDecimal valor;
     }
 }

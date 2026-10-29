@@ -127,6 +127,9 @@ public class Venda extends BaseEntity {
     @OneToMany(mappedBy = "venda", cascade = CascadeType.ALL, orphanRemoval = true)
     public List<Pagamento> pagamentos;
 
+    @OneToMany(mappedBy = "venda", cascade = CascadeType.ALL, orphanRemoval = true)
+    public List<FormaPagamentoVenda> formasPagamento;
+
     public BigDecimal getSaldoDevedor() {
         return valorTotal.subtract(valorPago != null ? valorPago : BigDecimal.ZERO);
     }

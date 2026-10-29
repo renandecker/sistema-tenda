@@ -47,6 +47,7 @@ interface Venda {
   cliente?: { nome: string; documento: string };
   dataCriacao: string;
   pagamentos?: Pagamento[];
+  formasPagamento?: FormaPagamento[];
 }
 
 interface Pagamento {
@@ -57,6 +58,11 @@ interface Pagamento {
   pixTxId?: string;
   pixQrCode?: string;
   dataPagamento: string;
+}
+
+interface FormaPagamento {
+  formaPagamento: string;
+  valor: number;
 }
 
 const FORMA_PAGAMENTO_LABELS: Record<string, string> = {
@@ -115,6 +121,7 @@ export function PdvPaymentPage() {
   const [finalizing, setFinalizing] = useState(false);
   const [tefDialogOpen, setTefDialogOpen] = useState(false);
   const [tefBandeira, setTefBandeira] = useState<BandeiraCartao>(BandeiraCartao.ALELO_ALIMENTACAO);
+  const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([]);
 
   useEffect(() => {
     if (!paymentDialogOpen) return;
@@ -266,6 +273,18 @@ export function PdvPaymentPage() {
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString('pt-BR');
+  };
+
+  const handleAddFormaPagamento = () => {
+    if (paymentForm.valor > 0) {
+      setFormasPagamento([...formasPagamento, { formaPagamento: paymentForm.formaPagamento, valor: paymentForm.valor }]);
+      setPaymentForm({ formaPagamento: 'PIX', valor: 0, parcelas: 1, cpfConsumidor: '', emitirNfce: false });
+    }
+  };
+
+  const handleRemoveFormaPagamento = (index: number) => {
+    const updatedFormasPagamento = formasPagamento.filter((_, i) => i !== index);
+    setFormasPagamento(updatedFormasPagamento);
   };
 
   return (
@@ -528,29 +547,30 @@ export function PdvPaymentPage() {
               </Grid>
             </Grid>
 
-            {selectedVenda?.pagamentos && selectedVenda.pagamentos.length > 0 && (
+            {formasPagamento.length > 0 && (
               <Box sx={{ mt: 3 }}>
                 <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                  Pagamentos registrados nesta venda
+                  Formas de pagamento adicionadas
                 </Typography>
                 <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1, mb: 1 }}>
-                  {selectedVenda.pagamentos.map((p, i) => (
+                  {formasPagamento.map((fp, i) => (
                     <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: 1, borderColor: 'divider', lastChild: { borderBottom: 'none' } }}>
-                      <Typography variant="body2">{FORMA_PAGAMENTO_LABELS[p.formaPagamento] || p.formaPagamento}</Typography>
+                      <Typography variant="body2">{FORMA_PAGAMENTO_LABELS[fp.formaPagamento] || fp.formaPagamento}</Typography>
                       <Typography variant="body2" align="right">
-                        {formatCurrency(p.valor)}
+                        {formatCurrency(fp.valor)}
                       </Typography>
+                      <IconButton size="small" onClick={() => handleRemoveFormaPagamento(i)}>
+                        <DeleteIcon />
+                      </IconButton>
                     </Box>
                   ))}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, mt: 0.5 }}>
-                    <Typography variant="body2">Total pago</Typography>
-                    <Typography variant="body2" align="right">
-                      {formatCurrency(selectedVenda.valorPago)}
-                    </Typography>
-                  </Box>
                 </Box>
               </Box>
             )}
+
+            <Button variant="contained" onClick={handleAddFormaPagamento} disabled={paymentForm.valor <= 0}>
+              Adicionar Forma de Pagamento
+            </Button>
           </Box>
         </DialogContent>
         <DialogActions>
