@@ -105,8 +105,6 @@ export function PdvPage() {
   const [estoqueBuffet, setEstoqueBuffet] = useState<ProdutoBusca[]>([]);
   const [estoqueFruteira, setEstoqueFruteira] = useState<ProdutoBusca[]>([]);
   const [buscou, setBuscou] = useState(false);
-  const [shortcutDialog, setShortcutDialog] = useState(false);
-  const [itensModalOpen, setItensModalOpen] = useState(false);
   const navigate = useNavigate();
 
   const [cliente, setCliente] = useState<any>(null);
@@ -695,9 +693,6 @@ export function PdvPage() {
           case 11:
             alternarAba(1);
             break;
-          case 12:
-            setShortcutDialog(true);
-            break;
           default:
             break;
         }
@@ -1038,33 +1033,6 @@ export function PdvPage() {
         </DialogContent>
         <DialogActions>
           <Button id="pdv-itens-modal-close" variant="contained" onClick={() => setItensModalOpen(false)}>Fechar</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={shortcutDialog} onClose={() => setShortcutDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Teclas de Atalho do PDV (F1 - F12)</DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Typography variant="body2"><strong>[F1]</strong> Nova Venda — Inicia uma nova venda no PDV.</Typography>
-            <Typography variant="body2"><strong>[F2]</strong> Focar Busca — Move o cursor para o campo de código/nome do produto.</Typography>
-            <Typography variant="body2"><strong>[F3]</strong> Focar Cliente — Move o cursor para o campo CPF/CNPJ do cliente.</Typography>
-            <Typography variant="body2"><strong>[F4]</strong> Prato por Peso (Balança) — Abre o diálogo para lançamento de peso em kg.</Typography>
-            <Typography variant="body2"><strong>[F5]</strong> Desconto — Atalho para campo de desconto.</Typography>
-            <Typography variant="body2"><strong>[F6]</strong> Registrar Pagamento — Abre a tela de formas de pagamento (Dinheiro, PIX, Cartão, etc.).</Typography>
-            <Typography variant="body2"><strong>[F7]</strong> Finalizar Venda — Conclui a venda atual e emite comprovante.</Typography>
-            <Typography variant="body2"><strong>[F8]</strong> Cancelar Venda — Cancela a venda em andamento.</Typography>
-            <Typography variant="body2"><strong>[F9]</strong> Caderno / Fiado — Lança a dívida no caderno do cliente selecionado.</Typography>
-            <Typography variant="body2"><strong>[F10]</strong> Atualizar — Atualiza os dados da venda no servidor.</Typography>
-            <Typography variant="body2"><strong>[F11]</strong> Alternar Abas — Alterna entre Buffet, Fruteira e Mesas.</Typography>
-            <Typography variant="body2"><strong>[Ctrl + ←/→]</strong> Troca de abas com atalho de teclado.</Typography>
-            <Typography variant="body2"><strong>[b + 1..9]</strong> Adiciona item/mesa do Buffet rapidamente.</Typography>
-            <Typography variant="body2"><strong>[f + 1..9]</strong> Adiciona item/mesa da Fruteira rapidamente.</Typography>
-            <Typography variant="body2"><strong>[m + 1..9]</strong> Adiciona mesa rapidamente.</Typography>
-            <Typography variant="body2"><strong>[F12]</strong> Ajuda de Atalhos — Exibe esta janela de ajuda.</Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button variant="contained" onClick={() => setShortcutDialog(false)}>Fechar</Button>
         </DialogActions>
       </Dialog>
     </Box>
