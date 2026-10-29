@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert, Autocomplete, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-  Divider, Grid, IconButton, MenuItem, Tabs, Tab, TextField, Tooltip, Typography,
+  Divider, Grid, IconButton, Tabs, Tab, TextField, Tooltip, Typography,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -14,7 +14,6 @@ import {
   CheckCircle as CheckIcon,
   MenuBook as MenuBookIcon,
   Warning as WarningIcon,
-  Keyboard as KeyboardIcon,
   ListAlt as ListAltIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -34,6 +33,12 @@ interface ItemResumo {
   origem?: string;
 }
 
+interface PagamentoForma {
+  forma: string;
+  valor: number;
+  shortcut: string;
+}
+
 interface VendaAtual {
   id: string;
   numero?: string;
@@ -44,7 +49,7 @@ interface VendaAtual {
   valorPago?: number;
   status?: string;
   itens?: ItemResumo[];
-  pagamentos?: { formaPagamento?: string; valor?: number }[];
+  pagamentos?: PagamentoForma[];
 }
 
 interface ProdutoBusca {
@@ -69,7 +74,15 @@ interface SituacaoCliente {
   possuiAtraso?: boolean;
 }
 
-const FORMAS_PAGAMENTO = ['DINHEIRO', 'PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'VALE_ALIMENTACAO', 'VALE_REFEICAO', 'VALE_CULTURA'];
+const SHORTCUTS_PAGAMENTO = [
+  { forma: 'DINHEIRO', label: 'Dinheiro', shortcut: 'F1' },
+  { forma: 'PIX', label: 'PIX', shortcut: 'F2' },
+  { forma: 'CARTAO_CREDITO', label: 'Cartão Crédito', shortcut: 'F3' },
+  { forma: 'CARTAO_DEBITO', label: 'Cartão Débito', shortcut: 'F4' },
+  { forma: 'VALE_ALIMENTACAO', label: 'Vale Alimentação', shortcut: 'F5' },
+  { forma: 'VALE_REFEICAO', label: 'Vale Refeição', shortcut: 'F6' },
+  { forma: 'VALE_CULTURA', label: 'Vale Cultura', shortcut: 'F7' },
+];
 
 export function PdvPage() {
   const [venda, setVenda] = useState<VendaAtual | null>(null);
@@ -457,9 +470,11 @@ export function PdvPage() {
     const valor = parseCurrency(valorPagamento);
     if (valor <= 0) { toast.warning('Informe o valor recebido'); return; }
     if (venda.id.startsWith('local-')) {
-      setVenda((s) => s ? { ...s, valorPago: (s.valorPago ?? 0) + valor, pagamentos: [...(s.pagamentos ?? []), { formaPagamento, valor }] } : s);
       setPagDialog(false);
       setValorPagamento('');
+      // Add payment to the existing payments or create new array
+      const novoPagamento: { forma: string; valor: number; shortcut: string } = { forma: formaPagamento, valor, shortcut: '' };
+      setVenda((s) => s ? { ...s, pagamentos: [...(s.pagamentos ?? []), novoPagamento] } : s);
       return;
     }
     try {
@@ -627,10 +642,9 @@ export function PdvPage() {
         icon={<PointOfSaleIcon />}
         action={
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button variant="outlined" color="info" startIcon={<KeyboardIcon />} onClick={() => setShortcutDialog(true)}>Atalhos</Button>
-            <Button variant="outlined" color="warning" startIcon={<MenuBookIcon />} onClick={abrirFiado}>Caderno (fiado)</Button>
-            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => venda && recarregarVenda(venda.id)} disabled={!venda || venda.id.startsWith('local-')}>Atualizar</Button>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={novaVenda} disabled={loading}>Nova venda</Button>
+            <Button variant="outlined" color="warning" startIcon={<MenuBookIcon />} onClick={abrirFiado}>Caderno (fiado) <Typography variant="caption" color="text.secondary">(F9)</Typography></Button>
+            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => venda && recarregarVenda(venda.id)} disabled={!venda || venda.id.startsWith('local-')}>Atualizar <Typography variant="caption" color="text.secondary">(F10)</Typography></Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={novaVenda} disabled={loading}>Nova venda <Typography variant="caption" color="text.secondary">(F1)</Typography></Button>
           </Box>
         }
       />
@@ -771,19 +785,19 @@ export function PdvPage() {
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">Saldo devedor</Typography><Chip size="small" label={formatCurrency(saldo)} color={saldo <= 0 ? 'success' : 'warning'} /></Box>
               <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
                 <TextField size="small" label="Desconto (R$)" value={maskCurrency(desconto)} onChange={(e) => setDesconto(maskCurrency(e.target.value))} placeholder="0,00" sx={{ flex: 1 }} inputMode="decimal" />
-                <Button variant="outlined" onClick={aplicarDesconto} disabled={!venda}>Aplicar</Button>
+                <Button variant="outlined" onClick={aplicarDesconto} disabled={!venda}>Aplicar <Typography variant="caption" color="text.secondary">(F5)</Typography></Button>
               </Box>
               <Grid container spacing={1}>
-                <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={() => { setValorPagamento(saldo > 0 ? maskCurrency(saldo) : ''); setPagDialog(true); }} disabled={!venda}>Pagamento</Button></Grid>
-                <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={venda == null || (venda?.pagamentos?.length === 0 && venda?.valorPago === 0)}>Finalizar</Button></Grid>
-                <Grid item xs={12}><Button fullWidth color="error" startIcon={<CancelIcon />} onClick={cancelar} disabled={!vendaIniciada && !venda}>Cancelar venda</Button></Grid>
+                <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={() => { setValorPagamento(saldo > 0 ? maskCurrency(saldo) : ''); setPagDialog(true); }} disabled={!venda}>Pagamento <Typography variant="caption" color="text.secondary">(F6)</Typography></Button></Grid>
+                <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={venda == null || (venda?.pagamentos?.length === 0 && venda?.valorPago === 0)}>Finalizar <Typography variant="caption" color="text.secondary">(F7)</Typography></Button></Grid>
+                <Grid item xs={12}><Button fullWidth color="error" startIcon={<CancelIcon />} onClick={cancelar} disabled={!vendaIniciada && !venda}>Cancelar venda <Typography variant="caption" color="text.secondary">(F8)</Typography></Button></Grid>
               </Grid>
               {venda?.pagamentos && venda.pagamentos.length > 0 && (
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="caption" fontWeight={700}>PAGAMENTOS</Typography>
                   {venda.pagamentos.map((p, i) => (
                     <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="caption">{p.formaPagamento}</Typography>
+                      <Typography variant="caption">{p.forma}</Typography>
                       <Typography variant="caption">{formatCurrency(p.valor ?? 0)}</Typography>
                     </Box>
                   ))}
@@ -800,9 +814,18 @@ export function PdvPage() {
       <Dialog open={pagDialog} onClose={() => setPagDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Registrar pagamento</DialogTitle>
         <DialogContent>
-          <TextField select fullWidth label="Forma de pagamento" value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)} sx={{ mt: 1, mb: 2 }}>
-            {FORMAS_PAGAMENTO.map((f) => <MenuItem key={f} value={f}>{f}</MenuItem>)}
-          </TextField>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
+            {SHORTCUTS_PAGAMENTO.map((item) => (
+              <Button key={item.forma} variant="outlined" sx={{ width: '100%' }} onClick={() => setFormaPagamento(item.forma)}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" fontWeight={600}>{item.label}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {item.shortcut}
+                  </Typography>
+                </Box>
+              </Button>
+            ))}
+          </Box>
           <TextField fullWidth label="Valor recebido (R$)" value={maskCurrency(valorPagamento)} onChange={(e) => setValorPagamento(maskCurrency(e.target.value))} placeholder="0,00" inputMode="decimal" />
         </DialogContent>
         <DialogActions><Button onClick={() => setPagDialog(false)}>Fechar</Button><Button variant="contained" onClick={confirmarPagamento}>Confirmar</Button></DialogActions>
