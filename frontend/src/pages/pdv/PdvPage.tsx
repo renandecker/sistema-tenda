@@ -139,8 +139,12 @@ export function PdvPage() {
   const shortcutSequenceRef = useRef<{ type: 'b' | 'f' | 'm'; timestamp: number } | null>(null);
 
   const saldo = (venda?.valorTotal ?? 0) - (venda?.valorPago ?? 0);
-  const totalPendente = pagamentosPendentes.reduce((s, p) => s + p.valor, 0);
-  const saldoPendente = Math.max(0, saldo - totalPendente);
+  // Todo o cálculo de pagamento é feito em centavos para evitar sobras de arredondamento.
+  const saldoCentavos = Math.round(saldo * 100);
+  const totalPendenteCentavos = pagamentosPendentes.reduce((s, p) => s + Math.round(p.valor * 100), 0);
+  const faltaCentavos = Math.max(0, saldoCentavos - totalPendenteCentavos);
+  const totalPendente = totalPendenteCentavos / 100;
+  const saldoPendente = faltaCentavos / 100;
 
   const focusClienteField = useCallback(() => {
     requestAnimationFrame(() => {
@@ -523,24 +527,23 @@ export function PdvPage() {
   };
 
   const adicionarFormaPagamento = () => {
-    const valor = parseCurrency(valorPagamento);
-    if (valor <= 0) { toast.warning('Informe o valor do pagamento'); return; }
-    const restanteAtual = saldo - pagamentosPendentes.reduce((s, p) => s + p.valor, 0);
-    if (valor > restanteAtual + 0.001) {
-      toast.warning(`Valor excede o saldo restante (${formatCurrency(Math.max(0, restanteAtual))})`);
+    const valorCentavos = Math.round(parseCurrency(valorPagamento) * 100);
+    if (valorCentavos <= 0) { toast.warning('Informe o valor do pagamento'); return; }
+    if (valorCentavos > faltaCentavos) {
+      toast.warning(`Valor excede o saldo restante (${formatCurrency(faltaCentavos / 100)})`);
       return;
     }
-    const novos = [...pagamentosPendentes, { forma: formaPagamento, valor }];
+    const novos = [...pagamentosPendentes, { forma: formaPagamento, valor: valorCentavos / 100 }];
     setPagamentosPendentes(novos);
-    const restante = saldo - novos.reduce((s, p) => s + p.valor, 0);
-    setValorPagamento(restante > 0 ? maskCurrency(restante) : '');
+    const restanteCentavos = saldoCentavos - (totalPendenteCentavos + valorCentavos);
+    setValorPagamento(restanteCentavos > 0 ? maskCurrency(restanteCentavos / 100) : '');
   };
 
   const removerFormaPagamento = (index: number) => {
     const novos = pagamentosPendentes.filter((_, i) => i !== index);
     setPagamentosPendentes(novos);
-    const restante = Math.max(0, saldo - novos.reduce((s, p) => s + p.valor, 0));
-    setValorPagamento(restante > 0 ? maskCurrency(restante) : '');
+    const restanteCentavos = saldoCentavos - novos.reduce((s, p) => s + Math.round(p.valor * 100), 0);
+    setValorPagamento(restanteCentavos > 0 ? maskCurrency(restanteCentavos / 100) : '');
   };
 
   const fecharPagamento = () => {
@@ -552,22 +555,44 @@ export function PdvPage() {
   const abrirPagamento = () => {
     setPagamentosPendentes([]);
     setFormaPagamento('DINHEIRO');
-    setValorPagamento(saldo > 0 ? maskCurrency(saldo) : '');
+    setValorPagamento(saldoCentavos > 0 ? maskCurrency(saldoCentavos / 100) : '');
     setPagDialog(true);
   };
 
   const confirmarPagamento = async () => {
     if (!venda) return;
-    const valorAtual = parseCurrency(valorPagamento);
-    const lote = [...pagamentosPendentes];
-    if (valorAtual > 0) lote.push({ forma: formaPagamento, valor: valorAtual });
-    if (lote.length === 0) { toast.warning('Informe o valor recebido'); return; }
+    if (saldoCentavos <= 0) { toast.info('Esta venda já está paga'); return; }
 
-    const total = lote.reduce((s, p) => s + p.valor, 0);
-    if (total > saldo + 0.001) {
+    const lote: Array<{ forma: string; valor: number }> = pagamentosPendentes.map((p) => ({
+      forma: p.forma,
+      valor: Math.round(p.valor * 100) / 100,
+    }));
+
+    if (lote.length === 0) {
+      // Nenhuma forma foi adicionada pelo campo de valor: a forma selecionada
+      // paga o saldo devedor inteiro.
+      lote.push({ forma: formaPagamento, valor: saldoCentavos / 100 });
+    } else {
+      // Já existem formas adicionadas: o valor que estiver no campo entra como a última forma.
+      const valorAtualCentavos = Math.round(parseCurrency(valorPagamento) * 100);
+      if (valorAtualCentavos > 0) lote.push({ forma: formaPagamento, valor: valorAtualCentavos / 100 });
+    }
+
+    let totalCentavos = lote.reduce((s, p) => s + Math.round(p.valor * 100), 0);
+    if (totalCentavos > saldoCentavos) {
       toast.warning(`Valor informado excede o saldo devedor (${formatCurrency(saldo)})`);
       return;
     }
+
+    // Arredondamento final: a diferença de centavos fecha na última forma,
+    // para o total bater exatamente com o saldo devedor.
+    const diferencaCentavos = saldoCentavos - totalCentavos;
+    if (diferencaCentavos > 0) {
+      const ultima = lote[lote.length - 1];
+      ultima.valor = (Math.round(ultima.valor * 100) + diferencaCentavos) / 100;
+      totalCentavos = saldoCentavos;
+    }
+    const total = totalCentavos / 100;
 
     if (venda.id.startsWith('local-')) {
       setVenda((s) => s ? {
@@ -1067,7 +1092,7 @@ export function PdvPage() {
               </Box>
               <Grid container spacing={1}>
                 <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={abrirPagamento}>Pagar <Typography variant="caption" color="text.secondary">(F6)</Typography></Button></Grid>
-                <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={venda == null || saldo > 0}>Finalizar <Typography variant="caption" color="text.secondary">(F7)</Typography></Button></Grid>
+                <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={venda == null || saldoCentavos > 0}>Finalizar <Typography variant="caption" color="text.secondary">(F7)</Typography></Button></Grid>
                 <Grid item xs={12}><Button fullWidth color="error" startIcon={<CancelIcon />} onClick={cancelar} disabled={!vendaIniciada && !venda}>Cancelar venda <Typography variant="caption" color="text.secondary">(F8)</Typography></Button></Grid>
               </Grid>
               {venda?.pagamentos && venda.pagamentos.length > 0 && (
@@ -1092,9 +1117,18 @@ export function PdvPage() {
       <Dialog open={pagDialog} onClose={fecharPagamento} maxWidth="sm" fullWidth>
         <DialogTitle>Registrar pagamento</DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="body2">Saldo devedor</Typography>
             <Typography variant="body2" fontWeight={700}>{formatCurrency(saldo)}</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" fontWeight={600}>Falta receber</Typography>
+            <Chip
+              size="small"
+              color={saldoPendente > 0.001 ? 'warning' : 'success'}
+              label={formatCurrency(saldoPendente)}
+              sx={{ fontWeight: 700 }}
+            />
           </Box>
 
           {pagamentosPendentes.length > 0 && (
@@ -1128,10 +1162,8 @@ export function PdvPage() {
                   </Box>
                 ))}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1 }}>
-                  <Typography variant="body2" fontWeight={600}>Falta receber</Typography>
-                  <Typography variant="body2" fontWeight={700} color={saldoPendente > 0 ? 'warning.main' : 'success.main'}>
-                    {formatCurrency(saldoPendente)}
-                  </Typography>
+                  <Typography variant="body2" fontWeight={600}>Total adicionado</Typography>
+                  <Typography variant="body2" fontWeight={700}>{formatCurrency(totalPendente)}</Typography>
                 </Box>
               </Box>
             </Box>
@@ -1167,13 +1199,18 @@ export function PdvPage() {
             </Button>
           </Box>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-            Adicione cada forma com seu valor para pagar parte com uma forma e o restante com outra.
+            Selecione uma forma e clique em Confirmar para pagar todo o saldo com ela.
+            Para dividir, informe o valor e clique em Adicionar forma — o restante é completado na última forma.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={fecharPagamento} disabled={processandoPagamento}>Fechar</Button>
-          <Button variant="contained" onClick={confirmarPagamento} disabled={processandoPagamento}>
-            {processandoPagamento ? 'Processando...' : 'Confirmar'}
+          <Button
+            variant="contained"
+            onClick={confirmarPagamento}
+            disabled={processandoPagamento || saldoCentavos <= 0}
+          >
+            {processandoPagamento ? 'Processando...' : `Confirmar ${formatCurrency(saldoPendente)}`}
           </Button>
         </DialogActions>
       </Dialog>
