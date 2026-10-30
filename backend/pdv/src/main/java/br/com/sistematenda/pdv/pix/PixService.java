@@ -39,19 +39,26 @@ public class PixService {
 
     @Transactional
     public PixChargeResponse gerarPixParaVenda(UUID vendaId, BigDecimal valor, String txid) {
+        if (valor == null || valor.signum() <= 0) {
+            throw new BusinessException("PIX_VALOR_INVALIDO", "Informe um valor positivo para gerar o PIX");
+        }
+
         Venda venda = vendaRepository.findById(vendaId);
         if (venda == null || venda.deleted) {
             throw new NotFoundException("Venda", vendaId);
         }
 
         BigDecimal saldoDevedor = venda.valorTotal.subtract(getTotalPago(vendaId));
+        if (saldoDevedor.signum() <= 0) {
+            throw new BusinessException("PIX_VENDA_QUITADA", "Esta venda já está totalmente paga");
+        }
         if (valor.compareTo(saldoDevedor) > 0) {
             throw new BusinessException("Valor do pagamento excede o saldo devedor: " + saldoDevedor);
         }
 
         String finalTxid = txid != null && !txid.isEmpty() ? txid : gerarTxid(vendaId);
 
-        PixProviderService provider = providerFactory.getProviderOrDefault();
+        PixProviderService provider = resolveProvider();
 
         PixChargeRequest request = new PixChargeRequest();
         request.valor = valor;
@@ -100,22 +107,23 @@ public class PixService {
             return;
         }
 
-        Pagamento pagamento = pagamentoOpt.get();
-        
+        aplicarStatus(pagamentoOpt.get(), notification.getStatusEnum(), notification.endToEndId, "webhook");
+    }
+
+    private void aplicarStatus(Pagamento pagamento, PixStatus pixStatus, String endToEndId, String origem) {
         if (pagamento.status == Pagamento.StatusPagamento.AUTORIZADO) {
-            LOG.info("Pagamento já processado: " + notification.txid);
+            LOG.info("Pagamento já processado: " + pagamento.pixTxId);
             return;
         }
 
-        PixStatus pixStatus = notification.getStatusEnum();
-        
         switch (pixStatus) {
             case CONCLUIDA -> {
                 pagamento.status = Pagamento.StatusPagamento.AUTORIZADO;
                 pagamento.dataAutorizacao = LocalDateTime.now();
-                pagamento.codigoAutorizacao = notification.endToEndId;
-                pagamento.mensagemRetorno = "PIX confirmado via webhook";
-                
+                if (endToEndId != null) {
+                    pagamento.codigoAutorizacao = endToEndId;
+                }
+                pagamento.mensagemRetorno = "PIX confirmado via " + origem;
                 atualizarVenda(pagamento.venda.id);
             }
             case EXPIRADA, REMOVIDA_PELO_USUARIO_RECEBEDOR -> {
@@ -124,25 +132,38 @@ public class PixService {
             }
             default -> {
                 LOG.info("Status PIX não final: " + pixStatus);
+                return;
             }
         }
 
         pagamentoRepository.persist(pagamento);
     }
 
+    @Transactional
     public PixChargeResponse consultarStatus(String txid) {
-        PixProviderService provider = providerFactory.getProviderOrDefault();
+        PixProviderService provider = resolveProvider();
+        PixChargeResponse response;
         try {
-            return provider.getCharge(txid);
+            response = provider.getCharge(txid);
         } catch (PixException e) {
             LOG.error("Erro ao consultar status PIX: " + txid, e);
             throw new BusinessException("Erro ao consultar status: " + e.getMessage());
         }
+
+        // Mantém o pagamento/venda sincronizados mesmo quando a confirmação
+        // chega apenas pelo polling (sem webhook do PSP).
+        if (response.getStatusEnum().isFinal()) {
+            pagamentoRepository.findByPixTxId(txid)
+                    .ifPresent(pagamento -> aplicarStatus(
+                            pagamento, response.getStatusEnum(), null, "consulta de status"));
+        }
+
+        return response;
     }
 
     @Transactional
     public void cancelarPix(String txid) {
-        PixProviderService provider = providerFactory.getProviderOrDefault();
+        PixProviderService provider = resolveProvider();
         try {
             provider.cancelCharge(txid);
             
@@ -158,6 +179,16 @@ public class PixService {
         } catch (PixException e) {
             LOG.error("Erro ao cancelar PIX: " + txid, e);
             throw new BusinessException("Erro ao cancelar PIX: " + e.getMessage());
+        }
+    }
+
+    private PixProviderService resolveProvider() {
+        try {
+            return providerFactory.getProviderOrDefault();
+        } catch (IllegalStateException e) {
+            LOG.warn("PIX indisponível: " + e.getMessage());
+            throw new BusinessException("PIX_NAO_CONFIGURADO",
+                    "PIX não configurado: " + e.getMessage());
         }
     }
 

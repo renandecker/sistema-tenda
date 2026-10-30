@@ -135,18 +135,28 @@ public class SessaoCaixaService extends BaseCrudServiceImpl<SessaoCaixa, SessaoC
 
     @Transactional
     public SessaoCaixaDTO abrirCaixaPorUsuario(String operador, UUID pdvId, BigDecimal valorInicial) {
-        String op = operador != null && !operador.isBlank() ? operador : "SISTEMA";
+        String op = operador != null && !operador.isBlank() ? operador.trim() : "SISTEMA";
+        // operadorAbertura tem limite de 100 caracteres na entidade
+        if (op.length() > 100) {
+            op = op.substring(0, 100);
+        }
         LocalDate hoje = LocalDate.now();
 
-        // 1 caixa por usuário e por dia (idempotente: se já foi criado, não recria)
-        java.util.Optional<SessaoCaixa> existente = repository.findPorOperadorEData(op, hoje);
+        // 1 caixa ABERTO por usuário e por dia (idempotente: se já está aberto, não recria).
+        // Sessões já fechadas não devem ser devolvidas, senão o usuário fica sem caixa.
+        java.util.Optional<SessaoCaixa> existente = repository.findPorOperadorEData(op, hoje)
+                .filter(s -> s.status == SessaoCaixa.StatusSessao.ABERTA);
         if (existente.isPresent()) {
             return mapper.toDTO(existente.get());
         }
 
         Pdv pdv = null;
         if (pdvId != null) {
-            pdv = pdvService.getRepository().findById(pdvId);
+            Pdv informado = pdvService.getRepository().findById(pdvId);
+            // Ignora PDV inexistente, excluído ou inativo para não vincular a sessão a um terminal inválido
+            if (informado != null && !informado.deleted && informado.ativo) {
+                pdv = informado;
+            }
         }
         if (pdv == null) {
             List<Pdv> pdvsAtivos = pdvService.getRepository().list("ativo = true and deleted = false");
@@ -155,7 +165,21 @@ public class SessaoCaixaService extends BaseCrudServiceImpl<SessaoCaixa, SessaoC
             }
         }
         if (pdv == null) {
-            throw new BusinessException("PDV_NAO_ENCONTRADO", "Nenhum PDV disponível para abrir o caixa");
+            // Bootstrap: sem terminais cadastrados, cria (ou reativa) o PDV padrão
+            Pdv padrao = pdvService.getRepository()
+                    .find("codigo = ?1", "PDV01").firstResult();
+            if (padrao == null) {
+                padrao = new Pdv();
+                padrao.codigo = "PDV01";
+                padrao.nome = "PDV 01";
+            }
+            padrao.ativo = true;
+            padrao.deleted = false;
+            if (padrao.status == null) {
+                padrao.status = Pdv.StatusPdv.LIVRE;
+            }
+            pdvService.getRepository().persist(padrao);
+            pdv = padrao;
         }
 
         SessaoCaixa entity = new SessaoCaixa();

@@ -26,6 +26,15 @@ public interface PixConfig {
     @WithDefault("3600")
     int expiracaoPadraoSegundos();
 
+    /**
+     * Tempo (em segundos) após o qual uma cobrança do provedor SIMULADO é
+     * confirmada automaticamente. Use 0 para confirmar somente via webhook
+     * manual em /api/pix/webhook/simulado.
+     */
+    @WithName("simulado-confirmar-segundos")
+    @WithDefault("15")
+    int simuladoConfirmarSegundos();
+
     Optional<EfiConfig> efi();
 
     @WithName("mercado-pago")

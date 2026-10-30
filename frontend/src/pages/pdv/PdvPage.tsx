@@ -761,7 +761,8 @@ export function PdvPage() {
         return;
       }
 
-      if (/^F([1-9]|1[0-2])$/.test(event.key)) {
+      // F12 fica livre para o DevTools do navegador.
+      if (/^F([1-9]|1[01])$/.test(event.key)) {
         event.preventDefault();
         const keyNum = parseInt(event.key.replace('F', ''), 10);
         switch (keyNum) {
@@ -923,7 +924,7 @@ export function PdvPage() {
               <Tab value="mesas" label="Mesas" />
             </Tabs>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>Trocar aba:</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>Trocar aba (F11):</Typography>
               {TAB_ORDER.map((tab, index) => (
                 <Chip
                   key={tab}

@@ -11,6 +11,7 @@ Este projeto implementa uma integração completa de PIX com suporte a múltiplo
 | **Asaas** | Fintech | API Key | ✅ | ✅ (Token) |
 | **Itaú** | Banco (Open Finance) | mTLS + OAuth2 | ✅ | ✅ (HMAC) |
 | **Bradesco** | Banco (Open Finance) | mTLS + OAuth2 | ✅ | ✅ (HMAC) |
+| **Simulado** | Desenvolvimento | Nenhuma | — | Manual |
 
 ## Arquitetura
 
@@ -90,6 +91,21 @@ pix.itau.chave-pix=chave@itau.com
 pix.itau.ambiente=sandbox
 ```
 
+#### Simulado (desenvolvimento, sem cobrança real)
+```properties
+pix.provider=SIMULADO
+pix.simulado-confirmar-segundos=15   # 0 = confirmar apenas via webhook manual
+```
+
+O provedor simulado gera um BR Code (PIX Copia e Cola) válido localmente e
+confirma a cobrança automaticamente após o tempo configurado, permitindo testar
+QR Code, polling e baixa da venda sem credenciais de PSP. Nenhum valor é
+cobrado de verdade.
+
+Se nenhum PSP estiver configurado, o backend usa o provedor SIMULADO
+automaticamente em modo `dev`/`test` (com aviso no log). Em produção o endpoint
+responde 400 com a mensagem `PIX não configurado`.
+
 ## Endpoints da API
 
 ### Gerar PIX para Venda
@@ -108,6 +124,14 @@ POST /api/pix/webhook/efi
 POST /api/pix/webhook/mercadopago
 POST /api/pix/webhook/asaas
 POST /api/pix/webhook/openfinance
+```
+
+### Webhook manual (somente provedor SIMULADO)
+```http
+POST /api/pix/webhook/simulado
+Content-Type: application/json
+
+{"txid":"TEND...","status":"CONCLUIDA"}
 ```
 
 ## Frontend - Componente PixQrCode

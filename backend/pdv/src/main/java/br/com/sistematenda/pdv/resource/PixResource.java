@@ -1,8 +1,10 @@
 package br.com.sistematenda.pdv.resource;
 
+import br.com.sistematenda.common.enums.PixProvider;
 import br.com.sistematenda.common.pix.PixChargeRequest;
 import br.com.sistematenda.common.pix.PixChargeResponse;
 import br.com.sistematenda.common.pix.PixWebhookNotification;
+import br.com.sistematenda.pdv.pix.PixProviderFactory;
 import br.com.sistematenda.pdv.pix.PixService;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -20,6 +22,9 @@ public class PixResource {
 
     @Inject
     PixService pixService;
+
+    @Inject
+    PixProviderFactory providerFactory;
 
     @POST
     @Path("/cobrar")
@@ -89,22 +94,35 @@ public class PixResource {
         return Response.ok().build();
     }
 
+    /**
+     * Webhook manual do provedor SIMULADO (apenas desenvolvimento).
+     * Exemplo de payload: {"txid":"TEND...","status":"CONCLUIDA"}
+     */
+    @POST
+    @Path("/webhook/simulado")
+    public Response webhookSimulado(
+            String payload,
+            @HeaderParam("X-Signature") String signature,
+            @HeaderParam("X-Timestamp") String timestamp) {
+        processarWebhook(payload, signature, timestamp, "SIMULADO");
+        return Response.ok().build();
+    }
+
     private void processarWebhook(String payload, String signature, String timestamp, String provider) {
         try {
-            PixWebhookNotification notification;
-            
-            br.com.sistematenda.common.pix.PixProviderService providerService = 
-                switch (provider) {
-                    case "EFI" -> new br.com.sistematenda.pdv.pix.EfiPixProvider();
-                    case "MERCADO_PAGO" -> new br.com.sistematenda.pdv.pix.MercadoPagoPixProvider();
-                    case "ASAAS" -> new br.com.sistematenda.pdv.pix.AsaasPixProvider();
-                    case "OPENFINANCE" -> new br.com.sistematenda.pdv.pix.OpenFinancePixProvider();
-                    default -> throw new IllegalArgumentException("Provider desconhecido: " + provider);
-                };
+            PixProvider providerType = switch (provider) {
+                case "EFI" -> PixProvider.EFI;
+                case "MERCADO_PAGO" -> PixProvider.MERCADO_PAGO;
+                case "ASAAS" -> PixProvider.ASAAS;
+                case "OPENFINANCE" -> PixProvider.ITAU;
+                case "SIMULADO" -> PixProvider.SIMULADO;
+                default -> throw new IllegalArgumentException("Provider desconhecido: " + provider);
+            };
 
-            notification = providerService.parseWebhook(payload, signature, timestamp);
+            PixWebhookNotification notification = providerFactory.getProvider(providerType)
+                    .parseWebhook(payload, signature, timestamp);
             pixService.processarWebhook(notification);
-            
+
         } catch (Exception e) {
             throw new jakarta.ws.rs.WebApplicationException(
                 "Erro ao processar webhook: " + e.getMessage(), 

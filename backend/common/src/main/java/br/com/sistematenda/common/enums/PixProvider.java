@@ -7,7 +7,8 @@ public enum PixProvider {
     ITAU("Itaú (Open Finance)"),
     BRADESCO("Bradesco (Open Finance)"),
     SICOOB("Sicoob (Open Finance)"),
-    SICREDI("Sicredi (Open Finance)");
+    SICREDI("Sicredi (Open Finance)"),
+    SIMULADO("Simulado (sem cobrança real)");
 
     private final String descricao;
 
