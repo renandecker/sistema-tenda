@@ -119,7 +119,7 @@ export const apiBuffet = {
   getDisponiveis: () => api.get('/buffet/mesas/disponiveis'),
 
   // Clientes Buffet
-  listClientes: () => api.get('/buffet/clientes'),
+  listClientes: (params?: any) => api.get('/buffet/clientes', { params }),
   getCliente: (id: string) => api.get(`/buffet/clientes/${id}`),
   createCliente: (data: any) => api.post('/buffet/clientes', data),
   updateCliente: (id: string, data: any) => api.put(`/buffet/clientes/${id}`, data),
@@ -240,7 +240,7 @@ export const apiClientes = {
 
 export const apiCaderno = {
   listar: (params?: any) => api.get('/pdv/caderno', { params }),
-  clientesComDivida: () => api.get('/pdv/caderno/clientes'),
+  clientesComDivida: (params?: any) => api.get('/pdv/caderno/clientes', { params }),
   totais: () => api.get('/pdv/caderno/totais'),
   situacaoCliente: (clienteId: string) => api.get(`/pdv/caderno/clientes/${clienteId}`),
   situacaoPorDocumento: (documento: string) => api.get(`/pdv/caderno/documento/${documento}`),

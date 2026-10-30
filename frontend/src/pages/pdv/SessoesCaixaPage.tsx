@@ -39,6 +39,7 @@ export function SessoesCaixaPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [totalRows, setTotalRows] = useState(0);
   const [fecharId, setFecharId] = useState<string | null>(null);
   const [formFechar, setFormFechar] = useState({ operadorFechamento: '', valorFinalContado: '', observacoesFechamento: '' });
   const [movId, setMovId] = useState<string | null>(null);
@@ -61,8 +62,10 @@ export function SessoesCaixaPage() {
     try {
       const { data } = await apiPdv.listSessoes({ page, size: rowsPerPage });
       setSessoes(data?.content ?? (Array.isArray(data) ? data : []));
+      setTotalRows(data?.totalElements ?? (Array.isArray(data) ? data.length : 0));
     } catch {
       setSessoes([]);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
@@ -218,7 +221,7 @@ export function SessoesCaixaPage() {
         }
       />
       <DataTable<Sessao>
-        data={sessoes} loading={loading} page={page} rowsPerPage={rowsPerPage}
+        data={sessoes} loading={loading} serverSide totalCount={totalRows} page={page} rowsPerPage={rowsPerPage}
         onPageChange={(p, r) => { setPage(p); setRowsPerPage(r); }}
         searchPlaceholder="Buscar por PDV ou operador..." emptyMessage="Nenhuma sessão encontrada"
         columns={[

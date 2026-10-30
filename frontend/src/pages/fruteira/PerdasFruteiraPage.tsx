@@ -27,6 +27,7 @@ export function PerdasFruteiraPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [totalRows, setTotalRows] = useState(0);
   const [produtos, setProdutos] = useState<{ id: string; nome: string; codigo?: string }[]>([]);
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Perda | null>(null);
@@ -40,8 +41,10 @@ export function PerdasFruteiraPage() {
     try {
       const { data } = await apiFruteira.listPerda({ page, size: rowsPerPage });
       setPerdas(data?.content ?? (Array.isArray(data) ? data : []));
+      setTotalRows(data?.totalElements ?? (Array.isArray(data) ? data.length : 0));
     } catch {
       setPerdas([]);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
@@ -126,7 +129,7 @@ export function PerdasFruteiraPage() {
         </CardContent>
       </Card>
       <DataTable<Perda>
-        data={perdas} loading={loading} page={page} rowsPerPage={rowsPerPage}
+        data={perdas} loading={loading} serverSide totalCount={totalRows} page={page} rowsPerPage={rowsPerPage}
         onPageChange={(p, r) => { setPage(p); setRowsPerPage(r); }}
         searchPlaceholder="Buscar por produto, motivo, responsável..." emptyMessage="Nenhuma perda registrada"
         columns={[

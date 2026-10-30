@@ -27,6 +27,7 @@ export function EtiquetasBalancaPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [totalRows, setTotalRows] = useState(0);
   const [produtos, setProdutos] = useState<{ id: string; nome: string; codigo?: string; precoVenda?: number }[]>([]);
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Etiqueta | null>(null);
@@ -38,8 +39,10 @@ export function EtiquetasBalancaPage() {
     try {
       const { data } = await apiFruteira.listEtiquetas({ page, size: rowsPerPage });
       setEtiquetas(data?.content ?? (Array.isArray(data) ? data : []));
+      setTotalRows(data?.totalElements ?? (Array.isArray(data) ? data.length : 0));
     } catch {
       setEtiquetas([]);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
@@ -124,7 +127,7 @@ export function EtiquetasBalancaPage() {
         }
       />
       <DataTable<Etiqueta>
-        data={etiquetas} loading={loading} page={page} rowsPerPage={rowsPerPage}
+        data={etiquetas} loading={loading} serverSide totalCount={totalRows} page={page} rowsPerPage={rowsPerPage}
         onPageChange={(p, r) => { setPage(p); setRowsPerPage(r); }}
         searchPlaceholder="Buscar por código ou produto..." emptyMessage="Nenhuma etiqueta cadastrada"
         columns={[

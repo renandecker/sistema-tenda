@@ -57,6 +57,7 @@ export function ProdutosFruteiraPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [total, setTotal] = useState(0);
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Produto | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -67,8 +68,10 @@ export function ProdutosFruteiraPage() {
       const response = await apiFruteira.listProdutos({ page, size: rowsPerPage });
       const data = response.data;
       setProdutos(data?.content ?? (Array.isArray(data) ? data : []));
+      setTotal(data?.totalElements ?? (Array.isArray(data) ? data.length : 0));
     } catch {
       setProdutos([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -158,6 +161,8 @@ const openEdit = (p: Produto) => {
       <DataTable<Produto>
         data={produtos}
         loading={loading}
+        serverSide
+        totalCount={total}
         page={page}
         rowsPerPage={rowsPerPage}
         onPageChange={(newPage, newRowsPerPage) => {

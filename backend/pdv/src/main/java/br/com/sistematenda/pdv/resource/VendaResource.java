@@ -152,9 +152,10 @@ public class VendaResource {
     @Path("/{id}/finalizar")
     public VendaDTO finalizar(@PathParam("id") UUID id,
                               @QueryParam("cpfConsumidor") String cpfConsumidor,
-                              @QueryParam("emitirNfce") @DefaultValue("false") boolean emitirNfce) {
+                              @QueryParam("emitirNfce") String emitirNfce) {
+        boolean emitirNfceBool = "true".equals(emitirNfce);
         VendaDTO venda = service.finalizarVenda(id, cpfConsumidor);
-        if (emitirNfce) {
+        if (emitirNfceBool) {
             try {
                 venda = service.emitirNfceVenda(id, cpfConsumidor);
             } catch (Exception e) {

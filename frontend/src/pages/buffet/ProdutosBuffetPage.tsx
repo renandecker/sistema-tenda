@@ -28,6 +28,7 @@ export function ProdutosBuffetPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [total, setTotal] = useState(0);
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Produto | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -37,8 +38,10 @@ export function ProdutosBuffetPage() {
     try {
       const { data } = await apiBuffet.listProdutos({ page, size: rowsPerPage });
       setProdutos(data?.content ?? (Array.isArray(data) ? data : []));
+      setTotal(data?.totalElements ?? (Array.isArray(data) ? data.length : 0));
     } catch {
       setProdutos([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -91,7 +94,7 @@ export function ProdutosBuffetPage() {
         }
       />
       <DataTable<Produto>
-        data={produtos} loading={loading} page={page} rowsPerPage={rowsPerPage}
+        data={produtos} loading={loading} serverSide totalCount={total} page={page} rowsPerPage={rowsPerPage}
         onPageChange={(p, r) => { setPage(p); setRowsPerPage(r); }}
         searchPlaceholder="Buscar pratos e produtos..." emptyMessage="Nenhum produto cadastrado"
         columns={[

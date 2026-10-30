@@ -38,6 +38,8 @@ export function AtivosImobilizadosPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [totalRows, setTotalRows] = useState(0);
+  const [serverSide, setServerSide] = useState(false);
   const [dialog, setDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -47,9 +49,19 @@ export function AtivosImobilizadosPage() {
     try {
       const { data } = await apiFiscal.listAtivos({ page, size: rowsPerPage });
       const list = data?.content ?? (Array.isArray(data) ? data : []);
-      setAtivos(list.length > 0 ? list : lerLocais());
+      if (list.length > 0) {
+        setAtivos(list);
+        setServerSide(!!data?.content);
+        setTotalRows(data?.totalElements ?? list.length);
+      } else {
+        setAtivos(lerLocais());
+        setServerSide(false);
+        setTotalRows(0);
+      }
     } catch {
       setAtivos(lerLocais());
+      setServerSide(false);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
@@ -118,7 +130,7 @@ export function AtivosImobilizadosPage() {
         }
       />
       <DataTable<Ativo>
-        data={ativos} loading={loading} page={page} rowsPerPage={rowsPerPage}
+        data={ativos} loading={loading} serverSide={serverSide} totalCount={totalRows} page={page} rowsPerPage={rowsPerPage}
         onPageChange={(p, r) => { setPage(p); setRowsPerPage(r); }}
         searchPlaceholder="Buscar bens..." emptyMessage="Nenhum bem cadastrado"
         columns={[

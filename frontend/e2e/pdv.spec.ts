@@ -8,7 +8,7 @@ test.describe('PDV e Vendas', () => {
 
     const main = page.getByRole('main');
     await expect(main.getByRole('button', { name: 'Nova venda' })).toBeVisible();
-    await expect(main.getByRole('button', { name: 'Buscar', exact: true })).toBeVisible();
+    await expect(main.getByRole('button', { name: /Buscar/ })).toBeVisible();
     await expect(main.getByRole('button', { name: 'Caderno (fiado)' })).toBeVisible();
     await expect(main.getByRole('button', { name: 'Pagamento' })).toBeDisabled();
     await expect(main.getByRole('button', { name: 'Finalizar' })).toBeDisabled();

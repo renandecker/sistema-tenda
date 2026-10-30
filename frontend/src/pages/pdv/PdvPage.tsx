@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { api, apiBuffet, apiClientes, apiCaderno, apiFruteira, apiPdv } from '@/services/api';
 import { PageHeader } from '@/components/PageHeader';
+import { PixQrCode, type PixChargeResponse } from '@/components/pix';
 import { formatCurrency, formatNumber } from '@/utils/formatters';
 import { maskCurrency, maskCpfCnpj, maskQuantity, parseCurrency, parseDecimal, parseDocument } from '@/utils/masks';
 
@@ -86,6 +87,18 @@ const SHORTCUTS_PAGAMENTO = [
 
 const TAB_ORDER: Array<'buffet' | 'fruteira' | 'mesas'> = ['buffet', 'fruteira', 'mesas'];
 
+const nomeFormaPagamento = (forma: string) =>
+  SHORTCUTS_PAGAMENTO.find((item) => item.forma === forma)?.label ?? forma;
+
+const TAB_LABELS: Record<'buffet' | 'fruteira' | 'mesas', string> = {
+  buffet: 'Buffet',
+  fruteira: 'Fruteira',
+  mesas: 'Mesas',
+};
+
+/** Atalho de adição do item pela posição na lista (Ctrl+1 ... Ctrl+9, Ctrl+0 para o 10º). */
+const atalhoItem = (index: number) => `Ctrl+${index === 9 ? 0 : index + 1}`;
+
 export function PdvPage() {
   const [venda, setVenda] = useState<VendaAtual | null>(null);
   const [loading, setLoading] = useState(false);
@@ -96,6 +109,9 @@ export function PdvPage() {
   const [pagDialog, setPagDialog] = useState(false);
   const [formaPagamento, setFormaPagamento] = useState('DINHEIRO');
   const [valorPagamento, setValorPagamento] = useState('');
+  const [pagamentosPendentes, setPagamentosPendentes] = useState<Array<{ forma: string; valor: number }>>([]);
+  const [processandoPagamento, setProcessandoPagamento] = useState(false);
+  const [pixCobranca, setPixCobranca] = useState<{ vendaId: string; data: PixChargeResponse } | null>(null);
   const [desconto, setDesconto] = useState('');
   const [pesoDialog, setPesoDialog] = useState(false);
   const [pesoBruto, setPesoBruto] = useState('');
@@ -121,6 +137,10 @@ export function PdvPage() {
   const [fiadoDescricao, setFiadoDescricao] = useState('');
 
   const shortcutSequenceRef = useRef<{ type: 'b' | 'f' | 'm'; timestamp: number } | null>(null);
+
+  const saldo = (venda?.valorTotal ?? 0) - (venda?.valorPago ?? 0);
+  const totalPendente = pagamentosPendentes.reduce((s, p) => s + p.valor, 0);
+  const saldoPendente = Math.max(0, saldo - totalPendente);
 
   const focusClienteField = useCallback(() => {
     requestAnimationFrame(() => {
@@ -260,8 +280,8 @@ export function PdvPage() {
   const carregarEstoque = useCallback(async () => {
     try {
       const [f, b] = await Promise.allSettled([
-        apiFruteira.listProdutos({ size: 200, ativo: true }),
-        apiBuffet.listProdutos({ size: 200, ativo: true }),
+        apiFruteira.listProdutos({ size: 200, ativo: true, sortBy: 'nome', sortDirection: 'asc' }),
+        apiBuffet.listProdutos({ size: 200, ativo: true, sortBy: 'nome', sortDirection: 'asc' }),
       ]);
       const listaF: any[] = f.status === 'fulfilled' ? (f.value.data?.content ?? (Array.isArray(f.value.data) ? f.value.data : [])) : [];
       const listaB: any[] = b.status === 'fulfilled' ? (b.value.data?.content ?? (Array.isArray(b.value.data) ? b.value.data : [])) : [];
@@ -345,6 +365,7 @@ export function PdvPage() {
     setContadorItens({ BUFFET: 0, FRUTEIRA: 0 });
     setFormaPagamento('DINHEIRO');
     setValorPagamento('');
+    setPagamentosPendentes([]);
   };
 
   const novaVenda = async () => {
@@ -501,25 +522,87 @@ export function PdvPage() {
     }
   };
 
-  const confirmarPagamento = async () => {
-    if (!venda) return;
+  const adicionarFormaPagamento = () => {
     const valor = parseCurrency(valorPagamento);
-    if (valor <= 0) { toast.warning('Informe o valor recebido'); return; }
-    if (venda.id.startsWith('local-')) {
-      setPagDialog(false);
-      setValorPagamento('');
-      const novoPagamento: { forma: string; valor: number; shortcut: string } = { forma: formaPagamento, valor, shortcut: '' };
-      setVenda((s) => s ? { ...s, pagamentos: [...(s.pagamentos ?? []), novoPagamento] } : s);
+    if (valor <= 0) { toast.warning('Informe o valor do pagamento'); return; }
+    const restanteAtual = saldo - pagamentosPendentes.reduce((s, p) => s + p.valor, 0);
+    if (valor > restanteAtual + 0.001) {
+      toast.warning(`Valor excede o saldo restante (${formatCurrency(Math.max(0, restanteAtual))})`);
       return;
     }
+    const novos = [...pagamentosPendentes, { forma: formaPagamento, valor }];
+    setPagamentosPendentes(novos);
+    const restante = saldo - novos.reduce((s, p) => s + p.valor, 0);
+    setValorPagamento(restante > 0 ? maskCurrency(restante) : '');
+  };
+
+  const removerFormaPagamento = (index: number) => {
+    const novos = pagamentosPendentes.filter((_, i) => i !== index);
+    setPagamentosPendentes(novos);
+    const restante = Math.max(0, saldo - novos.reduce((s, p) => s + p.valor, 0));
+    setValorPagamento(restante > 0 ? maskCurrency(restante) : '');
+  };
+
+  const fecharPagamento = () => {
+    setPagDialog(false);
+    setPagamentosPendentes([]);
+    setValorPagamento('');
+  };
+
+  const abrirPagamento = () => {
+    setPagamentosPendentes([]);
+    setFormaPagamento('DINHEIRO');
+    setValorPagamento(saldo > 0 ? maskCurrency(saldo) : '');
+    setPagDialog(true);
+  };
+
+  const confirmarPagamento = async () => {
+    if (!venda) return;
+    const valorAtual = parseCurrency(valorPagamento);
+    const lote = [...pagamentosPendentes];
+    if (valorAtual > 0) lote.push({ forma: formaPagamento, valor: valorAtual });
+    if (lote.length === 0) { toast.warning('Informe o valor recebido'); return; }
+
+    const total = lote.reduce((s, p) => s + p.valor, 0);
+    if (total > saldo + 0.001) {
+      toast.warning(`Valor informado excede o saldo devedor (${formatCurrency(saldo)})`);
+      return;
+    }
+
+    if (venda.id.startsWith('local-')) {
+      setVenda((s) => s ? {
+        ...s,
+        valorPago: (s.valorPago ?? 0) + total,
+        pagamentos: [...(s.pagamentos ?? []), ...lote.map((p) => ({ forma: p.forma, valor: p.valor, shortcut: '' }))],
+      } : s);
+      fecharPagamento();
+      toast.success('Pagamento registrado (local)');
+      return;
+    }
+
+    setProcessandoPagamento(true);
     try {
-      await apiPdv.processarPagamento(venda.id, { formaPagamento, valor });
+      const valorPix = lote.filter((p) => p.forma === 'PIX').reduce((s, p) => s + p.valor, 0);
+      for (const pagamento of lote.filter((p) => p.forma !== 'PIX')) {
+        await apiPdv.processarPagamento(venda.id, { formaPagamento: pagamento.forma, valor: pagamento.valor });
+      }
+
+      let cobrancaPix: PixChargeResponse | null = null;
+      if (valorPix > 0) {
+        const { data } = await apiPdv.gerarPix(venda.id, valorPix);
+        cobrancaPix = data;
+      }
+
       await carregarVendaComItens(venda.id);
-      setPagDialog(false);
-      setValorPagamento('');
-      toast.success('Pagamento registrado');
+      fecharPagamento();
+      if (cobrancaPix) setPixCobranca({ vendaId: venda.id, data: cobrancaPix });
+      toast.success(lote.length > 1 ? 'Pagamentos registrados' : 'Pagamento registrado');
     } catch (e: any) {
+      await carregarVendaComItens(venda.id).catch(() => {});
+      fecharPagamento();
       toast.error(e?.response?.data?.message || 'Erro ao processar pagamento');
+    } finally {
+      setProcessandoPagamento(false);
     }
   };
 
@@ -580,8 +663,6 @@ export function PdvPage() {
     toast.success('Venda cancelada - nova venda iniciada');
   };
 
-  const saldo = (venda?.valorTotal ?? 0) - (venda?.valorPago ?? 0);
-
   const alternarAba = useCallback((direcao: 1 | -1) => {
     setTabValue((prevTab) => {
       const idx = TAB_ORDER.indexOf(prevTab);
@@ -632,7 +713,12 @@ export function PdvPage() {
     if (mesa?.comandaAtiva?.id) {
       carregarMesaPdv(mesa.comandaAtiva.id, String(mesa.numero));
     }
-  }, [tabValue, busca, buscou, resultados, estoqueBuffet, estoqueFruteira, mesasComComanda]);
+  }, [tabValue, busca, buscou, resultados, estoqueBuffet, estoqueFruteira, mesasComComanda, adicionarItem, carregarMesaPdv]);
+
+  const quickAddFromActiveTab = useCallback((numero: number) => {
+    const tipo: 'b' | 'f' | 'm' = tabValue === 'buffet' ? 'b' : tabValue === 'fruteira' ? 'f' : 'm';
+    quickAddFromTab(tipo, numero);
+  }, [tabValue, quickAddFromTab]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -643,6 +729,13 @@ export function PdvPage() {
         target.tagName === 'SELECT' ||
         target.isContentEditable
       );
+      const dialogAberto = pagDialog || pesoDialog || fiadoDialog || cadClienteDialog || itensModalOpen;
+
+      if (event.altKey && !event.ctrlKey && !event.metaKey && /^[1-3]$/.test(event.key)) {
+        event.preventDefault();
+        setTabValue(TAB_ORDER[Number(event.key) - 1]);
+        return;
+      }
 
       if (event.ctrlKey && (event.key === 'ArrowRight' || event.key === 'ArrowLeft' || event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
         event.preventDefault();
@@ -650,17 +743,30 @@ export function PdvPage() {
         return;
       }
 
-      if (isTypingField) return;
+      if (dialogAberto) return;
 
-      if (event.key >= 'F1' && event.key <= 'F12') {
+      if (event.ctrlKey && !event.altKey && !event.metaKey && /^[0-9]$/.test(event.key)) {
+        event.preventDefault();
+        quickAddFromActiveTab(event.key === '0' ? 10 : Number(event.key));
+        return;
+      }
+
+      if (event.key === 'F2') {
+        event.preventDefault();
+        focusBuscaField();
+        if (busca.trim()) {
+          buscarProdutos();
+          carregarMesas();
+        }
+        return;
+      }
+
+      if (/^F([1-9]|1[0-2])$/.test(event.key)) {
         event.preventDefault();
         const keyNum = parseInt(event.key.replace('F', ''), 10);
         switch (keyNum) {
           case 1:
             novaVenda();
-            break;
-          case 2:
-            focusBuscaField();
             break;
           case 3:
             focusClienteField();
@@ -670,11 +776,11 @@ export function PdvPage() {
             else toast.warning('Inicie uma venda primeiro');
             break;
           case 5:
+            aplicarDesconto();
             break;
           case 6:
             if (venda) {
-              setValorPagamento(saldo > 0 ? maskCurrency(saldo) : '');
-              setPagDialog(true);
+              abrirPagamento();
             } else {
               toast.warning('Inicie uma venda primeiro');
             }
@@ -700,6 +806,8 @@ export function PdvPage() {
         return;
       }
 
+      if (isTypingField) return;
+
       const letterKey = event.key.toLowerCase();
       if (['b', 'f', 'm'].includes(letterKey) && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
         event.preventDefault();
@@ -721,7 +829,25 @@ export function PdvPage() {
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [venda, saldo, recarregarVenda, finalizar, cancelar, abrirFiado, novaVenda, alternarAba, quickAddFromTab, focusBuscaField, focusClienteField]);
+  }, [
+    venda, saldo, recarregarVenda, finalizar, cancelar, abrirFiado, novaVenda, alternarAba,
+    quickAddFromTab, quickAddFromActiveTab, focusBuscaField, focusClienteField, buscarProdutos,
+    carregarMesas, aplicarDesconto, busca, pagDialog, pesoDialog, fiadoDialog, cadClienteDialog,
+    itensModalOpen, abrirPagamento,
+  ]);
+
+  useEffect(() => {
+    if (!pagDialog) return;
+    const handler = (event: KeyboardEvent) => {
+      const item = SHORTCUTS_PAGAMENTO.find((s) => s.shortcut === event.key);
+      if (item) {
+        event.preventDefault();
+        setFormaPagamento(item.forma);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [pagDialog]);
 
   const vendaIniciada = !!venda && ((venda.itens?.length ?? 0) > 0 || !!cliente);
   const filtrarProdutosDaAbas = (tab: 'buffet' | 'fruteira' | 'mesas') => {
@@ -737,7 +863,7 @@ export function PdvPage() {
 
   const renderProdutos = (produtos: ProdutoBusca[], vazio: string) => (
     <Box>
-      {produtos.map((p) => (
+      {produtos.map((p, index) => (
         <Box key={`${p.origem}-${p.id}`} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
           <Box sx={{ minWidth: 0 }}>
             <Typography variant="body2" fontWeight={600} noWrap>{p.nome}</Typography>
@@ -745,7 +871,9 @@ export function PdvPage() {
               {p.codigo ?? p.codigoBarras ?? '—'} · {formatCurrency(p.precoVenda ?? 0)} · Est: {formatNumber(Number(p.estoqueAtual ?? 0), 3)}{p.unidadeMedida ? ` ${p.unidadeMedida}` : ''}
             </Typography>
           </Box>
-          <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => adicionarItem(p)} disabled={!venda}>Adicionar</Button>
+          <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => adicionarItem(p)} disabled={!venda}>
+            Adicionar <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>({atalhoItem(index)})</Typography>
+          </Button>
         </Box>
       ))}
       {produtos.length === 0 && <Typography variant="caption" color="text.secondary">{vazio}</Typography>}
@@ -783,16 +911,32 @@ export function PdvPage() {
                   onKeyDown={(e) => { if (e.key === 'Enter' || (e.altKey && e.key === 'Enter')) { e.preventDefault(); buscarProdutos(); carregarMesas(); } }}
                 />
                 <TextField size="small" label="Qtd" value={maskQuantity(quantidade)} onChange={(e) => setQuantidade(maskQuantity(e.target.value))} sx={{ width: 90 }} inputMode="decimal" />
-                <Button variant="contained" onClick={() => { buscarProdutos(); carregarMesas(); }} disabled={buscando} startIcon={<SearchIcon />}>Buscar</Button>
-                <Tooltip title="Lançar prato por peso (balança)"><span><IconButton color="primary" onClick={() => setPesoDialog(true)} disabled={!venda}><ScaleIcon /></IconButton></span></Tooltip>
+                <Button variant="contained" onClick={() => { buscarProdutos(); carregarMesas(); }} disabled={buscando} startIcon={<SearchIcon />}>Buscar <Typography variant="caption" color="text.secondary">(F2)</Typography></Button>
+                <Tooltip title="Lançar prato por peso (balança) — F4"><span><IconButton color="primary" onClick={() => setPesoDialog(true)} disabled={!venda}><ScaleIcon /></IconButton></span></Tooltip>
               </Box>
             </CardContent>
           </Card>
-          <Tabs value={tabValue} onChange={(_, v) => setTabValue(v as 'buffet' | 'fruteira' | 'mesas')} sx={{ mb: 2 }}>
-            <Tab value="buffet" label="Buffet" />
-            <Tab value="fruteira" label="Fruteira" />
-            <Tab value="mesas" label="Mesas" />
-          </Tabs>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+            <Tabs value={tabValue} onChange={(_, v) => setTabValue(v as 'buffet' | 'fruteira' | 'mesas')}>
+              <Tab value="buffet" label="Buffet" />
+              <Tab value="fruteira" label="Fruteira" />
+              <Tab value="mesas" label="Mesas" />
+            </Tabs>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>Trocar aba:</Typography>
+              {TAB_ORDER.map((tab, index) => (
+                <Chip
+                  key={tab}
+                  size="small"
+                  label={`Alt+${index + 1} ${TAB_LABELS[tab]}`}
+                  color={tabValue === tab ? 'primary' : 'default'}
+                  variant={tabValue === tab ? 'filled' : 'outlined'}
+                  onClick={() => setTabValue(tab)}
+                  sx={{ height: 22, fontSize: '0.7rem' }}
+                />
+              ))}
+            </Box>
+          </Box>
           <Card>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Itens a venda</Typography>
@@ -803,7 +947,7 @@ export function PdvPage() {
                   if (mesas.length === 0) return <Typography variant="caption" color="text.secondary">Nenhuma mesa com comanda aberta encontrada</Typography>;
                   return (
                     <Box>
-                      {mesas.map((m: any) => (
+                      {mesas.map((m: any, index: number) => (
                         <Box key={m.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
                           <Box sx={{ minWidth: 0 }}>
                             <Typography variant="body2" fontWeight={600} noWrap>Mesa {m.numero}</Typography>
@@ -811,7 +955,9 @@ export function PdvPage() {
                               {m.nome ?? '—'} · {m.comandaAtiva?.clienteNome ?? 'sem cliente'} · comanda {m.comandaAtiva?.numero ?? '—'}
                             </Typography>
                           </Box>
-                          <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => carregarMesaPdv(m.comandaAtiva?.id ?? m.id, String(m.numero))} disabled={!venda}>Adicionar</Button>
+                          <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => carregarMesaPdv(m.comandaAtiva?.id ?? m.id, String(m.numero))} disabled={!venda}>
+                            Adicionar <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>({atalhoItem(index)})</Typography>
+                          </Button>
                         </Box>
                       ))}
                     </Box>
@@ -882,7 +1028,7 @@ export function PdvPage() {
 
               <Box sx={{ display: 'flex', gap: 1, mt: 1.5 }}>
                 <Button fullWidth variant="outlined" color="warning" startIcon={<MenuBookIcon />} onClick={abrirFiado}>
-                  Lançar fiado
+                  Lançar fiado <Typography variant="caption" color="text.secondary">(F9)</Typography>
                 </Button>
                 {cliente && (
                   <Button fullWidth variant="text" onClick={() => selecionarCliente(null)}>Limpar</Button>
@@ -919,8 +1065,8 @@ export function PdvPage() {
                 <Button variant="outlined" onClick={aplicarDesconto} disabled={!venda}>Aplicar <Typography variant="caption" color="text.secondary">(F5)</Typography></Button>
               </Box>
               <Grid container spacing={1}>
-                <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={() => { setValorPagamento(saldo > 0 ? maskCurrency(saldo) : ''); setPagDialog(true); }}>Pagar</Button></Grid>
-                <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={venda == null || (venda?.pagamentos?.length === 0 && venda?.valorPago === 0 && (venda?.valorTotal ?? 0) > 0)}>Finalizar</Button></Grid>
+                <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={abrirPagamento}>Pagar <Typography variant="caption" color="text.secondary">(F6)</Typography></Button></Grid>
+                <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={venda == null || saldo > 0}>Finalizar <Typography variant="caption" color="text.secondary">(F7)</Typography></Button></Grid>
                 <Grid item xs={12}><Button fullWidth color="error" startIcon={<CancelIcon />} onClick={cancelar} disabled={!vendaIniciada && !venda}>Cancelar venda <Typography variant="caption" color="text.secondary">(F8)</Typography></Button></Grid>
               </Grid>
               {venda?.pagamentos && venda.pagamentos.length > 0 && (
@@ -928,7 +1074,7 @@ export function PdvPage() {
                   <Typography variant="caption" fontWeight={700}>PAGAMENTOS</Typography>
                   {venda.pagamentos.map((p, i) => (
                     <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="caption">{p.forma}</Typography>
+                      <Typography variant="caption">{nomeFormaPagamento(p.forma)}</Typography>
                       <Typography variant="caption">{formatCurrency(p.valor ?? 0)}</Typography>
                     </Box>
                   ))}
@@ -942,22 +1088,115 @@ export function PdvPage() {
         </Grid>
       </Grid>
 
-      <Dialog open={pagDialog} onClose={() => setPagDialog(false)} maxWidth="xs" fullWidth>
+      <Dialog open={pagDialog} onClose={fecharPagamento} maxWidth="sm" fullWidth>
         <DialogTitle>Registrar pagamento</DialogTitle>
         <DialogContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+            <Typography variant="body2">Saldo devedor</Typography>
+            <Typography variant="body2" fontWeight={700}>{formatCurrency(saldo)}</Typography>
+          </Box>
+
+          {pagamentosPendentes.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" fontWeight={700} color="text.secondary">FORMAS ADICIONADAS</Typography>
+              <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1, mt: 0.5 }}>
+                {pagamentosPendentes.map((p, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      py: 0.5,
+                      borderBottom: index < pagamentosPendentes.length - 1 ? 1 : 0,
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Typography variant="body2">{nomeFormaPagamento(p.forma)}</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography variant="body2" fontWeight={600}>{formatCurrency(p.valor)}</Typography>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => removerFormaPagamento(index)}
+                        aria-label={`Remover ${nomeFormaPagamento(p.forma)}`}
+                      >
+                        <CancelIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                ))}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1 }}>
+                  <Typography variant="body2" fontWeight={600}>Falta receber</Typography>
+                  <Typography variant="body2" fontWeight={700} color={saldoPendente > 0 ? 'warning.main' : 'success.main'}>
+                    {formatCurrency(saldoPendente)}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+          )}
+
+          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Forma de pagamento (F1–F7)</Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
             {SHORTCUTS_PAGAMENTO.map((item) => (
-              <Button key={item.forma} variant="outlined" sx={{ width: '100%' }} onClick={() => setFormaPagamento(item.forma)}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" fontWeight={600}>{item.label}</Typography>
-                  <Typography variant="caption" color="text.secondary">{item.shortcut}</Typography>
-                </Box>
+              <Button
+                key={item.forma}
+                variant={formaPagamento === item.forma ? 'contained' : 'outlined'}
+                sx={{ width: '100%', justifyContent: 'space-between' }}
+                onClick={() => setFormaPagamento(item.forma)}
+              >
+                <Typography variant="body2" fontWeight={600}>{item.label}</Typography>
+                <Typography variant="caption" color={formaPagamento === item.forma ? 'inherit' : 'text.secondary'}>{item.shortcut}</Typography>
               </Button>
             ))}
           </Box>
-          <TextField fullWidth label="Valor recebido (R$)" value={maskCurrency(valorPagamento)} onChange={(e) => setValorPagamento(maskCurrency(e.target.value))} placeholder="0,00" inputMode="decimal" />
+
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              fullWidth
+              label="Valor recebido (R$)"
+              value={maskCurrency(valorPagamento)}
+              onChange={(e) => setValorPagamento(maskCurrency(e.target.value))}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); adicionarFormaPagamento(); } }}
+              placeholder="0,00"
+              inputMode="decimal"
+            />
+            <Button variant="outlined" onClick={adicionarFormaPagamento} disabled={processandoPagamento} sx={{ whiteSpace: 'nowrap' }}>
+              Adicionar forma
+            </Button>
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            Adicione cada forma com seu valor para pagar parte com uma forma e o restante com outra.
+          </Typography>
         </DialogContent>
-        <DialogActions><Button onClick={() => setPagDialog(false)}>Fechar</Button><Button variant="contained" onClick={confirmarPagamento}>Confirmar</Button></DialogActions>
+        <DialogActions>
+          <Button onClick={fecharPagamento} disabled={processandoPagamento}>Fechar</Button>
+          <Button variant="contained" onClick={confirmarPagamento} disabled={processandoPagamento}>
+            {processandoPagamento ? 'Processando...' : 'Confirmar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!pixCobranca} onClose={() => setPixCobranca(null)} maxWidth="sm" fullWidth>
+        <DialogContent>
+          {pixCobranca && (
+            <PixQrCode
+              vendaId={pixCobranca.vendaId}
+              txid={pixCobranca.data.txid}
+              valor={pixCobranca.data.valor}
+              pixCopiaECola={pixCobranca.data.pixCopiaECola}
+              qrCodeBase64={pixCobranca.data.qrCodeBase64}
+              status={pixCobranca.data.status}
+              expiracao={pixCobranca.data.expiracao}
+              onStatusChange={(status) => {
+                if (['CONCLUIDA', 'CONCLUDED', 'PAID'].includes(status)) {
+                  carregarVendaComItens(pixCobranca.vendaId);
+                }
+              }}
+              onClose={() => setPixCobranca(null)}
+            />
+          )}
+        </DialogContent>
       </Dialog>
 
       <Dialog open={pesoDialog} onClose={() => setPesoDialog(false)} maxWidth="xs" fullWidth>

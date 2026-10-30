@@ -41,6 +41,10 @@ interface DataTableProps<T> {
   columns: Column<T>[];
   loading?: boolean;
   pagination?: boolean;
+  /** When true, `data` already contains only the current page (fetched from the server). */
+  serverSide?: boolean;
+  /** Total number of rows across all pages. Used for the pagination footer when `serverSide` is true. */
+  totalCount?: number;
   page?: number;
   rowsPerPage?: number;
   rowsPerPageOptions?: number[];
@@ -67,6 +71,8 @@ export function DataTable<T extends Record<string, any>>({
   columns,
   loading = false,
   pagination = true,
+  serverSide = false,
+  totalCount,
   page = 0,
   rowsPerPage = 10,
   rowsPerPageOptions = [10, 20, 50, 100],
@@ -131,9 +137,11 @@ export function DataTable<T extends Record<string, any>>({
     return result;
   }, [data, searchTerm, filterValues, sortConfig, columns]);
 
-  const paginatedData = pagination 
-    ? filteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-    : filteredData;
+  const paginatedData = serverSide
+    ? filteredData
+    : (pagination ? filteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage) : filteredData);
+
+  const totalRows = serverSide ? (totalCount ?? filteredData.length) : filteredData.length;
 
   const isRowSelected = (row: T) => selectedRows.some(s => getRowId(s) === getRowId(row));
 
@@ -319,7 +327,7 @@ export function DataTable<T extends Record<string, any>>({
         <TablePagination
           rowsPerPageOptions={rowsPerPageOptions}
           component="div"
-          count={filteredData.length}
+          count={totalRows}
           page={page}
           rowsPerPage={rowsPerPage}
           onPageChange={(_, newPage) => onPageChange?.(newPage, rowsPerPage)}

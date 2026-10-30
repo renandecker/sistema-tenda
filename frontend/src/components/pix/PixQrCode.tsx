@@ -34,6 +34,7 @@ export interface PixChargeResponse {
 }
 
 interface PixQrCodeProps {
+  vendaId?: string;
   txid: string;
   valor: number;
   pixCopiaECola: string;
@@ -47,6 +48,7 @@ interface PixQrCodeProps {
 }
 
 export const PixQrCode: React.FC<PixQrCodeProps> = ({
+  vendaId,
   txid,
   valor,
   pixCopiaECola,
@@ -66,7 +68,7 @@ export const PixQrCode: React.FC<PixQrCodeProps> = ({
 
   const fetchStatus = useCallback(async () => {
     try {
-      const response = await fetch(`/api/pdv/vendas/${txid}/pix/status?txid=${txid}`);
+      const response = await fetch(`/api/pdv/vendas/${vendaId ?? txid}/pix/status?txid=${txid}`);
       if (response.ok) {
         const data: PixChargeResponse = await response.json();
         if (data.status !== currentStatus) {
@@ -399,6 +401,7 @@ export const PixPaymentModal: React.FC<PixPaymentModalProps> = ({
 
   return (
     <PixQrCode
+      vendaId={vendaId}
       txid={pixData.txid}
       valor={pixData.valor}
       pixCopiaECola={pixData.pixCopiaECola}

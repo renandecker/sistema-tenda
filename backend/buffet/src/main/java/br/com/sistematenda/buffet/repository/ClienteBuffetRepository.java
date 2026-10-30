@@ -1,6 +1,7 @@
 package br.com.sistematenda.buffet.repository;
 
 import br.com.sistematenda.buffet.entity.ClienteBuffet;
+import br.com.sistematenda.common.dto.PageResponse;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -17,6 +18,12 @@ public class ClienteBuffetRepository implements PanacheRepositoryBase<ClienteBuf
 
     public List<ClienteBuffet> findAllAtivos() {
         return find("deleted = false").list();
+    }
+
+    public PageResponse<ClienteBuffet> findAtivosPaged(int page, int size) {
+        var query = find("deleted = false order by nome asc");
+        long total = count("deleted = false");
+        return PageResponse.of(query.page(page, size).list(), total, page, size);
     }
 
     public List<ClienteBuffet> findTopFrequentes(int limit) {

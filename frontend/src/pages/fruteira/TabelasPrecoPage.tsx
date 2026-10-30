@@ -27,6 +27,7 @@ export function TabelasPrecoPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [total, setTotal] = useState(0);
   const [produtos, setProdutos] = useState<{ id: string; nome: string; codigo?: string }[]>([]);
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Tabela | null>(null);
@@ -37,8 +38,10 @@ export function TabelasPrecoPage() {
     try {
       const { data } = await apiFruteira.listTabelas({ page, size: rowsPerPage });
       setTabelas(data?.content ?? (Array.isArray(data) ? data : []));
+      setTotal(data?.totalElements ?? (Array.isArray(data) ? data.length : 0));
     } catch {
       setTabelas([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -120,7 +123,7 @@ export function TabelasPrecoPage() {
         }
       />
       <DataTable<Tabela>
-        data={tabelas} loading={loading} page={page} rowsPerPage={rowsPerPage}
+        data={tabelas} loading={loading} serverSide totalCount={total} page={page} rowsPerPage={rowsPerPage}
         onPageChange={(p, r) => { setPage(p); setRowsPerPage(r); }}
         searchPlaceholder="Buscar por produto..." emptyMessage="Nenhuma tabela de preço cadastrada"
         columns={[

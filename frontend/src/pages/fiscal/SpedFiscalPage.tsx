@@ -24,6 +24,7 @@ export function SpedFiscalPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [totalRows, setTotalRows] = useState(0);
   const [tipo, setTipo] = useState('');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
@@ -34,8 +35,10 @@ export function SpedFiscalPage() {
     try {
       const { data } = await apiFiscal.listSpedFiscal({ page, size: rowsPerPage });
       setItems(data?.content ?? (Array.isArray(data) ? data : []));
+      setTotalRows(data?.totalElements ?? (Array.isArray(data) ? data.length : 0));
     } catch {
       setItems([]);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
@@ -106,7 +109,7 @@ export function SpedFiscalPage() {
         </CardContent>
       </Card>
       <DataTable<Sped>
-        data={filtrados} loading={loading} page={page} rowsPerPage={rowsPerPage}
+        data={filtrados} loading={loading} serverSide totalCount={tipo ? filtrados.length : totalRows} page={page} rowsPerPage={rowsPerPage}
         onPageChange={(p, r) => { setPage(p); setRowsPerPage(r); }}
         searchPlaceholder="Buscar arquivos gerados..." emptyMessage="Nenhum arquivo SPED gerado ainda — selecione tipo e período e clique em “Gerar arquivo”"
         columns={[

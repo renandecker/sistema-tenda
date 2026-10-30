@@ -37,6 +37,9 @@ export function EstoquePage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [movPage, setMovPage] = useState(0);
+  const [movRowsPerPage, setMovRowsPerPage] = useState(10);
+  const [movTotal, setMovTotal] = useState(0);
   const [tipo, setTipo] = useState('');
   const [local, setLocal] = useState('');
   const [movDialog, setMovDialog] = useState(false);
@@ -47,12 +50,13 @@ export function EstoquePage() {
     setLoading(true);
     try {
       const [m, f, b] = await Promise.allSettled([
-        apiEstoque.listMovimentos({ page, size: rowsPerPage }),
+        apiEstoque.listMovimentos({ page: movPage, size: movRowsPerPage }),
         apiFruteira.listProdutos({ size: 200 }),
         apiBuffet.listProdutos({ size: 200 }),
       ]);
       const movData = m.status === 'fulfilled' ? m.value.data : null;
       setMovimentos(movData?.content ?? (Array.isArray(movData) ? movData : []));
+      setMovTotal(movData?.totalElements ?? (Array.isArray(movData) ? movData.length : 0));
       const listF: any[] = f.status === 'fulfilled' ? (f.value.data?.content ?? (Array.isArray(f.value.data) ? f.value.data : [])) : [];
       const listB: any[] = b.status === 'fulfilled' ? (b.value.data?.content ?? (Array.isArray(b.value.data) ? b.value.data : [])) : [];
       setSaldos([
@@ -61,10 +65,11 @@ export function EstoquePage() {
       ]);
     } catch {
       setMovimentos([]);
+      setMovTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage]);
+  }, [movPage, movRowsPerPage]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -187,8 +192,8 @@ export function EstoquePage() {
       />
       <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 3, mb: 1 }}>Histórico de movimentações</Typography>
       <DataTable<Movimento>
-        data={movimentos.filter((m) => !tipo || m.tipo === tipo)} loading={loading} page={0} rowsPerPage={10}
-        onPageChange={() => undefined}
+        data={movimentos.filter((m) => !tipo || m.tipo === tipo)} loading={loading} serverSide totalCount={tipo ? movimentos.filter((m) => m.tipo === tipo).length : movTotal} page={movPage} rowsPerPage={movRowsPerPage}
+        onPageChange={(p, r) => { setMovPage(p); setMovRowsPerPage(r); }}
         searchPlaceholder="Buscar no histórico..." emptyMessage="Sem histórico — os movimentos de compras, vendas, perdas e transferências passarão a aparecer aqui"
         columns={[
           { field: 'data', headerName: 'Data', width: 160, render: (v: string) => formatDateTime(v) },

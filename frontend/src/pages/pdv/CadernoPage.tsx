@@ -67,6 +67,9 @@ export function CadernoPage() {
   const [clientes, setClientes] = useState<ClienteDivida[]>([]);
   const [totais, setTotais] = useState<Totais | null>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [totalRows, setTotalRows] = useState(0);
 
   const [dialogCliente, setDialogCliente] = useState<ClienteDivida | null>(null);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
@@ -88,18 +91,21 @@ export function CadernoPage() {
     setLoading(true);
     try {
       const [resClientes, resTotais] = await Promise.allSettled([
-        apiCaderno.clientesComDivida(),
+        apiCaderno.clientesComDivida({ page, size: rowsPerPage }),
         apiCaderno.totais(),
       ]);
-      const lista: any[] = resClientes.status === 'fulfilled' ? (resClientes.value.data ?? []) : [];
+      const resData = resClientes.status === 'fulfilled' ? resClientes.value.data : null;
+      const lista: any[] = Array.isArray(resData) ? resData : (resData?.content ?? []);
       setClientes(lista.map((c: any) => ({ ...c, id: c.clienteId ?? c.clienteDocumento ?? c.clienteNome })));
+      setTotalRows(resData?.totalElements ?? lista.length);
       setTotais(resTotais.status === 'fulfilled' ? resTotais.value.data : null);
     } catch {
       setClientes([]);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, rowsPerPage]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -127,7 +133,7 @@ export function CadernoPage() {
         lista = data?.dividas ?? [];
       } else {
         const { data } = await apiCaderno.listar({ q: cliente.clienteNome, emAberto: true });
-        lista = (Array.isArray(data) ? data : []).filter((d: Lancamento) => d.clienteNome === cliente.clienteNome);
+        lista = (Array.isArray(data) ? data : (data?.content ?? [])).filter((d: Lancamento) => d.clienteNome === cliente.clienteNome);
       }
       setLancamentos(lista);
     } catch {
@@ -239,7 +245,11 @@ export function CadernoPage() {
       <DataTable<ClienteDivida>
         data={clientes}
         loading={loading}
-        pagination={false}
+        serverSide
+        totalCount={totalRows}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        onPageChange={(p, r) => { setPage(p); setRowsPerPage(r); }}
         searchable
         searchPlaceholder="Buscar cliente por nome ou documento..."
         emptyMessage="Nenhum cliente devendo no momento"

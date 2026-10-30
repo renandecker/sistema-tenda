@@ -33,6 +33,7 @@ export function ClientesBuffetPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [totalRows, setTotalRows] = useState(0);
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState(emptyForm);
 
@@ -40,28 +41,30 @@ export function ClientesBuffetPage() {
     setLoading(true);
     try {
       const [listRes, freqRes, consRes, resumoRes] = await Promise.all([
-        apiBuffet.listClientes(),
+        apiBuffet.listClientes({ page, size: rowsPerPage }),
         apiBuffet.rankingFrequentes(5),
         apiBuffet.rankingConsumo(5),
         apiBuffet.resumoClientes(),
       ]);
       setClientes(Array.isArray(listRes.data) ? listRes.data : (listRes.data?.content ?? []));
+      setTotalRows(listRes.data?.totalElements ?? (Array.isArray(listRes.data) ? listRes.data.length : 0));
       setFrequentes(Array.isArray(freqRes.data) ? freqRes.data : (freqRes.data?.content ?? []));
       setConsumo(Array.isArray(consRes.data) ? consRes.data : (consRes.data?.content ?? []));
       setResumo(resumoRes.data ?? { totalClientes: 0, totalConsumido: 0 });
     } catch {
       setClientes([]);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, rowsPerPage]);
 
   const loadDividas = useCallback(async () => {
     try {
-      const { data } = await apiCaderno.clientesComDivida();
+      const { data } = await apiCaderno.clientesComDivida({ page: 0, size: 1000 });
       const map: Record<string, { total: number; atraso: boolean }> = {};
       let total = 0;
-      (Array.isArray(data) ? data : []).forEach((d: any) => {
+      (Array.isArray(data) ? data : (data?.content ?? [])).forEach((d: any) => {
         const key = docKey(d.clienteDocumento);
         const valor = Number(d.totalDivida ?? 0);
         if (!key || valor <= 0) return;
@@ -186,6 +189,8 @@ export function ClientesBuffetPage() {
       <DataTable<Cliente>
         data={clientes}
         loading={loading}
+        serverSide
+        totalCount={totalRows}
         page={page}
         rowsPerPage={rowsPerPage}
         onPageChange={(newPage, newRowsPerPage) => {

@@ -38,15 +38,27 @@ export function ConciliacaoCartaoPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [totalRows, setTotalRows] = useState(0);
+  const [serverSide, setServerSide] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await apiFiscal.listConciliacao({ page, size: rowsPerPage });
       const list = data?.content ?? (Array.isArray(data) ? data : []);
-      setItems(list.length > 0 ? list : lerLocais());
+      if (list.length > 0) {
+        setItems(list);
+        setServerSide(!!data?.content);
+        setTotalRows(data?.totalElements ?? list.length);
+      } else {
+        setItems(lerLocais());
+        setServerSide(false);
+        setTotalRows(0);
+      }
     } catch {
       setItems(lerLocais());
+      setServerSide(false);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
@@ -96,7 +108,7 @@ export function ConciliacaoCartaoPage() {
         <Grid item xs={12} sm={4}><Card><CardContent><Typography variant="caption">Divergências</Typography><Typography variant="h5" fontWeight={800} color={divergentes > 0 ? 'warning.main' : 'success.main'}>{divergentes}</Typography></CardContent></Card></Grid>
       </Grid>
       <DataTable<Conciliacao>
-        data={items} loading={loading} page={page} rowsPerPage={rowsPerPage}
+        data={items} loading={loading} serverSide={serverSide} totalCount={totalRows} page={page} rowsPerPage={rowsPerPage}
         onPageChange={(p, r) => { setPage(p); setRowsPerPage(r); }}
         searchPlaceholder="Buscar por bandeira, NSU, autorização..." emptyMessage="Nenhum registro de conciliação"
         columns={[

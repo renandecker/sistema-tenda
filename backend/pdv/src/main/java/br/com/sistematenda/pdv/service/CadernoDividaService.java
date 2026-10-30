@@ -4,6 +4,7 @@ import br.com.sistematenda.common.entity.Cliente;
 import br.com.sistematenda.common.exception.NotFoundException;
 import br.com.sistematenda.common.exception.ValidationException;
 import br.com.sistematenda.common.repository.ClienteRepository;
+import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.pdv.dto.CadernoClienteResumoDTO;
 import br.com.sistematenda.pdv.dto.CadernoDividaDTO;
 import br.com.sistematenda.pdv.dto.CadernoTotalDTO;
@@ -129,7 +130,7 @@ public class CadernoDividaService {
         return divida;
     }
 
-    public List<CadernoClienteResumoDTO> listarClientesComDivida() {
+    public PageResponse<CadernoClienteResumoDTO> listarClientesComDivida(int page, int size) {
         List<CadernoClienteResumoDTO> resultado = new ArrayList<>();
         for (Object[] row : repository.resumoClientesComDivida()) {
             CadernoClienteResumoDTO dto = new CadernoClienteResumoDTO();
@@ -143,20 +144,18 @@ public class CadernoDividaService {
             dto.setPossuiAtraso(row[7] != null && ((Number) row[7]).intValue() > 0);
             resultado.add(dto);
         }
-        return resultado;
+        int from = Math.min(page * size, resultado.size());
+        int to = Math.min(from + size, resultado.size());
+        return PageResponse.of(resultado.subList(from, to), resultado.size(), page, size);
     }
 
-    public List<CadernoDividaDTO> listarTodos(String filtro, boolean somenteEmAberto) {
-        List<CadernoDivida> dividas = somaFiltro(filtro, somenteEmAberto);
-        return dividas.stream().map(this::toDTO).toList();
-    }
-
-    private List<CadernoDivida> somaFiltro(String filtro, boolean somenteEmAberto) {
-        List<CadernoDivida> base = repository.findTodos(filtro);
-        if (!somenteEmAberto) {
-            return base;
-        }
-        return base.stream().filter(CadernoDivida::isEmAberto).toList();
+    public PageResponse<CadernoDividaDTO> listarTodos(String filtro, boolean somenteEmAberto, int page, int size) {
+        PageResponse<CadernoDivida> paged = repository.findTodosPaginated(filtro, somenteEmAberto, page, size);
+        return PageResponse.of(
+                paged.getContent().stream().map(this::toDTO).toList(),
+                paged.getTotalElements(),
+                paged.getCurrentPage(),
+                paged.getPageSize());
     }
 
     public SituacaoClienteDTO situacaoCliente(UUID clienteId) {

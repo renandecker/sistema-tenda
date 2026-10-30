@@ -26,6 +26,7 @@ export function TransferenciasEstoquePage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [total, setTotal] = useState(0);
   const [produtos, setProdutos] = useState<{ id: string; nome: string }[]>([]);
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState({ produtoId: '', quantidade: '', origem: 'FRUTEIRA', destino: 'BUFFET', solicitadoPor: '', observacoes: '' });
@@ -38,8 +39,10 @@ export function TransferenciasEstoquePage() {
     try {
       const { data } = await apiBuffet.listTransferencias({ page, size: rowsPerPage });
       setItems(data?.content ?? (Array.isArray(data) ? data : []));
+      setTotal(data?.totalElements ?? (Array.isArray(data) ? data.length : 0));
     } catch {
       setItems([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -110,7 +113,7 @@ export function TransferenciasEstoquePage() {
         </CardContent>
       </Card>
       <DataTable<Transferencia>
-        data={items} loading={loading} page={page} rowsPerPage={rowsPerPage}
+        data={items} loading={loading} serverSide totalCount={total} page={page} rowsPerPage={rowsPerPage}
         onPageChange={(p, r) => { setPage(p); setRowsPerPage(r); }}
         searchPlaceholder="Buscar por produto ou solicitante..." emptyMessage="Nenhuma transferência encontrada"
         columns={[

@@ -47,6 +47,7 @@ export function DefeitosPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [totalRows, setTotalRows] = useState(0);
   const [dialog, setDialog] = useState(false);
   const [viewDialog, setViewDialog] = useState(false);
   const [selectedDefeito, setSelectedDefeito] = useState<Defeito | null>(null);
@@ -81,6 +82,7 @@ export function DefeitosPage() {
       ]);
       const defeitoData = d.status === 'fulfilled' ? d.value.data : null;
       setDefeitos(defeitoData?.content ?? (Array.isArray(defeitoData) ? defeitoData : []));
+      setTotalRows(defeitoData?.totalElements ?? (Array.isArray(defeitoData) ? defeitoData.length : 0));
 
       const listF: any[] = f.status === 'fulfilled' ? (f.value.data?.content ?? (Array.isArray(f.value.data) ? f.value.data : [])) : [];
       const listB: any[] = b.status === 'fulfilled' ? (b.value.data?.content ?? (Array.isArray(b.value.data) ? b.value.data : [])) : [];
@@ -92,6 +94,7 @@ export function DefeitosPage() {
       console.error(e);
       setDefeitos([]);
       setProdutos([]);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
@@ -204,7 +207,7 @@ export function DefeitosPage() {
       </Card>
 
       <DataTable<Defeito>
-        data={filtrados} loading={loading} page={page} rowsPerPage={rowsPerPage}
+        data={filtrados} loading={loading} serverSide totalCount={tipoFiltro ? filtrados.length : totalRows} page={page} rowsPerPage={rowsPerPage}
         onPageChange={(p, r) => { setPage(p); setRowsPerPage(r); }}
         searchPlaceholder="Buscar defeitos..." emptyMessage="Nenhum defeito registrado"
         columns={[

@@ -1,5 +1,6 @@
 package br.com.sistematenda.pdv.resource;
 
+import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.pdv.dto.CadernoClienteResumoDTO;
 import br.com.sistematenda.pdv.dto.CadernoDividaDTO;
 import br.com.sistematenda.pdv.dto.CadernoTotalDTO;
@@ -15,7 +16,6 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 
 @Path("/pdv/caderno")
@@ -30,18 +30,22 @@ public class CadernoResource {
     @GET
     @Operation(summary = "Lista lançamentos do caderno",
         description = "Lista as dívidas registradas, opcionalmente filtrando por cliente/venda e somente em aberto")
-    public List<CadernoDividaDTO> listar(
+    public PageResponse<CadernoDividaDTO> listar(
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("20") int size,
             @QueryParam("q") String q,
             @QueryParam("emAberto") @DefaultValue("true") boolean emAberto) {
-        return service.listarTodos(q, emAberto);
+        return service.listarTodos(q, emAberto, page, size);
     }
 
     @GET
     @Path("/clientes")
     @Operation(summary = "Lista clientes com dívida em aberto",
         description = "Agrupa os lançamentos em aberto por cliente, retornando o total devido")
-    public List<CadernoClienteResumoDTO> listarClientesComDivida() {
-        return service.listarClientesComDivida();
+    public PageResponse<CadernoClienteResumoDTO> listarClientesComDivida(
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("20") int size) {
+        return service.listarClientesComDivida(page, size);
     }
 
     @GET

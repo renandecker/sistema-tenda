@@ -2,9 +2,10 @@ package br.com.sistematenda.pdv.entity;
 
 import br.com.sistematenda.common.entity.BaseEntity;
 import br.com.sistematenda.common.enums.FormaPagamento;
+import jakarta.persistence.*;
 import lombok.Data;
 
-import javax.persistence.*;
+import java.math.BigDecimal;
 
 @Data
 @Entity

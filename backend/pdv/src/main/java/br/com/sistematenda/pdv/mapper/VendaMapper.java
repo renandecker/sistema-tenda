@@ -6,9 +6,11 @@ import br.com.sistematenda.pdv.entity.Venda;
 import br.com.sistematenda.pdv.entity.FormaPagamentoVenda;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingConstants;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 

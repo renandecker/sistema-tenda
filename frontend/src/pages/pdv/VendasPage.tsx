@@ -28,6 +28,7 @@ export function VendasPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [totalRows, setTotalRows] = useState(0);
   const [status, setStatus] = useState('');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
@@ -45,8 +46,10 @@ export function VendasPage() {
       if (dataFim) params.dataFim = dataFim;
       const { data } = await apiPdv.listVendas(params);
       setVendas(data?.content ?? (Array.isArray(data) ? data : []));
+      setTotalRows(data?.totalElements ?? (Array.isArray(data) ? data.length : 0));
     } catch {
       setVendas([]);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
@@ -120,7 +123,7 @@ export function VendasPage() {
         </CardContent>
       </Card>
       <DataTable<Venda>
-        data={vendas} loading={loading} page={page} rowsPerPage={rowsPerPage}
+        data={vendas} loading={loading} serverSide totalCount={totalRows} page={page} rowsPerPage={rowsPerPage}
         onPageChange={(p, r) => { setPage(p); setRowsPerPage(r); }}
         searchPlaceholder="Buscar por número, cliente, operador..." emptyMessage="Nenhuma venda encontrada"
         columns={[

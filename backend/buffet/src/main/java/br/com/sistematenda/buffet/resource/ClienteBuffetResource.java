@@ -2,6 +2,7 @@ package br.com.sistematenda.buffet.resource;
 
 import br.com.sistematenda.buffet.dto.ClienteBuffetDTO;
 import br.com.sistematenda.buffet.service.ClienteBuffetService;
+import br.com.sistematenda.common.dto.PageResponse;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -20,8 +21,10 @@ public class ClienteBuffetResource {
     ClienteBuffetService service;
 
     @GET
-    public List<ClienteBuffetDTO> listar() {
-        return service.findAll();
+    public PageResponse<ClienteBuffetDTO> listar(
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("20") int size) {
+        return service.findAll(page, size);
     }
 
     @GET

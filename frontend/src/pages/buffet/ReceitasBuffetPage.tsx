@@ -27,6 +27,7 @@ export function ReceitasBuffetPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [total, setTotal] = useState(0);
   const [produtos, setProdutos] = useState<{ id: string; nome: string }[]>([]);
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Receita | null>(null);
@@ -38,8 +39,10 @@ export function ReceitasBuffetPage() {
     try {
       const { data } = await apiBuffet.listReceitas({ page, size: rowsPerPage });
       setReceitas(data?.content ?? (Array.isArray(data) ? data : []));
+      setTotal(data?.totalElements ?? (Array.isArray(data) ? data.length : 0));
     } catch {
       setReceitas([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -108,7 +111,7 @@ export function ReceitasBuffetPage() {
         }
       />
       <DataTable<Receita>
-        data={receitas} loading={loading} page={page} rowsPerPage={rowsPerPage}
+        data={receitas} loading={loading} serverSide totalCount={total} page={page} rowsPerPage={rowsPerPage}
         onPageChange={(p, r) => { setPage(p); setRowsPerPage(r); }}
         searchPlaceholder="Buscar por prato..." emptyMessage="Nenhuma ficha técnica cadastrada"
         columns={[

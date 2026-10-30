@@ -27,8 +27,13 @@ public class ClienteBuffetService {
     @Inject
     VisitaClienteRepository visitaRepository;
 
-    public List<ClienteBuffetDTO> findAll() {
-        return repository.findAllAtivos().stream().map(this::toDTO).toList();
+    public PageResponse<ClienteBuffetDTO> findAll(int page, int size) {
+        PageResponse<ClienteBuffet> paged = repository.findAtivosPaged(page, size);
+        return PageResponse.of(
+                paged.getContent().stream().map(this::toDTO).toList(),
+                paged.getTotalElements(),
+                paged.getCurrentPage(),
+                paged.getPageSize());
     }
 
     public ClienteBuffetDTO findById(UUID id) {

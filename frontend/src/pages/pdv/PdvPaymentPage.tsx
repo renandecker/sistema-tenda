@@ -30,6 +30,7 @@ import {
   QrCode as QrCodeIcon,
   Refresh as RefreshIcon,
   Receipt as ReceiptPrintIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { apiPdv } from '@/services/api';

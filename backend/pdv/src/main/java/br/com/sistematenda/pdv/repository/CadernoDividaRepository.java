@@ -1,5 +1,6 @@
 package br.com.sistematenda.pdv.repository;
 
+import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.pdv.entity.CadernoDivida;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -44,6 +45,27 @@ public class CadernoDividaRepository implements PanacheRepositoryBase<CadernoDiv
         String termo = "%" + filtro.toLowerCase() + "%";
         return find("deleted = false and (lower(clienteNome) like ?1 or clienteDocumento like ?1 or numeroVenda like ?1) "
             + "order by dataLancamento desc", termo).list();
+    }
+
+    public PageResponse<CadernoDivida> findTodosPaginated(String filtro, boolean somenteEmAberto, int page, int size) {
+        StringBuilder where = new StringBuilder("deleted = false");
+        var params = new java.util.ArrayList<Object>();
+        if (filtro != null && !filtro.isBlank()) {
+            String termo = "%" + filtro.toLowerCase() + "%";
+            where.append(" and (lower(clienteNome) like ?").append(params.size() + 1)
+                .append(" or clienteDocumento like ?").append(params.size() + 1)
+                .append(" or numeroVenda like ?").append(params.size() + 1).append(")");
+            params.add(termo);
+        }
+        if (somenteEmAberto) {
+            where.append(" and status in (?").append(params.size() + 1)
+                .append(", ?").append(params.size() + 2).append(")");
+            params.add(CadernoDivida.StatusDivida.ABERTA);
+            params.add(CadernoDivida.StatusDivida.PARCIAL);
+        }
+        long total = count(where.toString(), params.toArray());
+        var panacheQuery = find(where + " order by dataLancamento desc", params.toArray());
+        return PageResponse.of(panacheQuery.page(page, size).list(), total, page, size);
     }
 
     public BigDecimal getTotalEmAbertoCliente(UUID clienteId) {
