@@ -188,6 +188,82 @@ VALUES (
     true
 ) ON CONFLICT (id) DO NOTHING;
 
+--
+-- Name: fruteira_produto; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fruteira_produto (
+    ativo boolean NOT NULL,
+    controla_lote boolean NOT NULL,
+    controla_validade boolean NOT NULL,
+    cst_cofins character varying(2),
+    cst_icms character varying(3),
+    cst_pis character varying(2),
+    custo_medio numeric(15,4) NOT NULL,
+    custo_ultimo numeric(15,4),
+    deleted boolean NOT NULL,
+    dias_validade_alerta integer,
+    estoque_atual numeric(15,4) NOT NULL,
+    estoque_maximo numeric(15,4),
+    estoque_minimo numeric(15,4),
+    margem_desejada numeric(5,2),
+    origem_mercadoria integer,
+    permite_fracao boolean NOT NULL,
+    pesavel_balanca boolean NOT NULL,
+    peso_liquido_padrao numeric(10,4),
+    preco_atacado numeric(15,4),
+    preco_venda numeric(15,4) NOT NULL,
+    quantidade_minima_atacado integer,
+    tara_padrao numeric(10,4),
+    cest character varying(7),
+    created_at timestamp(6) without time zone NOT NULL,
+    ncm character varying(8),
+    updated_at timestamp(6) without time zone NOT NULL,
+    version bigint,
+    unidade_medida character varying(10) NOT NULL,
+    id uuid NOT NULL,
+    codigo_balanca character varying(20),
+    tipo character varying(30) NOT NULL,
+    codigo character varying(50) NOT NULL,
+    codigo_barras character varying(100),
+    nome character varying(200) NOT NULL,
+    imagem_url character varying(500),
+    descricao character varying(1000),
+    observacoes character varying(2000),
+    CONSTRAINT fruteira_produto_pkey PRIMARY KEY (id),
+    CONSTRAINT fruteira_produto_codigo_key UNIQUE (codigo),
+    CONSTRAINT fruteira_produto_codigo_barras_key UNIQUE (codigo_barras),
+    CONSTRAINT fruteira_produto_cst_cofins_check CHECK (((cst_cofins)::text = ANY ((ARRAY['PIS_01'::character varying, 'PIS_02'::character varying, 'PIS_03'::character varying, 'PIS_04'::character varying, 'PIS_05'::character varying, 'PIS_06'::character varying, 'PIS_07'::character varying, 'PIS_08'::character varying, 'PIS_09'::character varying, 'PIS_49'::character varying, 'PIS_50'::character varying, 'PIS_51'::character varying, 'PIS_52'::character varying, 'PIS_53'::character varying, 'PIS_54'::character varying, 'PIS_55'::character varying, 'PIS_56'::character varying, 'PIS_60'::character varying, 'PIS_61'::character varying, 'PIS_62'::character varying, 'PIS_63'::character varying, 'PIS_64'::character varying, 'PIS_65'::character varying, 'PIS_66'::character varying, 'PIS_67'::character varying, 'PIS_70'::character varying, 'PIS_71'::character varying, 'PIS_72'::character varying, 'PIS_73'::character varying, 'PIS_74'::character varying, 'PIS_75'::character varying, 'PIS_98'::character varying, 'PIS_99'::character varying, 'COFINS_01'::character varying, 'COFINS_02'::character varying, 'COFINS_03'::character varying, 'COFINS_04'::character varying, 'COFINS_05'::character varying, 'COFINS_06'::character varying, 'COFINS_07'::character varying, 'COFINS_08'::character varying, 'COFINS_09'::character varying, 'COFINS_49'::character varying, 'COFINS_50'::character varying, 'COFINS_51'::character varying, 'COFINS_52'::character varying, 'COFINS_53'::character varying, 'COFINS_54'::character varying, 'COFINS_55'::character varying, 'COFINS_56'::character varying, 'COFINS_60'::character varying, 'COFINS_61'::character varying, 'COFINS_62'::character varying, 'COFINS_63'::character varying, 'COFINS_64'::character varying, 'COFINS_65'::character varying, 'COFINS_66'::character varying, 'COFINS_67'::character varying, 'COFINS_70'::character varying, 'COFINS_71'::character varying, 'COFINS_72'::character varying, 'COFINS_73'::character varying, 'COFINS_74'::character varying])::text[])),
+    CONSTRAINT fruteira_produto_cst_icms_check CHECK (((cst_icms)::text = ANY ((ARRAY['CST_00'::character varying, 'CST_10'::character varying, 'CST_20'::character varying, 'CST_30'::character varying, 'CST_40'::character varying, 'CST_41'::character varying, 'CST_50'::character varying, 'CST_51'::character varying, 'CST_60'::character varying, 'CST_70'::character varying, 'CST_90'::character varying, 'CSOSN_101'::character varying, 'CSOSN_102'::character varying, 'CSOSN_201'::character varying, 'CSOSN_202'::character varying, 'CSOSN_203'::character varying, 'CSOSN_300'::character varying, 'CSOSN_400'::character varying, 'CSOSN_500'::character varying, 'CSOSN_900'::character varying])::text[])),
+    CONSTRAINT fruteira_produto_cst_pis_check CHECK (((cst_pis)::text = ANY ((ARRAY['PIS_01'::character varying, 'PIS_02'::character varying, 'PIS_03'::character varying, 'PIS_04'::character varying, 'PIS_05'::character varying, 'PIS_06'::character varying, 'PIS_07'::character varying, 'PIS_08'::character varying, 'PIS_09'::character varying, 'PIS_49'::character varying, 'PIS_50'::character varying, 'PIS_51'::character varying, 'PIS_52'::character varying, 'PIS_53'::character varying, 'PIS_54'::character varying, 'PIS_55'::character varying, 'PIS_56'::character varying, 'PIS_60'::character varying, 'PIS_61'::character varying, 'PIS_62'::character varying, 'PIS_63'::character varying, 'PIS_64'::character varying, 'PIS_65'::character varying, 'PIS_66'::character varying, 'PIS_67'::character varying, 'PIS_70'::character varying, 'PIS_71'::character varying, 'PIS_72'::character varying, 'PIS_73'::character varying, 'PIS_74'::character varying, 'PIS_75'::character varying, 'PIS_98'::character varying, 'PIS_99'::character varying, 'COFINS_01'::character varying, 'COFINS_02'::character varying, 'COFINS_03'::character varying, 'COFINS_04'::character varying, 'COFINS_05'::character varying, 'COFINS_06'::character varying, 'COFINS_07'::character varying, 'COFINS_08'::character varying, 'COFINS_09'::character varying, 'COFINS_49'::character varying, 'COFINS_50'::character varying, 'COFINS_51'::character varying, 'COFINS_52'::character varying, 'COFINS_53'::character varying, 'COFINS_54'::character varying, 'COFINS_55'::character varying, 'COFINS_56'::character varying, 'COFINS_60'::character varying, 'COFINS_61'::character varying, 'COFINS_62'::character varying, 'COFINS_63'::character varying, 'COFINS_64'::character varying, 'COFINS_65'::character varying, 'COFINS_66'::character varying, 'COFINS_67'::character varying, 'COFINS_70'::character varying, 'COFINS_71'::character varying, 'COFINS_72'::character varying, 'COFINS_73'::character varying, 'COFINS_74'::character varying])::text[])),
+    CONSTRAINT fruteira_produto_custo_medio_check CHECK ((custo_medio >= (0)::numeric)),
+    CONSTRAINT fruteira_produto_estoque_atual_check CHECK ((estoque_atual >= (0)::numeric)),
+    CONSTRAINT fruteira_produto_preco_venda_check CHECK ((preco_venda >= (0)::numeric)),
+    CONSTRAINT fruteira_produto_tipo_check CHECK (((tipo)::text = ANY ((ARRAY['FRUTA'::character varying, 'VERDURA'::character varying, 'LEGUME'::character varying, 'SECO'::character varying, 'BEBIDA'::character varying, 'LIMPEZA'::character varying, 'HIGIENE'::character varying, 'CONGELADO'::character varying, 'RESFRIADO'::character varying, 'PAES'::character varying, 'OUTROS'::character varying])::text[]))),
+    CONSTRAINT fruteira_produto_unidade_medida_check CHECK (((unidade_medida)::text = ANY ((ARRAY['KG'::character varying, 'UN'::character varying, 'L'::character varying, 'ML'::character varying, 'G'::character varying, 'PC'::character varying, 'CX'::character varying, 'FD'::character varying, 'KT'::character varying, 'MT'::character varying, 'M2'::character varying, 'M3'::character varying])::text[])))
+);
+
+--
+-- Name: fruteira_produto fruteira_produto_codigo_barras_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fruteira_produto
+    ADD CONSTRAINT fruteira_produto_codigo_barras_key UNIQUE (codigo_barras);
+
+--
+-- Name: fruteira_produto fruteira_produto_codigo_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fruteira_produto
+    ADD CONSTRAINT fruteira_produto_codigo_key UNIQUE (codigo);
+
+--
+-- Name: fruteira_produto fruteira_produto_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fruteira_produto
+    ADD CONSTRAINT fruteira_produto_pkey PRIMARY KEY (id);
+
 -- Insert default categories
 INSERT INTO categorias (id, nome, descricao, ativo) VALUES
     ('11111111-1111-1111-1111-111111111111', 'Frutas', 'Frutas frescas e secas', true),
@@ -196,3 +272,79 @@ INSERT INTO categorias (id, nome, descricao, ativo) VALUES
     ('44444444-4444-4444-4444-444444444444', 'Bebidas', 'Bebidas em geral', true),
     ('55555555-5555-5555-5555-555555555555', 'Outros', 'Outros produtos', true)
 ON CONFLICT (id) DO NOTHING;
+
+--
+-- Name: fruteira_produto; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fruteira_produto (
+    ativo boolean NOT NULL,
+    controla_lote boolean NOT NULL,
+    controla_validade boolean NOT NULL,
+    cst_cofins character varying(2),
+    cst_icms character varying(3),
+    cst_pis character varying(2),
+    custo_medio numeric(15,4) NOT NULL,
+    custo_ultimo numeric(15,4),
+    deleted boolean NOT NULL,
+    dias_validade_alerta integer,
+    estoque_atual numeric(15,4) NOT NULL,
+    estoque_maximo numeric(15,4),
+    estoque_minimo numeric(15,4),
+    margem_desejada numeric(5,2),
+    origem_mercadoria integer,
+    permite_fracao boolean NOT NULL,
+    pesavel_balanca boolean NOT NULL,
+    peso_liquido_padrao numeric(10,4),
+    preco_atacado numeric(15,4),
+    preco_venda numeric(15,4) NOT NULL,
+    quantidade_minima_atacado integer,
+    tara_padrao numeric(10,4),
+    cest character varying(7),
+    created_at timestamp(6) without time zone NOT NULL,
+    ncm character varying(8),
+    updated_at timestamp(6) without time zone NOT NULL,
+    version bigint,
+    unidade_medida character varying(10) NOT NULL,
+    id uuid NOT NULL,
+    codigo_balanca character varying(20),
+    tipo character varying(30) NOT NULL,
+    codigo character varying(50) NOT NULL,
+    codigo_barras character varying(100),
+    nome character varying(200) NOT NULL,
+    imagem_url character varying(500),
+    descricao character varying(1000),
+    observacoes character varying(2000),
+    CONSTRAINT fruteira_produto_pkey PRIMARY KEY (id),
+    CONSTRAINT fruteira_produto_codigo_key UNIQUE (codigo),
+    CONSTRAINT fruteira_produto_codigo_barras_key UNIQUE (codigo_barras),
+    CONSTRAINT fruteira_produto_cst_cofins_check CHECK (((cst_cofins)::text = ANY ((ARRAY['PIS_01'::character varying, 'PIS_02'::character varying, 'PIS_03'::character varying, 'PIS_04'::character varying, 'PIS_05'::character varying, 'PIS_06'::character varying, 'PIS_07'::character varying, 'PIS_08'::character varying, 'PIS_09'::character varying, 'PIS_49'::character varying, 'PIS_50'::character varying, 'PIS_51'::character varying, 'PIS_52'::character varying, 'PIS_53'::character varying, 'PIS_54'::character varying, 'PIS_55'::character varying, 'PIS_56'::character varying, 'PIS_60'::character varying, 'PIS_61'::character varying, 'PIS_62'::character varying, 'PIS_63'::character varying, 'PIS_64'::character varying, 'PIS_65'::character varying, 'PIS_66'::character varying, 'PIS_67'::character varying, 'PIS_70'::character varying, 'PIS_71'::character varying, 'PIS_72'::character varying, 'PIS_73'::character varying, 'PIS_74'::character varying, 'PIS_75'::character varying, 'PIS_98'::character varying, 'PIS_99'::character varying, 'COFINS_01'::character varying, 'COFINS_02'::character varying, 'COFINS_03'::character varying, 'COFINS_04'::character varying, 'COFINS_05'::character varying, 'COFINS_06'::character varying, 'COFINS_07'::character varying, 'COFINS_08'::character varying, 'COFINS_09'::character varying, 'COFINS_49'::character varying, 'COFINS_50'::character varying, 'COFINS_51'::character varying, 'COFINS_52'::character varying, 'COFINS_53'::character varying, 'COFINS_54'::character varying, 'COFINS_55'::character varying, 'COFINS_56'::character varying, 'COFINS_60'::character varying, 'COFINS_61'::character varying, 'COFINS_62'::character varying, 'COFINS_63'::character varying, 'COFINS_64'::character varying, 'COFINS_65'::character varying, 'COFINS_66'::character varying, 'COFINS_67'::character varying, 'COFINS_70'::character varying, 'COFINS_71'::character varying, 'COFINS_72'::character varying, 'COFINS_73'::character varying, 'COFINS_74'::character varying])::text[])),
+    CONSTRAINT fruteira_produto_cst_icms_check CHECK (((cst_icms)::text = ANY ((ARRAY['CST_00'::character varying, 'CST_10'::character varying, 'CST_20'::character varying, 'CST_30'::character varying, 'CST_40'::character varying, 'CST_41'::character varying, 'CST_50'::character varying, 'CST_51'::character varying, 'CST_60'::character varying, 'CST_70'::character varying, 'CST_90'::character varying, 'CSOSN_101'::character varying, 'CSOSN_102'::character varying, 'CSOSN_201'::character varying, 'CSOSN_202'::character varying, 'CSOSN_203'::character varying, 'CSOSN_300'::character varying, 'CSOSN_400'::character varying, 'CSOSN_500'::character varying, 'CSOSN_900'::character varying])::text[])),
+    CONSTRAINT fruteira_produto_cst_pis_check CHECK (((cst_pis)::text = ANY ((ARRAY['PIS_01'::character varying, 'PIS_02'::character varying, 'PIS_03'::character varying, 'PIS_04'::character varying, 'PIS_05'::character varying, 'PIS_06'::character varying, 'PIS_07'::character varying, 'PIS_08'::character varying, 'PIS_09'::character varying, 'PIS_49'::character varying, 'PIS_50'::character varying, 'PIS_51'::character varying, 'PIS_52'::character varying, 'PIS_53'::character varying, 'PIS_54'::character varying, 'PIS_55'::character varying, 'PIS_56'::character varying, 'PIS_60'::character varying, 'PIS_61'::character varying, 'PIS_62'::character varying, 'PIS_63'::character varying, 'PIS_64'::character varying, 'PIS_65'::character varying, 'PIS_66'::character varying, 'PIS_67'::character varying, 'PIS_70'::character varying, 'PIS_71'::character varying, 'PIS_72'::character varying, 'PIS_73'::character varying, 'PIS_74'::character varying, 'PIS_75'::character varying, 'PIS_98'::character varying, 'PIS_99'::character varying, 'COFINS_01'::character varying, 'COFINS_02'::character varying, 'COFINS_03'::character varying, 'COFINS_04'::character varying, 'COFINS_05'::character varying, 'COFINS_06'::character varying, 'COFINS_07'::character varying, 'COFINS_08'::character varying, 'COFINS_09'::character varying, 'COFINS_49'::character varying, 'COFINS_50'::character varying, 'COFINS_51'::character varying, 'COFINS_52'::character varying, 'COFINS_53'::character varying, 'COFINS_54'::character varying, 'COFINS_55'::character varying, 'COFINS_56'::character varying, 'COFINS_60'::character varying, 'COFINS_61'::character varying, 'COFINS_62'::character varying, 'COFINS_63'::character varying, 'COFINS_64'::character varying, 'COFINS_65'::character varying, 'COFINS_66'::character varying, 'COFINS_67'::character varying, 'COFINS_70'::character varying, 'COFINS_71'::character varying, 'COFINS_72'::character varying, 'COFINS_73'::character varying, 'COFINS_74'::character varying])::text[])),
+    CONSTRAINT fruteira_produto_custo_medio_check CHECK ((custo_medio >= (0)::numeric)),
+    CONSTRAINT fruteira_produto_estoque_atual_check CHECK ((estoque_atual >= (0)::numeric)),
+    CONSTRAINT fruteira_produto_preco_venda_check CHECK ((preco_venda >= (0)::numeric)),
+    CONSTRAINT fruteira_produto_tipo_check CHECK (((tipo)::text = ANY ((ARRAY['FRUTA'::character varying, 'VERDURA'::character varying, 'LEGUME'::character varying, 'SECO'::character varying, 'BEBIDA'::character varying, 'LIMPEZA'::character varying, 'HIGIENE'::character varying, 'CONGELADO'::character varying, 'RESFRIADO'::character varying, 'PAES'::character varying, 'OUTROS'::character varying])::text[]))),
+    CONSTRAINT fruteira_produto_unidade_medida_check CHECK (((unidade_medida)::text = ANY ((ARRAY['KG'::character varying, 'UN'::character varying, 'L'::character varying, 'ML'::character varying, 'G'::character varying, 'PC'::character varying, 'CX'::character varying, 'FD'::character varying, 'KT'::character varying, 'MT'::character varying, 'M2'::character varying, 'M3'::character varying])::text[])))
+);
+
+--
+-- Name: fruteira_produto fruteira_produto_codigo_barras_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fruteira_produto
+    ADD CONSTRAINT fruteira_produto_codigo_barras_key UNIQUE (codigo_barras);
+
+--
+-- Name: fruteira_produto fruteira_produto_codigo_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fruteira_produto
+    ADD CONSTRAINT fruteira_produto_codigo_key UNIQUE (codigo);
+
+--
+-- Name: fruteira_produto fruteira_produto_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fruteira_produto
+    ADD CONSTRAINT fruteira_produto_pkey PRIMARY KEY (id);

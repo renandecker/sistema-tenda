@@ -2,7 +2,11 @@
 chcp 65001 >nul
 rem Gera pasta producao\ com Sistema Tenda pronto para rodar em servidor
 rem Uso: gerar-producao.bat [--zip] [--sem-jars] [--com-testes]
-
+rem 
+rem Credenciais do Banco de Dados (padrão: sistematenda/sistematenda/sistematenda)
+rem Caso seu PostgreSQL use senha diferente, altere antes do setlocal:
+rem   set DB_PASSWORD=sua_senha_aqui
+rem 
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
@@ -13,6 +17,7 @@ set TESTES=-DskipTests
 set DB_PORT=5432
 set DB_NAME=sistematenda
 set DB_USER=sistematenda
+set DB_PASSWORD=postgres
 set COMPOSE_PROD=docker-compose.prod.yml
 
 :args
@@ -183,21 +188,33 @@ exit /b 0
 
 :ensure_database
 where psql >nul 2>&1
-if errorlevel 1 goto :eof
-set "PGPASSWORD=%DB_PASSWORD%"
-set "DB_EXISTS="
-for /f "delims=" %%r in ('psql -h localhost -p %DB_PORT% -U %DB_USER% -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='%DB_NAME%'" 2^>nul') do set "DB_EXISTS=%%r"
-if not "!DB_EXISTS!"=="" (
-    echo       Banco %DB_NAME% ja existe em localhost:%DB_PORT%.
+if errorlevel 1 (
+    echo       [AVISO] O utilitario psql nao encontrado. Pulando verificacao de banco.
+    echo               O banco %DB_NAME% sera usado conforme configuracao existente.
     set "PGPASSWORD="
     goto :eof
 )
-psql -h localhost -p %DB_PORT% -U %DB_USER% -d postgres -c "CREATE DATABASE %DB_NAME%" >nul 2>&1
+set "PGPASSWORD=%DB_PASSWORD%"
+set "DB_EXISTS="
+
+rem Garantir que o usuario/role tambem exista antes de tentar criar o banco
+psql -h localhost -p %DB_PORT% -U postgres -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname='%DB_USER%') THEN CREATE ROLE %DB_USER% WITH LOGIN PASSWORD '%DB_PASSWORD%'; END IF; END \$\$;" >nul 2>&1
+
+for /f "delims=" %%r in ('psql -h localhost -p %DB_PORT% -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='%DB_NAME%'" 2^>nul') do set "DB_EXISTS=%%r"
+if not "!DB_EXISTS!"=="" (
+    echo       Banco %DB_NAME% ja existe em localhost:%DB_PORT%.
+    psql -h localhost -p %DB_PORT% -U postgres -d postgres -c "ALTER DATABASE %DB_NAME% OWNER TO %DB_USER%;" >nul 2>&1
+    set "PGPASSWORD="
+    goto :eof
+)
+echo       Tentando criar banco %DB_NAME% em localhost:%DB_PORT%...
+psql -h localhost -p %DB_PORT% -U postgres -d postgres -c "CREATE DATABASE %DB_NAME% OWNER %DB_USER%" >nul 2>&1
 if errorlevel 1 (
-    echo       [AVISO] Nao foi possivel verificar/criar o banco %DB_NAME% via psql.
+    echo       [AVISO] Nao foi possivel criar o banco %DB_NAME% via psql.
     echo               Verifique manualmente em localhost:%DB_PORT% ^(usuario: %DB_USER%^).
+    echo               O banco sera usado conforme configuracao existente.
 ) else (
-    echo       Banco %DB_NAME% criado em localhost:%DB_PORT%.
+    echo       Banco %DB_NAME% criado com sucesso em localhost:%DB_PORT%.
 )
 set "PGPASSWORD="
 goto :eof

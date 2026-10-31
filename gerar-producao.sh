@@ -10,8 +10,12 @@ ZIP=0
 JARS=1
 TESTES="-DskipTests"
 DB_PORT="5432"
+rem Nome do banco de dados (padrão: sistematenda)
 DB_NAME="sistematenda"
+rem Usuário do banco de dados (padrão: sistematenda)
 DB_USER="sistematenda"
+rem Senha do banco de dados (padrão: sistematenda)
+rem Se seu PostgreSQL usa outra senha, altere a linha abaixo
 DB_PASSWORD="sistematenda"
 COMPOSE_PROD="docker-compose.prod.yml"
 

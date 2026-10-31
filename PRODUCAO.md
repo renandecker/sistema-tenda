@@ -181,3 +181,14 @@ producao/
 ---
 
 **Dica:** Sempre teste o pacote gerado em um ambiente similar ao servidor antes de colocar em produção.
+
+-- 1. Criar o usuário (role) com a senha
+CREATE ROLE sistematenda WITH LOGIN PASSWORD 'sistematenda';
+
+-- 2. Criar o banco de dados pertencente a esse usuário
+CREATE DATABASE sistematenda OWNER sistematenda;
+
+-- 3. Conceder privilégios
+GRANT ALL PRIVILEGES ON DATABASE sistematenda TO sistematenda;
+
+
