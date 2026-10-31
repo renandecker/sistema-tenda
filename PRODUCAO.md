@@ -94,13 +94,15 @@ gerar-producao.bat --zip --com-testes
 
 O script irá:
 1. Verificar pré-requisitos (`java`, `node`, `npm` e `mvn`)
-2. Instalar dependências do frontend se `frontend/node_modules` não existir e rodar `npm run build`
-3. Validar `frontend/dist/index.html` e limpar/copiar para `backend/pdv/src/main/resources/META-INF/resources/`
-4. Compilar backend com `mvn clean package -DskipTests` (ou com testes)
-5. Montar `producao/app/` com `quarkus-run.jar` e dependências
-6. Copiar arquivos modelo (`start.bat`, `start.sh`, `LEIA-ME.txt`, `config/`) para `producao/`
-7. Copiar `application.prod.properties` -> `producao/config/application.properties`
-8. Copiar `.env`, `.env.example`, `certificado.pfx` se existirem
+2. Garantir o PostgreSQL de produção em `localhost:5432` (cria/sube o container `sistematenda-db-prod` via `docker-compose.prod.yml`; banco/usuário/senha = `sistematenda`)
+3. Limpar o pacote anterior
+4. Instalar dependências do frontend se `frontend/node_modules` não existir e rodar `npm run build`
+5. Validar `frontend/dist/index.html` e limpar/copiar para `backend/pdv/src/main/resources/META-INF/resources/`
+6. Compilar backend com `mvn clean package -DskipTests` (ou com testes)
+7. Montar `producao/` com `quarkus-run.jar`, arquivos modelo, `application.properties`, `.env` e `certificado.pfx`
+8. Finalizar (e gerar ZIP se `--zip`)
+
+> O banco de desenvolvimento continua usando o `docker-compose.yml` na porta `5433`. O `docker-compose.prod.yml` usa um projeto Docker separado (`sistematenda-prod`) e a porta padrão `5432`.
 
 ## 4) Como levantar o sistema em produção
 
@@ -169,6 +171,7 @@ producao/
 ## 7) Arquivos relevantes no projeto
 
 - `gerar-producao.bat` / `gerar-producao.sh` - **Recomendado** para gerar o pacote
+- `docker-compose.prod.yml` - PostgreSQL de produção na porta `5432` (container `sistematenda-db-prod`)
 - `producao-modelo/` - Modelo de arquivos copiados para o pacote
 - `prod.bat` / `prod.sh` - Scripts antigos (mantidos para compatibilidade)
 - `run.bat` / `run.sh` - Execução em modo desenvolvimento
