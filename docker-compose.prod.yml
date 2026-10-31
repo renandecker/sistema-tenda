@@ -1,0 +1,26 @@
+# PostgreSQL de producao - porta padrao 5432
+# Usado pelos scripts prod.bat/prod.sh e gerar-producao.bat/gerar-producao.sh
+# Projeto Docker separado (sistematenda-prod) para nao interferir no ambiente
+# de desenvolvimento definido em docker-compose.yml (porta 5433).
+services:
+  db:
+    image: postgres:10
+    container_name: sistematenda-db-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sistematenda
+      POSTGRES_PASSWORD: sistematenda
+      POSTGRES_DB: sistematenda
+    ports:
+      - "5432:5432"
+    volumes:
+      - sistematenda-pgdata-prod:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sistematenda -d sistematenda"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  sistematenda-pgdata-prod:

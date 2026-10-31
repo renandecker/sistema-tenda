@@ -28,7 +28,7 @@ port_open(){
   if command -v nc >/dev/null 2>&1; then
     nc -z "$1" "$2" >/dev/null 2>&1
   else
-    (exec 3<>"/dev/tcp/$1/$2") >/dev/null 2>&1
+    (exec 3<>/dev/tcp/"$1"/$2) >/dev/null 2>&1
   fi
 }
 
@@ -159,7 +159,7 @@ fi
 [ -f ".env.example" ] && cp ".env.example" "$DEST/.env.example"
 [ -f "certificado.pfx" ] && cp "certificado.pfx" "$DEST/"
 
-chmod +x "$DEST/start.sh" 2>/dev/null || true
+chmod +x "$DEST"/start.sh 2>/dev/null || true
 
 echo "      Pacote montado."
 echo
