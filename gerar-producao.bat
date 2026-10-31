@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-rem Gera pasta producao\ com Sistema Tenda pronto para rodar em servidor (apenas Java 17+ e PostgreSQL)
+rem Gera pasta producao\ com Sistema Tenda pronto para rodar em servidor
 rem Uso: gerar-producao.bat [--zip] [--sem-jars] [--com-testes]
 
 setlocal enabledelayedexpansion
@@ -13,7 +13,6 @@ set TESTES=-DskipTests
 set DB_PORT=5432
 set DB_NAME=sistematenda
 set DB_USER=sistematenda
-set DB_PASSWORD=sistematenda
 set COMPOSE_PROD=docker-compose.prod.yml
 
 :args
@@ -107,11 +106,7 @@ if not exist node_modules (
   echo       Instalando dependencias...
   call npm install --silent
 )
-call npm run build --silent || (
-  popd
-  echo [ERRO] Falha no build do frontend
-  exit /b 1
-)
+call npm run build --silent || (popd & echo [ERRO] Falha no build do front & exit /b 1)
 popd
 if not exist "frontend\dist\index.html" (
   echo [ERRO] frontend\dist\index.html nao gerado
@@ -128,14 +123,10 @@ xcopy /e /i /q frontend\dist\* "%RESOURCES%\" >nul
 echo       Arquivos estaticos copiados.
 echo.
 
+echo [6/8] Compilando Backend (Maven)...
 if "%JARS%"=="1" (
-  echo [6/8] Compilando Backend (Maven)...
   pushd backend
-  call mvn -q clean package %TESTES% || (
-    popd
-    echo [ERRO] Falha no build do backend
-    exit /b 1
-  )
+  call mvn -q clean package %TESTES%
   popd
   echo       Backend compilado com sucesso.
   echo.
