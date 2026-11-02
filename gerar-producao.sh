@@ -227,6 +227,21 @@ fi
 
 [ -f ".env" ] && cp ".env" "$DEST/.env"
 [ -f ".env.example" ] && cp ".env.example" "$DEST/.env.example"
+# Add TEF agent configuration to .env if not already present
+if [ -f "$DEST/.env" ]; then
+  # Check if TEF_PROVIDER is already in .env, if not add default
+  if ! grep -q '^TEF_PROVIDER=' "$DEST/.env" 2>/dev/null; then
+    cat >> "$DEST/.env" << 'EOF'
+
+# TEF Agent Configuration
+# Provider: SITEF|CAPPTA|PAYGO|STONE|LINX|CIELO
+# Use STONE for Stone machines, CIELO for Cielo machines
+TEF_PROVIDER=STONE  # Provider do TEF (SITEF|CAPPTA|PAYGO|STONE|LINX|CIELO)
+TEF_CODIGO_CREDENCIADORA=123456  # Código da credenciadora do provedor escolhido
+TEF_TERMINAL_ID=001  # ID do terminal junto ao provedor
+EOF
+  fi
+fi
 [ -f "certificado.pfx" ] && cp "certificado.pfx" "$DEST/"
 
 chmod +x "$DEST"/start.sh 2>/dev/null || true

@@ -165,6 +165,16 @@ if exist ".env.example" (
   copy /y ".env.example" "%DEST%\.env.example" >nul
 )
 
+rem Adicionar configuracao do TEF Agent no .env se nao existir
+if exist "%DEST%\.env" (
+  findstr /i "TEF_PROVIDER=" "%DEST%\.env" >nul
+  if errorlevel 1 (
+    echo TEF_PROVIDER=STONE >> "%DEST%\.env"
+    echo TEF_CODIGO_CREDENCIADORA=123456 >> "%DEST%\.env"
+    echo TEF_TERMINAL_ID=001 >> "%DEST%\.env"
+  )
+)
+
 if exist "certificado.pfx" (
   copy /y "certificado.pfx" "%DEST%\" >nul
 )
