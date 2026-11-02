@@ -4,7 +4,9 @@ SISTEMA TENDA - PACOTE DE PRODUÇÃO
 
 REQUISITOS PARA RODAR NO SERVIDOR:
   - Java 17 ou superior
-  - PostgreSQL
+  - PostgreSQL 16 (recomendado)
+    O Flyway 10, usado pelo sistema, NÃO suporta PostgreSQL 10.
+  - psql no PATH (opcional, apenas para criar o banco automaticamente)
 
 NÃO SÃO NECESSÁRIOS NO SERVIDOR:
   - Node.js
@@ -17,20 +19,46 @@ ESTRUTURA DA PASTA:
   logs/                   -> Diretório para logs
   start.bat               -> Script para iniciar no Windows
   start.sh                -> Script para iniciar no Linux/Mac
+  ensure-db.ps1           -> Auxiliar do start.bat (cria o banco se necessário)
   .env                    -> Variáveis de ambiente (edite antes de iniciar)
   .env.example            -> Exemplo de variáveis
   certificado.pfx         -> Certificado (opcional)
   LEIA-ME.txt             -> Este arquivo
 
+O QUE ACONTECE AO INICIAR:
+  1. O script carrega automaticamente o arquivo .env.
+  2. Se o psql estiver disponível, verifica/cria o usuário e o banco PostgreSQL
+     usando DB_ADMIN_USER / DB_ADMIN_PASSWORD (quando informados).
+  3. O Flyway aplica todas as migrações automaticamente: cria/atualiza as
+     tabelas, índices e os dados iniciais (usuário admin, perfis e categorias).
+     Funciona tanto em banco vazio quanto em banco já existente.
+  4. A aplicação sobe em http://localhost:8080 (ou conforme configurado).
+
+CONFIGURAÇÃO (antes de iniciar):
+  1. Edite .env e ajuste os dados do banco:
+       QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/sistematenda
+       QUARKUS_DATASOURCE_USERNAME=sistematenda
+       QUARKUS_DATASOURCE_PASSWORD=sua_senha
+       DB_ADMIN_USER=postgres
+       DB_ADMIN_PASSWORD=senha_do_postgres
+  2. Edite config/application.properties se precisar (porta, integrações etc).
+  3. Inicie com start.bat ou start.sh.
+
+  Se o usuário e o banco já existirem e você não quiser que o script tente
+  criar nada, deixe DB_ADMIN_PASSWORD vazio. O Flyway ainda cria as tabelas.
+
+  Primeiro acesso: admin@sistematenda.com / 123456
+  Troque a senha após o primeiro login.
+
 COMANDOS PARA INICIAR:
 
-  Windows:  start.bat
+  Windows:   start.bat
   Linux/Mac: chmod +x start.sh && ./start.sh
 
-CONFIGURAÇÃO:
-  1. Edite .env com os dados do PostgreSQL
-  2. Edite config/application.properties se necessário
-  3. Certifique-se que o banco PostgreSQL está acessível
-  4. Inicie com start.bat ou start.sh
-
 ACESSO: http://localhost:8080 (ou conforme quarkus.http.port)
+
+OBSERVAÇÃO SOBRE BANCO ANTIGO (PostgreSQL 10):
+  Um data directory criado com PostgreSQL 10 NÃO é compatível com o
+  PostgreSQL 16. Faça backup com pg_dump na versão antiga e restaure na nova
+  (pg_restore ou psql). Depois inicie o sistema: o Flyway completa o schema
+  e os dados que estiverem faltando.

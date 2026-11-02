@@ -22,7 +22,9 @@ Este guia explica como gerar a pasta `producao/` pronta para instalar em um serv
 | Ferramenta | Versão | Observação |
 |---|---|---|
 | [Java JRE/JDK](https://adoptium.net/) | 17 ou superior | Único requisito para rodar a aplicação |
-| [PostgreSQL](https://www.postgresql.org/) | 14+ | Banco de dados |
+| [PostgreSQL](https://www.postgresql.org/) | 16+ | Banco de dados. O Flyway 10 **não suporta PostgreSQL 10**. |
+
+> O banco e as tabelas **não precisam ser criados manualmente**: ao iniciar, os scripts carregam o `.env`, criam o usuário/banco quando possível e o Flyway aplica todas as migrações. Veja a seção 2.1.1.
 
 > O frontend React é compilado com Vite e embutido no backend via `META-INF/resources`. Após gerado, **não existe servidor separado para o frontend**. Tudo roda pelo único arquivo `app/quarkus-run.jar`.
 
@@ -34,14 +36,39 @@ Antes de gerar o pacote, ajuste os arquivos na raiz da máquina de desenvolvimen
 Copie `.env.example` para `.env` na raiz e preencha com os valores do seu ambiente:
 
 ```properties
-# Exemplo básico
+# Aplicação
 QUARKUS_HTTP_PORT=8080
-QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/sistema_tenda
-QUARKUS_DATASOURCE_USERNAME=seu_usuario
+
+# Banco de dados usado pela aplicação
+QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/sistematenda
+QUARKUS_DATASOURCE_USERNAME=sistematenda
 QUARKUS_DATASOURCE_PASSWORD=sua_senha
+
+# Credenciais administrativas: usadas apenas para criar usuário/banco se faltarem
+DB_ADMIN_USER=postgres
+DB_ADMIN_PASSWORD=sua_senha_do_postgres
 ```
 
-O script copia `.env` para a pasta `producao/` caso exista.
+O script copia `.env` para a pasta `producao/`. No servidor, edite `producao/.env`
+com os dados reais. Se `DB_ADMIN_PASSWORD` ficar vazio, os scripts não tentam
+criar o banco (ele precisa existir e ser acessível com as credenciais acima).
+
+### 2.1.1 Criação automática do banco e do schema
+Ao iniciar, `start.bat` e `start.sh` carregam o `.env` e, se o `psql` estiver
+disponível, criam o usuário e o banco quando ainda não existirem. Em seguida o
+**Flyway** aplica todas as migrações e cria/atualiza tabelas, índices e os dados
+iniciais (usuário admin, perfis e categorias).
+
+O processo funciona tanto em **banco vazio** quanto em **banco já existente**:
+
+- Banco vazio: o Flyway executa as migrações `V1` até `V8`.
+- Banco já existente sem histórico do Flyway: o Flyway cria o histórico na
+  versão 7 e executa a `V8`, que garante o schema completo de forma idempotente.
+- Banco já migrado: o Flyway apenas valida e aplica migrações pendentes.
+
+Se o `psql` não estiver no `PATH`, o script apenas avisa. Nesse caso, crie o
+usuário e o banco manualmente (veja a seção 8) e inicie o sistema normalmente:
+o Flyway ainda cria todas as tabelas.
 
 ### 2.2 Configuração Quarkus (produção)
 Revise `backend/pdv/src/main/resources/application.prod.properties`.
@@ -49,6 +76,8 @@ Revise `backend/pdv/src/main/resources/application.prod.properties`.
 Pontos importantes:
 - Configurações de banco de dados corretas
 - Porta HTTP
+- `quarkus.hibernate-orm.database.generation=none` (o schema é controlado pelo
+  Flyway; **não** use `update`)
 - Caminhos para certificados (`.pfx`) caso utilize TEF/HTTPS
 - Configurações de CORS
 - Parâmetros de integrações (TEF, PIX) - veja `TEF_INTEGRATION_README.md` e `PIX_INTEGRATION_README.md`
@@ -94,13 +123,17 @@ gerar-producao.bat --zip --com-testes
 
 O script irá:
 1. Verificar pré-requisitos (`java`, `node`, `npm` e `mvn`)
-2. Garantir o PostgreSQL de produção em `localhost:5432` (cria/sube o container `sistematenda-db-prod` via `docker-compose.prod.yml`; banco/usuário/senha = `sistematenda`)
+2. Garantir o PostgreSQL de produção em `localhost:5432` (cria/sube o container `sistematenda-db-prod` via `docker-compose.prod.yml`; banco/usuário/senha = `sistematenda`), criando o usuário/banco e ajustando o schema `public` quando possível
 3. Limpar o pacote anterior
 4. Instalar dependências do frontend se `frontend/node_modules` não existir e rodar `npm run build`
 5. Validar `frontend/dist/index.html` e limpar/copiar para `backend/pdv/src/main/resources/META-INF/resources/`
 6. Compilar backend com `mvn clean package -DskipTests` (ou com testes)
 7. Montar `producao/` com `quarkus-run.jar`, arquivos modelo, `application.properties`, `.env` e `certificado.pfx`
 8. Finalizar (e gerar ZIP se `--zip`)
+
+> As migrações do Flyway **não** rodam durante a geração do pacote. Elas são
+> aplicadas na primeira inicialização da aplicação no servidor (ou em qualquer
+> inicialização seguinte, para migrações pendentes).
 
 > O banco de desenvolvimento continua usando o `docker-compose.yml` na porta `5433`. O `docker-compose.prod.yml` usa um projeto Docker separado (`sistematenda-prod`) e a porta padrão `5432`.
 
@@ -112,9 +145,20 @@ No servidor, verifique se tem Java e PostgreSQL instalados e configurados.
 
 ### Configurar antes de iniciar
 1. Edite `producao/.env` com as credenciais corretas do PostgreSQL
-2. Edite `producao/config/application.properties` conforme necessário (porta, datasource, certificados, integrações)
-3. Garanta que o banco PostgreSQL esteja criado e acessível
+   (`QUARKUS_DATASOURCE_*`). Se quiser que o script crie o usuário/banco,
+   informe também `DB_ADMIN_USER` e `DB_ADMIN_PASSWORD`.
+2. Edite `producao/config/application.properties` conforme necessário (porta, certificados, integrações)
+3. O banco **não precisa existir**: os scripts criam o usuário/banco quando o
+   `psql` está disponível. Se preferir, crie manualmente antes (seção 8).
 4. Se usar certificado TEF/HTTPS, coloque o `.pfx` no local indicado pela configuração
+
+### O que acontece na primeira inicialização
+1. O script carrega o `.env`.
+2. Com `psql` disponível, cria o usuário/banco se necessário e ajusta o schema `public`.
+3. O Flyway aplica todas as migrações (tabelas, índices, dados iniciais).
+4. A aplicação começa a atender em `http://IP_DO_SERVIDOR:PORTA`.
+
+Primeiro acesso: **admin@sistematenda.com** / **123456** (troque a senha após o login).
 
 ### Windows
 ```bat
@@ -129,7 +173,7 @@ chmod +x start.sh
 ./start.sh
 ```
 
-A aplicação irá iniciar com:
+Por baixo dos panos, os scripts executam:
 ```bash
 java -jar app/quarkus-run.jar
 ```
@@ -147,6 +191,10 @@ Acesse no navegador: `http://IP_DO_SERVIDOR:PORTA` (conforme `quarkus.http.port`
 | Falha no build do backend | Erros Maven/Java | Veja logs do Maven. Use `--com-testes` para identificar falhas de teste |
 | `frontend/dist/index.html` não encontrado | Build não gerou | Verifique se `npm run build` finalizou sem erros |
 | Aplicação não conecta ao PostgreSQL | `.env`/`application.properties` incorretos | Verifique URL, usuário, senha e se o banco está acessível |
+| `psql não encontrado` / banco não criado | Cliente do PostgreSQL fora do PATH | Crie o banco manualmente (seção 8) ou adicione o `psql` ao PATH. O Flyway ainda cria as tabelas |
+| Senha do admin do PostgreSQL inválida | `DB_ADMIN_PASSWORD` incorreta | Ajuste no `.env` ou crie usuário/banco manualmente (seção 8) |
+| `Unsupported Database: PostgreSQL 10` | PostgreSQL antigo | Atualize para PostgreSQL 16 (o Flyway 10 não suporta PG10) |
+| `Flyway ... failed migration` | Migração anterior falhou | Veja o erro no log, corrija a causa e limpe a entrada com `flyway repair`/recrie o histórico |
 | Aplicação não sobe no servidor | Java ausente ou porta em uso | Verifique `java -version` e se a porta está livre |
 | Arquivos estáticos não carregam | Frontend não embutido corretamente | Refaça o build garantindo cópia para `META-INF/resources/` |
 
@@ -162,6 +210,7 @@ producao/
 ├── logs/                       # Logs (criada na primeira execução)
 ├── start.bat
 ├── start.sh
+├── ensure-db.ps1               # Auxiliar do start.bat (cria o banco se necessário)
 ├── LEIA-ME.txt
 ├── .env                        # Variáveis de ambiente (se copiado)
 ├── .env.example
@@ -182,13 +231,26 @@ producao/
 
 **Dica:** Sempre teste o pacote gerado em um ambiente similar ao servidor antes de colocar em produção.
 
+## 8) Criação manual do banco (opcional)
+
+Se o `psql` não estiver disponível no servidor (ou você preferir não usar as
+credenciais administrativas no `.env`), crie o usuário e o banco manualmente.
+Use o `psql` ou o pgAdmin conectado como administrador (`postgres`):
+
+```sql
 -- 1. Criar o usuário (role) com a senha
 CREATE ROLE sistematenda WITH LOGIN PASSWORD 'sistematenda';
 
 -- 2. Criar o banco de dados pertencente a esse usuário
 CREATE DATABASE sistematenda OWNER sistematenda;
 
--- 3. Conceder privilégios
-GRANT ALL PRIVILEGES ON DATABASE sistematenda TO sistematenda;
+-- 3. Garantir que o usuário possa criar tabelas no schema public
+\c sistematenda
+GRANT ALL ON SCHEMA public TO sistematenda;
+ALTER SCHEMA public OWNER TO sistematenda;
+```
+
+Depois inicie o sistema normalmente. O Flyway cria todas as tabelas, índices e
+os dados iniciais na primeira execução. Não é necessário importar nenhum dump.
 
 

@@ -10,13 +10,16 @@ ZIP=0
 JARS=1
 TESTES="-DskipTests"
 DB_PORT="5432"
-rem Nome do banco de dados (padrão: sistematenda)
+# Nome do banco de dados (padrão: sistematenda)
 DB_NAME="sistematenda"
-rem Usuário do banco de dados (padrão: sistematenda)
+# Usuário do banco de dados (padrão: sistematenda)
 DB_USER="sistematenda"
-rem Senha do banco de dados (padrão: sistematenda)
-rem Se seu PostgreSQL usa outra senha, altere a linha abaixo
+# Senha do banco de dados (padrão: sistematenda)
+# Se seu PostgreSQL usa outra senha, altere a linha abaixo
 DB_PASSWORD="sistematenda"
+# Credenciais administrativas usadas apenas para criar o usuario/banco se necessario
+DB_ADMIN_USER="postgres"
+DB_ADMIN_PASSWORD="sistematenda"
 COMPOSE_PROD="docker-compose.prod.yml"
 
 for a in "$@"; do
@@ -38,18 +41,81 @@ port_open(){
 
 ensure_database(){
   if ! command -v psql >/dev/null 2>&1; then
+    echo "      [AVISO] psql nao encontrado. Pulando verificacao de banco."
+    echo "              O banco '$DB_NAME' sera usado conforme configuracao existente."
     return 0
   fi
-  if PGPASSWORD="$DB_PASSWORD" psql -h localhost -p "$DB_PORT" -U "$DB_USER" -d postgres -tAc \
-      "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null | grep -q 1; then
-    echo "      Banco '$DB_NAME' já existe em localhost:${DB_PORT}."
-  elif PGPASSWORD="$DB_PASSWORD" psql -h localhost -p "$DB_PORT" -U "$DB_USER" -d postgres -c \
-      "CREATE DATABASE \"$DB_NAME\"" >/dev/null 2>&1; then
+
+  local admin_user="$DB_ADMIN_USER"
+  local admin_pass="$DB_ADMIN_PASSWORD"
+
+  export PGPASSWORD="$admin_pass"
+  export PGCONNECT_TIMEOUT=5
+
+  if ! psql -w -h localhost -p "$DB_PORT" -U "$admin_user" -d postgres -tAc 'SELECT 1' >/dev/null 2>&1; then
+    # No Docker Compose o superusuario costuma ser o proprio usuario da aplicacao.
+    if [ "$DB_USER" != "$admin_user" ] && \
+       PGPASSWORD="$DB_PASSWORD" psql -w -h localhost -p "$DB_PORT" -U "$DB_USER" -d postgres -tAc 'SELECT 1' >/dev/null 2>&1; then
+      admin_user="$DB_USER"
+      admin_pass="$DB_PASSWORD"
+      export PGPASSWORD="$admin_pass"
+      echo "      Usando o usuario da aplicacao '$DB_USER' como administrador."
+    else
+      echo "      [AVISO] Nao foi possivel conectar como administrador '$admin_user' em localhost:${DB_PORT}."
+      echo "              Ajuste DB_ADMIN_USER/DB_ADMIN_PASSWORD ou crie o banco manualmente."
+      unset PGPASSWORD PGCONNECT_TIMEOUT
+      return 0
+    fi
+  fi
+
+  # Garante o usuario/role da aplicacao
+  local role_exists
+  role_exists=$(psql -w -h localhost -p "$DB_PORT" -U "$admin_user" -d postgres -tAc \
+    "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" 2>/dev/null || true)
+  if [ "$(printf '%s' "$role_exists" | tr -d '[:space:]')" != "1" ]; then
+    local escaped_pass
+    escaped_pass=$(printf '%s' "$DB_PASSWORD" | sed "s/'/''/g")
+    if psql -w -h localhost -p "$DB_PORT" -U "$admin_user" -d postgres -v ON_ERROR_STOP=1 >/dev/null 2>&1 <<SQL
+CREATE ROLE "$DB_USER" WITH LOGIN PASSWORD '$escaped_pass';
+SQL
+    then
+      echo "      Usuario '$DB_USER' criado em localhost:${DB_PORT}."
+    else
+      echo "      [AVISO] Nao foi possivel criar o usuario '$DB_USER'."
+      unset PGPASSWORD PGCONNECT_TIMEOUT
+      return 0
+    fi
+  fi
+
+  # Garante o banco de dados
+  local db_exists
+  db_exists=$(psql -w -h localhost -p "$DB_PORT" -U "$admin_user" -d postgres -tAc \
+    "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null || true)
+  if [ "$(printf '%s' "$db_exists" | tr -d '[:space:]')" = "1" ]; then
+    echo "      Banco '$DB_NAME' ja existe em localhost:${DB_PORT}."
+  elif psql -w -h localhost -p "$DB_PORT" -U "$admin_user" -d postgres -v ON_ERROR_STOP=1 >/dev/null 2>&1 <<SQL
+CREATE DATABASE "$DB_NAME" OWNER "$DB_USER";
+SQL
+  then
     echo "      Banco '$DB_NAME' criado em localhost:${DB_PORT}."
   else
-    echo "      [AVISO] Não foi possível verificar/criar o banco '$DB_NAME' via psql."
-    echo "              Verifique manualmente em localhost:${DB_PORT} (usuário: ${DB_USER})."
+    echo "      [AVISO] Nao foi possivel criar o banco '$DB_NAME' via psql."
+    echo "              Verifique manualmente em localhost:${DB_PORT} (usuario: ${DB_USER})."
+    unset PGPASSWORD PGCONNECT_TIMEOUT
+    return 0
   fi
+
+  # Garante que o usuario da aplicacao possa criar tabelas no schema public
+  psql -w -h localhost -p "$DB_PORT" -U "$admin_user" -d postgres -v ON_ERROR_STOP=1 >/dev/null 2>&1 <<SQL || true
+ALTER DATABASE "$DB_NAME" OWNER TO "$DB_USER";
+GRANT ALL PRIVILEGES ON DATABASE "$DB_NAME" TO "$DB_USER";
+SQL
+  psql -w -h localhost -p "$DB_PORT" -U "$admin_user" -d "$DB_NAME" -v ON_ERROR_STOP=1 >/dev/null 2>&1 <<SQL || true
+GRANT ALL ON SCHEMA public TO "$DB_USER";
+ALTER SCHEMA public OWNER TO "$DB_USER";
+SQL
+
+  unset PGPASSWORD PGCONNECT_TIMEOUT
 }
 
 echo "=================================================="

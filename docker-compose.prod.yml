@@ -4,7 +4,9 @@
 # de desenvolvimento definido em docker-compose.yml (porta 5433).
 services:
   db:
-    image: postgres:10
+    # O Flyway 10 (usado pelo Quarkus 3.12) nao suporta PostgreSQL 10.
+    # Use PostgreSQL 16 para desenvolvimento e producao.
+    image: postgres:16
     container_name: sistematenda-db-prod
     restart: unless-stopped
     environment:
@@ -15,7 +17,6 @@ services:
       - "5432:5432"
     volumes:
       - sistematenda-pgdata-prod:/var/lib/postgresql/data
-      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sistematenda -d sistematenda"]
       interval: 5s
