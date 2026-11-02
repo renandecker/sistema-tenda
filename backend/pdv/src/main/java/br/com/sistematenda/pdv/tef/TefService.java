@@ -46,6 +46,16 @@ public class TefService {
                         .orElse("http://localhost:8080"));
     }
 
+    /**
+     * URL efetiva do agente TEF local (ou via ngrok).
+     *
+     * <p>Usada também pelos testes de produção (TEF e impressora), para que
+     * todos os componentes conversem com o mesmo agente configurado.</p>
+     */
+    public String getAgentUrl() {
+        return getEffectiveTefAgentUrl();
+    }
+
     public TefTransacaoResponse iniciarTransacao(TefIniciarTransacaoRequest request) {
         try {
             String json = objectMapper.writeValueAsString(request);

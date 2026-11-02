@@ -110,6 +110,38 @@ public class OpenFinancePixProvider implements PixProviderService {
         }
     }
 
+    private synchronized void initClientBancoDoBrasil(PixConfig.BancoDoBrasilConfig bbConfig) {
+        if (client != null) return;
+
+        this.clientId = bbConfig.clientId().orElse(null);
+        this.clientSecret = bbConfig.clientSecret().orElse(null);
+        this.certPath = bbConfig.certificadoPath().orElse(null);
+        this.certPassword = bbConfig.certificadoSenha().orElse(null);
+        this.pixKey = bbConfig.chavePix().orElse(null);
+
+        String ambiente = bbConfig.ambiente();
+        
+        // Banco do Brasil Open Finance API endpoints
+        if ("production".equalsIgnoreCase(ambiente)) {
+            this.baseUrl = "https://api.bb.com.br";
+            this.tokenUrl = "https://api.bb.com.br/oauth2/token";
+        } else {
+            this.baseUrl = "https://api.sandbox.bb.com.br";
+            this.tokenUrl = "https://api.sandbox.bb.com.br/oauth2/token";
+        }
+
+        try {
+            SSLContext sslContext = createSSLContext();
+            client = ClientBuilder.newBuilder()
+                .sslContext(sslContext)
+                .hostnameVerifier((hostname, session) -> true)
+                .build();
+        } catch (Exception e) {
+            LOG.error("Erro ao criar cliente HTTP com mTLS para Banco do Brasil", e);
+            throw new PixException("OPENFINANCE_SSL_ERROR", "Erro ao configurar mTLS: " + e.getMessage(), 500, e);
+        }
+    }
+
     private SSLContext createSSLContext() throws Exception {
         KeyStore keyStore = KeyStore.getInstance("PKCS12");
         try (InputStream certStream = new FileInputStream(certPath)) {
@@ -167,7 +199,14 @@ public class OpenFinancePixProvider implements PixProviderService {
 
     @Override
     public PixProvider getProviderType() {
-        return config.efi().isPresent() ? PixProvider.ITAU : PixProvider.BRADESCO;
+        if (config.efi().isPresent()) {
+            return PixProvider.ITAU;
+        } else if (config.bradesco().isPresent()) {
+            return PixProvider.BRADESCO;
+        } else if (config.bancoDoBrasil().isPresent()) {
+            return PixProvider.BANCO_DO_BRASIL;
+        }
+        return PixProvider.BRADESCO; // fallback
     }
 
     @Override
@@ -177,6 +216,8 @@ public class OpenFinancePixProvider implements PixProviderService {
                 initClient(config.itau().get());
             } else if (config.bradesco().isPresent()) {
                 initClientBradesco(config.bradesco().get());
+            } else if (config.bancoDoBrasil().isPresent()) {
+                initClientBancoDoBrasil(config.bancoDoBrasil().get());
             } else {
                 throw new PixException("OPENFINANCE_CONFIG_MISSING", "Configuração Open Finance não encontrada", 500);
             }
@@ -244,8 +285,10 @@ public class OpenFinancePixProvider implements PixProviderService {
         try {
             if (config.itau().isPresent()) {
                 initClient(config.itau().get());
-            } else {
+            } else if (config.bradesco().isPresent()) {
                 initClientBradesco(config.bradesco().get());
+            } else if (config.bancoDoBrasil().isPresent()) {
+                initClientBancoDoBrasil(config.bancoDoBrasil().get());
             }
 
             String token = getAccessToken();
@@ -281,8 +324,10 @@ public class OpenFinancePixProvider implements PixProviderService {
         try {
             if (config.itau().isPresent()) {
                 initClient(config.itau().get());
-            } else {
+            } else if (config.bradesco().isPresent()) {
                 initClientBradesco(config.bradesco().get());
+            } else if (config.bancoDoBrasil().isPresent()) {
+                initClientBancoDoBrasil(config.bancoDoBrasil().get());
             }
 
             String token = getAccessToken();
@@ -392,14 +437,21 @@ public class OpenFinancePixProvider implements PixProviderService {
     public boolean isSandbox() {
         String ambiente = config.itau().isPresent() 
             ? (config.itau().get().ambiente())
-            : (config.bradesco().get().ambiente());
+            : (config.bradesco().isPresent() ? (config.bradesco().get().ambiente()) 
+            : (config.bancoDoBrasil().isPresent() ? (config.bancoDoBrasil().get().ambiente()) 
+            : "sandbox"));
         return "sandbox".equalsIgnoreCase(ambiente);
     }
 
     private String getWebhookSecret() {
-        return config.itau().isPresent() 
-            ? config.itau().get().clientSecret().orElse(null) 
-            : config.bradesco().get().clientSecret().orElse(null);
+        if (config.itau().isPresent()) {
+            return config.itau().get().clientSecret().orElse(null); 
+        } else if (config.bradesco().isPresent()) {
+            return config.bradesco().get().clientSecret().orElse(null);
+        } else if (config.bancoDoBrasil().isPresent()) {
+            return config.bancoDoBrasil().get().clientSecret().orElse(null);
+        }
+        return null;
     }
 
     private String generateHmacSha256(String data, String secret) {

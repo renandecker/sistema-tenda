@@ -58,9 +58,9 @@ public class PixProviderFactory {
                 LOG.info("Usando provedor PIX: Asaas");
                 yield asaasProvider;
             }
-            case ITAU, BRADESCO, SICOOB, SICREDI -> {
+            case ITAU, BRADESCO, BANCO_DO_BRASIL, SICOOB, SICREDI -> {
                 if (!isOpenFinanceConfigured()) {
-                    throw new IllegalStateException("Configuração Open Finance (Itaú/Bradesco) não encontrada");
+                    throw new IllegalStateException("Configuração Open Finance (Itaú/Bradesco/Banco do Brasil/Sicoob/Sicredi) não encontrada");
                 }
                 LOG.info("Usando provedor PIX: Open Finance (" + providerType.getDescricao() + ")");
                 yield openFinanceProvider;
@@ -139,7 +139,10 @@ public class PixProviderFactory {
         boolean bradescoConfigurado = config.bradesco()
                 .map(bradesco -> bradesco.clientId().isPresent() && bradesco.certificadoPath().isPresent())
                 .orElse(false);
-        return itauConfigurado || bradescoConfigurado;
+        boolean bancoDoBrasilConfigurado = config.bancoDoBrasil()
+                .map(bb -> bb.clientId().isPresent() && bb.certificadoPath().isPresent())
+                .orElse(false);
+        return itauConfigurado || bradescoConfigurado || bancoDoBrasilConfigurado;
     }
 
     private boolean isDevOrTestProfile() {

@@ -114,6 +114,65 @@ class TefClient extends EventEmitter {
     await this.sendCommand('CANCEL', { originalRequestId: requestId }, uuidv4());
   }
 
+  async diagnose() {
+    const inicio = Date.now();
+    const detalhes = [];
+    let status = 'ok';
+    let mensagem = 'Comunicação com a DLL TEF inicializada';
+
+    if (!this.dllPath) {
+      return {
+        success: false,
+        status: 'erro',
+        mensagem: 'TEF_DLL_PATH não configurado',
+        detalhe: 'Defina o caminho da DLL (CliSiTef32.dll/CliSiTef64.dll) no .env do tef-agent.',
+        modo: 'real',
+        tefInicializado: false,
+        tempoMs: Date.now() - inicio
+      };
+    }
+
+    detalhes.push(`DLL: ${this.dllPath}`);
+
+    try {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+    } catch (error) {
+      return {
+        success: false,
+        status: 'erro',
+        mensagem: 'Falha ao inicializar a DLL TEF',
+        detalhe: error.message,
+        modo: 'real',
+        tefInicializado: false,
+        tempoMs: Date.now() - inicio
+      };
+    }
+
+    const processoAtivo = Boolean(this.process && !this.process.killed && this.process.exitCode === null);
+    detalhes.push(`Processo CliSiTef: ${processoAtivo ? 'ativo' : 'inativo'}`);
+    detalhes.push(`TEF inicializado: ${this.initialized ? 'sim' : 'não'}`);
+
+    if (!this.initialized) {
+      status = 'erro';
+      mensagem = 'DLL TEF não inicializada';
+    } else if (!processoAtivo) {
+      status = 'erro';
+      mensagem = 'Processo CliSiTef não está em execução';
+    }
+
+    return {
+      success: status === 'ok',
+      status,
+      mensagem,
+      detalhe: detalhes.join(' | '),
+      modo: 'real',
+      tefInicializado: Boolean(this.initialized),
+      tempoMs: Date.now() - inicio
+    };
+  }
+
   shutdown() {
     if (this.process) {
       this.process.kill();

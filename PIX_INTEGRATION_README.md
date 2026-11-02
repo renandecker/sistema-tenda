@@ -11,6 +11,7 @@ Este projeto implementa uma integração completa de PIX com suporte a múltiplo
 | **Asaas** | Fintech | API Key | ✅ | ✅ (Token) |
 | **Itaú** | Banco (Open Finance) | mTLS + OAuth2 | ✅ | ✅ (HMAC) |
 | **Bradesco** | Banco (Open Finance) | mTLS + OAuth2 | ✅ | ✅ (HMAC) |
+| **Banco do Brasil** | Banco (Open Finance) | mTLS + OAuth2 | ✅ | ✅ (HMAC) |
 | **Simulado** | Desenvolvimento | Nenhuma | — | Manual |
 
 ## Arquitetura
@@ -89,6 +90,16 @@ pix.itau.certificado-path=/path/certificado.p12
 pix.itau.certificado-senha=senha123
 pix.itau.chave-pix=chave@itau.com
 pix.itau.ambiente=sandbox
+```
+
+#### Banco do Brasil (Open Finance)
+```properties
+pix.bancoDoBrasil.client-id=seu_client_id_bb
+pix.bancoDoBrasil.client-secret=seu_client_secret_bb
+pix.bancoDoBrasil.certificado-path=/path/certificado_bb.p12
+pix.bancoDoBrasil.certificado-senha=senha_bb
+pix.bancoDoBrasil.chave-pix=chave@bb.com
+pix.bancoDoBrasil.ambiente=sandbox
 ```
 
 #### Simulado (desenvolvimento, sem cobrança real)
@@ -301,6 +312,10 @@ pix.provider=EFI
 # Depois: Mercado Pago
 pix.provider=MERCADO_PAGO
 # (configure as credenciais do MP)
+
+# Depois: Banco do Brasil (Open Finance)
+pix.provider=BANCO_DO_BRASIL
+# (configure as credenciais do BB)
 ```
 
 O código da aplicação não muda - apenas a implementação injetada via `PixProviderFactory`.
@@ -324,3 +339,4 @@ npm test
 - [Mercado Pago Pix](https://www.mercadopago.com.br/developers/pt/docs/checkout-api/pix)
 - [Asaas Pix](https://docs.asaas.com/reference/pix-1)
 - [Open Finance Brasil](https://openfinancebrasil.org.br/)
+- [Banco do Brasil Open Finance](https://developer.bradesco.com/open-finance/)

@@ -46,6 +46,8 @@ public interface PixConfig {
 
     Optional<BradescoConfig> bradesco();
 
+    Optional<BancoDoBrasilConfig> bancoDoBrasil();
+
     interface EfiConfig {
 
         @WithName("client-id")
@@ -107,6 +109,27 @@ public interface PixConfig {
     }
 
     interface BradescoConfig {
+
+        @WithName("client-id")
+        Optional<String> clientId();
+
+        @WithName("client-secret")
+        Optional<String> clientSecret();
+
+        @WithName("certificado-path")
+        Optional<String> certificadoPath();
+
+        @WithName("certificado-senha")
+        Optional<String> certificadoSenha();
+
+        @WithName("chave-pix")
+        Optional<String> chavePix();
+
+        @WithDefault("sandbox")
+        String ambiente();
+    }
+
+    interface BancoDoBrasilConfig {
 
         @WithName("client-id")
         Optional<String> clientId();

@@ -290,8 +290,41 @@ export const apiFiscal = {
   listConciliacao: (params?: any) => api.get('/fiscal/conciliacao-cartao', { params }),
 };
 
+export type StatusIntegracao = 'ok' | 'atencao' | 'erro' | 'nao_configurado' | 'pendente';
+
+export interface StatusIntegracaoDTO {
+  componente: string;
+  status: StatusIntegracao;
+  mensagem: string;
+  detalhe?: string;
+  destino?: string;
+  tempoMs?: number;
+  horaVerificacao?: string;
+}
+
+export interface SaudeCheckResponse {
+  success: boolean;
+  tef: StatusIntegracaoDTO;
+  pix: StatusIntegracaoDTO;
+  impressora: StatusIntegracaoDTO;
+  ultimaVerificacao: string;
+  manual: boolean;
+  tempoTotalMs?: number;
+}
+
+export interface TesteImpressoraRequest {
+  destino?: string;
+  pdvId?: string;
+  imprimirTeste?: boolean;
+}
+
 export const apiSaude = {
-  verificar: () => api.get('/saude-check'),
-  verificarManual: () => api.post('/saude-check', { manual: true }),
-  historico: () => api.get('/saude-check/historico'),
+  verificar: () => api.get<SaudeCheckResponse>('/saude-check'),
+  verificarManual: (data?: Record<string, unknown>) =>
+    api.post<SaudeCheckResponse>('/saude-check', data ?? {}, { timeout: 60000 }),
+  testarTef: () => api.post<StatusIntegracaoDTO>('/saude-check/tef', {}, { timeout: 40000 }),
+  testarPix: () => api.post<StatusIntegracaoDTO>('/saude-check/pix', {}, { timeout: 40000 }),
+  testarImpressora: (data: TesteImpressoraRequest) =>
+    api.post<StatusIntegracaoDTO>('/saude-check/impressora', data, { timeout: 60000 }),
+  historico: () => api.get<{ success: boolean; historico: SaudeCheckResponse[] }>('/saude-check/historico'),
 };

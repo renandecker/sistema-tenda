@@ -1,54 +1,94 @@
 package br.com.sistematenda.pdv.resource;
 
-import jakarta.ws.rs.*;
+import br.com.sistematenda.pdv.dto.StatusIntegracaoDTO;
+import br.com.sistematenda.pdv.service.TesteProducaoService;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 
-import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
+/**
+ * Central de saúde e testes de produção do PDV.
+ *
+ * <p>{@code GET /api/saude-check} traz um status rápido (sem testes demorados).
+ * Os endpoints {@code POST} executam a verificação real de cada componente.</p>
+ */
 @Path("/saude-check")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class SaudeResource {
 
+    @Inject
+    TesteProducaoService service;
+
     @GET
-    public Response verificar() {
-        return Response.ok(montarResposta(false)).build();
+    public Map<String, Object> statusRapido() {
+        return service.statusRapido();
     }
 
     @POST
-    public Response verificarManual(Map<String, Object> body) {
-        return Response.ok(montarResposta(true)).build();
+    public Map<String, Object> testarTudo(Map<String, Object> corpo) {
+        return service.testarTudo(corpo);
     }
 
-    private Map<String, Object> montarResposta(boolean manual) {
-        String agora = Instant.now().toString();
+    @POST
+    @Path("/tef")
+    public StatusIntegracaoDTO testarTef() {
+        return service.testarTef();
+    }
 
-        Map<String, Object> pix = Map.of(
-            "status", "funcionando",
-            "icone", "💠",
-            "cor", "green",
-            "mensagem", "PIX operacional",
-            "detalhe", "Backend Quarkus acessível",
-            "horaVerificacao", agora
-        );
+    @POST
+    @Path("/pix")
+    public StatusIntegracaoDTO testarPix() {
+        return service.testarPix();
+    }
 
-        Map<String, Object> tef = Map.of(
-            "status", "funcionando",
-            "icone", "📟",
-            "cor", "green",
-            "mensagem", "TEF operacional",
-            "detalhe", "TEF Agent configurado",
-            "horaVerificacao", agora
-        );
+    @POST
+    @Path("/impressora")
+    public StatusIntegracaoDTO testarImpressora(Map<String, Object> corpo) {
+        String destino = null;
+        String pdvId = null;
+        boolean imprimirTeste = true;
 
-        return Map.of(
-            "success", true,
-            "pix", pix,
-            "tef", tef,
-            "ultimaVerificacao", agora,
-            "manual", manual
-        );
+        if (corpo != null) {
+            Object destinoObj = corpo.get("destino");
+            if (destinoObj != null) {
+                destino = String.valueOf(destinoObj);
+            }
+            Object pdvIdObj = corpo.get("pdvId");
+            if (pdvIdObj != null) {
+                pdvId = String.valueOf(pdvIdObj);
+            }
+            Object imprimirObj = corpo.get("imprimirTeste");
+            if (imprimirObj instanceof Boolean b) {
+                imprimirTeste = b;
+            } else if (imprimirObj != null) {
+                imprimirTeste = Boolean.parseBoolean(String.valueOf(imprimirObj));
+            }
+        }
+
+        java.util.UUID pdvUuid = null;
+        if (pdvId != null && !pdvId.isBlank()) {
+            try {
+                pdvUuid = java.util.UUID.fromString(pdvId.trim());
+            } catch (IllegalArgumentException ignored) {
+                // PDV inválido: segue apenas com o destino informado/configurado.
+            }
+        }
+
+        return service.testarImpressora(destino, pdvUuid, imprimirTeste);
+    }
+
+    @GET
+    @Path("/historico")
+    public Map<String, Object> historico() {
+        List<Map<String, Object>> itens = service.historico();
+        return Map.of("success", true, "historico", itens);
     }
 }

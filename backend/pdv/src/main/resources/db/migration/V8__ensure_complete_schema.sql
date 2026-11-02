@@ -8,9 +8,11 @@
 --
 -- Todas as tabelas, colunas, indices e constraints usam IF NOT EXISTS /
 -- verificacao em pg_constraint, portanto a execucao e segura em qualquer estado.
-
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+--
+-- Esta migration NAO cria extensoes: "uuid-ossp" exige superusuario e nao e
+-- usada em nenhum ponto deste script (o PostgreSQL 13+ ja possui
+-- gen_random_uuid() nativo). Assim a V8 funciona com um usuario comum, owner
+-- do banco, sem privilegios administrativos.
 
 -- Tabela public.buffet_comanda
 CREATE TABLE IF NOT EXISTS public.buffet_comanda (

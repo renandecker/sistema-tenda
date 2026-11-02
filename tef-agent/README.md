@@ -27,8 +27,11 @@ USE_SIMULATOR=true  # true = simulador (dev), false = DLL real (prod)
 TEF_DLL_PATH=C:\Program Files\Software Express\SiTef\CliSiTef64.dll
 
 # Configurações do provedor (produção)
-TEF_PROVIDER=SITEF           # SITEF|CAPPTA|PAYGO|STONE|LINX
+TEF_PROVIDER=SITEF|CAPPTA|PAYGO|STONE|LINX|CIELO  # Stone ou Cielo maquinas
 TEF_CODIGO_CREDENCIADORA=123456
+# Código da credenciadora do provedor escolhido:
+# - Stone: código da credencial Stone
+# - Cielo: código da credencial Cielo
 TEF_TERMINAL_ID=001
 
 # Pinpad
@@ -36,11 +39,26 @@ PINPAD_TIPO=GERTEC           # GERTEC|VERIFONE|INGENICO
 PINPAD_PORTA=USB             # USB|SERIAL|TCP
 # PINPAD_IP=192.168.1.100    # Se TCP
 # PINPAD_PORTA_TCP=10001     # Se TCP
+# Configurações do pinpad (pode variar por PDV):
+# - GERTEC/VERIFONE/INGENICO: tipos de pinpad compatíveis com SITef
+# - Para Stone/Cielo: usar pinpad compatível com SITef
+# - Em múltiplos PDVs, cada um pode ter um pinpad diferente
+# - PINPAD_PORTA_TCP: porta para conexão TCP (rede), use USB/SERIAL para conexão direta
 ```
 
-## Execução
+## Multi-PDV (Múltiplos Pontos de Venda)
 
-### Desenvolvimento (com simulador)
+O sistema suporta múltiplos PDVs com provedores diferentes (Stone e Cielo):
+
+- Cada PDV pode ter sua própria configuração TEF no banco de dados
+- Campos no entity `Pdv`: `tef_habilitado`, `tef_ip`, `tef_porta`
+- No `.env` do TEF Agent, o `TEF_PROVIDER` será lido conforme a necessidade
+- Para usar provedores diferentes em PDVs distintos, configure cada PDV separadamente
+- O frontend pode selecionar qual PDV está em uso e o agente usará as configurações correspondentes
+
+### Execução
+
+#### Desenvolvimento (com simulador)
 ```bash
 npm run dev
 # ou

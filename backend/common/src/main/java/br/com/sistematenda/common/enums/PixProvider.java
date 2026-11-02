@@ -6,6 +6,7 @@ public enum PixProvider {
     ASAAS("Asaas"),
     ITAU("Itaú (Open Finance)"),
     BRADESCO("Bradesco (Open Finance)"),
+    BANCO_DO_BRASIL("Banco do Brasil (Open Finance)"),
     SICOOB("Sicoob (Open Finance)"),
     SICREDI("Sicredi (Open Finance)"),
     SIMULADO("Simulado (sem cobrança real)");
@@ -21,7 +22,7 @@ public enum PixProvider {
     }
 
     public boolean isOpenFinance() {
-        return this == ITAU || this == BRADESCO || this == SICOOB || this == SICREDI;
+        return this == ITAU || this == BRADESCO || this == BANCO_DO_BRASIL || this == SICOOB || this == SICREDI;
     }
 
     public boolean isFintech() {

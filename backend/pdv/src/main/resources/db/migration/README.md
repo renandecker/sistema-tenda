@@ -143,6 +143,18 @@ mvn flyway:repair -pl backend/pdv
 - Atualize o PostgreSQL para 16. Um data directory do PG10 não abre no PG16;
   faça `pg_dump` na versão antiga e restaure na nova.
 
+### Erro: "permission denied to create extension" (uuid-ossp)
+A `V8` **não cria extensões**: `uuid-ossp` exige superusuário e não é usada por
+ela (`gen_random_uuid()` é nativo no PostgreSQL 13+). Se o erro vier de uma
+instalação antiga (V1/V7), crie a extensão uma única vez como superusuário:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+```
+
+Em bancos criados pelo dump antigo isso não é necessário: o `pgcrypto` já vem
+instalado e a `V8` não depende de `uuid-ossp`.
+
 ### Erro: "Detected failed migration"
 ```bash
 # Veja a versão com falha no log e remova/repare a entrada do histórico

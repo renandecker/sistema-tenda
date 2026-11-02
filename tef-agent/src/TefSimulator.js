@@ -277,6 +277,19 @@ TRANSACAO APROVADA
     return { success: true };
   }
 
+  async diagnose() {
+    const inicio = Date.now();
+    return {
+      success: true,
+      status: 'atencao',
+      mensagem: 'Simulador TEF ativo — nenhuma transação real é realizada',
+      detalhe: 'Para testar a comunicação real, configure USE_SIMULATOR=false e TEF_DLL_PATH no .env do tef-agent.',
+      modo: 'simulador',
+      tefInicializado: true,
+      tempoMs: Date.now() - inicio
+    };
+  }
+
   shutdown() {
     this.logger.info('SIMULATOR: Shutting down');
     this.transactions.clear();
