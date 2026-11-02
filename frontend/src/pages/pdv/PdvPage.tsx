@@ -21,6 +21,7 @@ import { toast } from 'react-toastify';
 import { api, apiBuffet, apiClientes, apiCaderno, apiFruteira, apiPdv } from '@/services/api';
 import { PageHeader } from '@/components/PageHeader';
 import { PixQrCode, type PixChargeResponse } from '@/components/pix';
+import { TesteProducaoPanel } from '@/components/TesteProducaoPanel';
 import { formatCurrency, formatNumber } from '@/utils/formatters';
 import { maskCurrency, maskCpfCnpj, maskQuantity, parseCurrency, parseDecimal, parseDocument } from '@/utils/masks';
 
@@ -107,6 +108,7 @@ export function PdvPage() {
   const [buscando, setBuscando] = useState(false);
   const [quantidade, setQuantidade] = useState('1');
   const [pagDialog, setPagDialog] = useState(false);
+  const [testDialogAberto, setTestDialogAberto] = useState(false);
   const [formaPagamento, setFormaPagamento] = useState('DINHEIRO');
   const [valorPagamento, setValorPagamento] = useState('');
   const [pagamentosPendentes, setPagamentosPendentes] = useState<Array<{ forma: string; valor: number }>>([]);
@@ -917,6 +919,7 @@ export function PdvPage() {
             <Button variant="outlined" color="warning" startIcon={<MenuBookIcon />} onClick={abrirFiado}>Caderno (fiado) <Typography variant="caption" color="text.secondary">(F9)</Typography></Button>
             <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => venda && recarregarVenda(venda.id)} disabled={!venda || venda.id.startsWith('local-')}>Atualizar <Typography variant="caption" color="text.secondary">(F10)</Typography></Button>
             <Button variant="contained" startIcon={<AddIcon />} onClick={novaVenda} disabled={loading}>Nova venda <Typography variant="caption" color="text.secondary">(F1)</Typography></Button>
+            <Button variant="contained" startIcon={<WarningIcon />} onClick={() => setTestDialogAberto(true)} disabled={!venda}>Testes <Typography variant="caption" color="text.secondary">(F5)</Typography></Button>
           </Box>
         }
       />
@@ -1313,7 +1316,32 @@ export function PdvPage() {
           <Button id="pdv-itens-modal-close" variant="contained" onClick={() => setItensModalOpen(false)}>Fechar</Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    <Dialog open={testDialogAberto} onClose={() => setTestDialogAberto(false)} maxWidth="lg" fullWidth>
+        <DialogTitle>Teste de Produção - {venda ? 'PDV ' + venda.numero : 'Nenhum PDV selecionado'}</DialogTitle>
+        <DialogContent>
+          {venda ? (
+            <TesteProducaoPanel
+              pdvId={venda.id}
+              pdvNome={venda.numero || 'PDV ativo'}
+              podeTestar={true}
+              permitirDestinoManual={true}
+              mostrarHistorico={false}
+            />
+          ) : (
+            <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 3 }}>
+              Seletione ou abra um PDV para executar os testes de produção.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'flex-end' }}>
+          <Button onClick={() => setTestDialogAberto(false)}>Fechar</Button>
+          <Button variant="contained" onClick={() => setTestDialogAberto(false)}>
+            Testar agora
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      </Box>
   );
 }
 export default PdvPage;

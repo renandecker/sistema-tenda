@@ -83,6 +83,7 @@ const menuItems = [
   { text: 'Alertas', icon: <WarningIcon />, path: '/estoque/alertas', roles: ['ESTOQUE', 'ADMIN', 'GERENTE'] },
   { text: 'Defeitos/Qualidade', icon: <WarningIcon />, path: '/estoque/defeitos', roles: ['ESTOQUE', 'ADMIN', 'GERENTE', 'QUALIDADE'] },
   { divider: true, section: 'Fiscal/Contábil' },
+  { text: 'Saúde / Testes', icon: <WarningIcon />, path: '/saude', roles: ['ADMIN', 'GERENTE', 'SUPERVISOR'] },
   { text: 'NFC-e/Notas', icon: <ReceiptLongIcon />, path: '/fiscal/nfe', roles: ['FISCAL', 'ADMIN', 'GERENTE', 'CONTABIL'] },
   { text: 'SPED Fiscal', icon: <AccountBalanceIcon />, path: '/fiscal/sped-fiscal', roles: ['FISCAL', 'ADMIN', 'CONTABIL'] },
   { text: 'DRE', icon: <AssessmentIcon />, path: '/fiscal/dre', roles: ['FISCAL', 'ADMIN', 'CONTABIL', 'GERENTE'] },

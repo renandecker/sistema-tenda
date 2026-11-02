@@ -2,35 +2,26 @@ import { useEffect, useState } from 'react';
 import {
   Box,
   Grid,
-  Card,
-  CardContent,
   Typography,
   Divider,
-  Alert,
   Button,
 } from '@mui/material';
 
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationModal, NotificationSeverity } from '@/components/NotificationModal';
 
-interface StatusItem {
-  status: 'funcionando' | 'atencao' | 'problema' | 'nao_configurado';
-  icone: string;
-  cor: 'green' | 'orange' | 'red' | 'gray';
-  mensagem: string;
-  detalhe: string;
-  horaVerificacao: string;
-}
+import { TesteProducaoPanel } from '@/components/TesteProducaoPanel';
 
 interface SaudeState {
-  pix: StatusItem;
-  tef: StatusItem;
+  tef: any;
+  pix: any;
+  impressora: any;
   ultimaVerificacao: string | null;
-  historico: StatusItem[];
+  historico: any[];
   verificando: boolean;
 }
 
-const statusInicial: StatusItem = {
+const statusInicial: any = {
   status: 'nao_configurado',
   icone: '',
   cor: 'gray',
@@ -42,8 +33,9 @@ const statusInicial: StatusItem = {
 export function SaudePage() {
   const { isAuthenticated, hasPermission, isInRole }: any = useAuth();
   const [state, setState] = useState<SaudeState>({
-    pix: { ...statusInicial },
     tef: { ...statusInicial },
+    pix: { ...statusInicial },
+    impressora: { ...statusInicial },
     ultimaVerificacao: null,
     historico: [],
     verificando: false,
@@ -79,7 +71,6 @@ export function SaudePage() {
 
     setState(prev => ({ ...prev, verificando: true }));
     try {
-      // Chama o endpoint de health check do tef-agent
       const response = await fetch('/api/saude-check', {
         method: 'POST',
         headers: {
@@ -93,7 +84,7 @@ export function SaudePage() {
       if (data.success) {
         // Atualizar estado com os novos resultados
         const agora = new Date().toISOString();
-        const novoStatus: StatusItem = {
+        const novoStatus: any = {
           status: data.pix.status,
           icone: data.pix.icone,
           cor: data.pix.cor,
@@ -103,8 +94,9 @@ export function SaudePage() {
         };
 
         setState({
-          pix: novoStatus,
           tef: data.tef ? { ...data.tef, horaVerificacao: agora } : state.tef,
+          pix: novoStatus,
+          impressora: data.impressora ? { ...data.impressora, horaVerificacao: agora } : state.impressora,
           ultimaVerificacao: agora,
           historico: [...state.historico, { ...novoStatus, horaVerificacao: agora }],
           verificando: false,
@@ -143,8 +135,9 @@ export function SaudePage() {
           if (data.success) {
             const agora = new Date().toISOString();
             setState({
-              pix: data.pix ? { ...data.pix, horaVerificacao: agora } : state.pix,
               tef: data.tef ? { ...data.tef, horaVerificacao: agora } : state.tef,
+              pix: data.pix ? { ...data.pix, horaVerificacao: agora } : state.pix,
+              impressora: data.impressora ? { ...data.impressora, horaVerificacao: agora } : state.impressora,
               ultimaVerificacao: data.ultimaVerificacao || agora,
               historico: data.historico || [],
               verificando: false,
@@ -167,73 +160,12 @@ export function SaudePage() {
         <Divider />
       </Box>
 
-      {/* Status Cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={4}>
-          <Card sx={{ p: 2 }}>
-            <CardContent>
-              <Typography variant="h5" sx={{ mb: 1 }}>
-                PIX
-                <span style={{ fontSize: '0.75em', marginLeft: 1, textTransform: 'uppercase' }}>
-                  {state.pix.status === 'nao_configurado' ? '(não configurado)' : ''}
-                </span>
-              </Typography>
-              <Alert
-                severity={state.pix.cor as 'success' | 'warning' | 'error' | 'info'}
-                sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
-              >
-                <span style={{ fontSize: 1.25 }}>💠</span>
-                <span>{state.pix.mensagem}</span>
-              </Alert>
-              <Typography variant="caption" color="text.secondary">
-                Última verificação: {state.pix.horaVerificacao ? new Date(state.pix.horaVerificacao).toLocaleString('pt-BR') : 'Nunca'}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={4}>
-          <Card sx={{ p: 2 }}>
-            <CardContent>
-              <Typography variant="h5" sx={{ mb: 1 }}>
-                TEF
-                <span style={{ fontSize: '0.75em', marginLeft: 1, textTransform: 'uppercase' }}>
-                  {state.tef.status === 'nao_configurado' ? '(não configurado)' : ''}
-                </span>
-              </Typography>
-              <Alert
-                severity={state.tef.cor as 'success' | 'warning' | 'error' | 'info'}
-                sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
-              >
-                <span style={{ fontSize: 1.25 }}>📟</span>
-                <span>{state.tef.mensagem}</span>
-              </Alert>
-              <Typography variant="caption" color="text.secondary">
-                Última verificação: {state.tef.horaVerificacao ? new Date(state.tef.horaVerificacao).toLocaleString('pt-BR') : 'Nunca'}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Card sx={{ p: 2 }}>
-            <CardContent>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Última Verificação Global
-              </Typography>
-              {state.ultimaVerificacao ? (
-                <Typography variant="body1">
-                  {new Date(state.ultimaVerificacao).toLocaleString('pt-BR')}
-                </Typography>
-              ) : (
-                <Typography variant="body1" color="text.secondary">
-                  Ainda não verificado
-                </Typography>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      {/* Painel de Teste de Produção - substitui os cards individuais */}
+      <TesteProducaoPanel
+        podeTestar={podeVerificarAgora()}
+        permitirDestinoManual={true}
+        mostrarHistorico={state.historico.length > 0}
+      />
 
       {/* Histórico e Botão Verificar Agora */}
       <Box sx={{ mt: 3 }}>
@@ -244,7 +176,6 @@ export function SaudePage() {
         
         {state.verificando ? (
           <Box sx={{ p: 2 }}>
-
             <Typography variant="body2" color="primary">
               Verificando... por favor aguarde
             </Typography>
