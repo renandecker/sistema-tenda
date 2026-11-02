@@ -179,6 +179,26 @@ if exist "certificado.pfx" (
   copy /y "certificado.pfx" "%DEST%\" >nul
 )
 
+rem Ajustar start.bat para usar perfil producao ativo
+rem Isso evita que o usuario precise passar -Dquarkus.profile=prod manualmente
+if exist "%DEST%\start.bat" (
+  rem Substituir a linha do java para incluir o profile de producao
+  set "NEW_JAVA_LINE=java -Dquarkus.profile=prod -jar app\quarkus-run.jar"
+  if exist "%DEST%\start.bat.tmp" del "%DEST%\start.bat.tmp"
+  for /f "usebackq delims=" %%L in ("%DEST%\start.bat") do (
+    echo %%L | findstr /i "java -jar app\quarkus-run.jar" >nul 2>&1
+    if !errorlevel! equ 0 (
+      echo !NEW_JAVA_LINE! >> "%DEST%\start.bat.tmp"
+    ) else (
+      echo %%L >> "%DEST%\start.bat.tmp"
+    )
+  )
+  if exist "%DEST%\start.bat.tmp" (
+    del "%DEST%\start.bat" >nul 2>&1
+    move "%DEST%\start.bat.tmp" "%DEST%\start.bat" >nul 2>&1
+  )
+)
+
 echo       Pacote montado.
 echo.
 
