@@ -33,5 +33,5 @@ if errorlevel 1 (
 echo.
 
 echo Iniciando aplicacao...
-java -jar app\quarkus-run.jar
+java -Dquarkus.profile=prod -jar app\quarkus-run.jar
 pause

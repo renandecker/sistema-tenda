@@ -161,6 +161,41 @@ if exist "backend\pdv\src\main\resources\application.prod.properties" (
 if exist ".env" (
   copy /y ".env" "%DEST%\.env" >nul
 )
+
+rem Garantir que .env use porta de producao (5432) em vez de desenvolvimento (5433)
+rem O application.prod.properties ja tem a URL correta, entao removemos esta variavel do .env
+if exist "%DEST%\.env" (
+  set "FILTRO_TMP=%DEST%\.env.tmp"
+  >"%FILTRO_TMP%" (
+    for /f "usebackq delims=" %%L in ("%DEST%\.env") do (
+      echo %%L | findstr /i "QUARKUS_DATASOURCE_JDBC_URL=" >nul
+      if !errorlevel! neq 0 echo %%L
+    )
+  )
+  del "%DEST%\.env" 2>nul
+  if exist "%FILTRO_TMP%" move "%FILTRO_TMP%" "%DEST%\.env" >nul 2>&1
+)
+
+rem Adicionar a variavel correta de producao se nao existir
+if not exist "%DEST%\.env" (
+  echo QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/sistematenda > "%DEST%\.env"
+) else (
+  findstr /i "QUARKUS_DATASOURCE_JDBC_URL=" "%DEST%\.env" >nul 2>&1
+  if !errorlevel! equ 0 (
+    rem Variavel existe com valor errado, atualiza para producao
+    set "LINHA_CORRETA=QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/sistematenda"
+    set "TEMP_ENV=%DEST%\.env.tmp"
+    >"%TEMP_ENV%" (
+      for /f "usebackq delims=" %%L in ("%DEST%\.env") do (
+        echo %%L | findstr /i "QUARKUS_DATASOURCE_JDBC_URL=" >nul
+        if !errorlevel! equ 0 echo %LINHA_CORRETA%
+        else echo %%L
+      )
+    )
+    del "%DEST%\.env" 2>nul
+    if exist "%TEMP_ENV%" move "%TEMP_ENV%" "%DEST%\.env" >nul 2>&1
+  )
+)
 if exist ".env.example" (
   copy /y ".env.example" "%DEST%\.env.example" >nul
 )
@@ -182,20 +217,11 @@ if exist "certificado.pfx" (
 rem Ajustar start.bat para usar perfil producao ativo
 rem Isso evita que o usuario precise passar -Dquarkus.profile=prod manualmente
 if exist "%DEST%\start.bat" (
-  rem Substituir a linha do java para incluir o profile de producao
-  set "NEW_JAVA_LINE=java -Dquarkus.profile=prod -jar app\quarkus-run.jar"
-  if exist "%DEST%\start.bat.tmp" del "%DEST%\start.bat.tmp"
-  for /f "usebackq delims=" %%L in ("%DEST%\start.bat") do (
-    echo %%L | findstr /i "java -jar app\quarkus-run.jar" >nul 2>&1
-    if !errorlevel! equ 0 (
-      echo !NEW_JAVA_LINE! >> "%DEST%\start.bat.tmp"
-    ) else (
-      echo %%L >> "%DEST%\start.bat.tmp"
-    )
-  )
-  if exist "%DEST%\start.bat.tmp" (
-    del "%DEST%\start.bat" >nul 2>&1
-    move "%DEST%\start.bat.tmp" "%DEST%\start.bat" >nul 2>&1
+  rem Modelo ja foi ajustado para usar profile producao.
+  rem Esta verificacao e apenas um backup caso o modelo seja sobrescrito.
+  rem Nao remova este bloco para manter compatibilidade.
+  if not exist "%~dp0producao-modelo\start.bak" (
+    copy "%DEST%\start.bat" "%~dp0producao-modelo\start.bak" >nul
   )
 )
 
