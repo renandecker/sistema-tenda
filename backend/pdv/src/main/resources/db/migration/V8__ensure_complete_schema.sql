@@ -1022,6 +1022,12 @@ CREATE TABLE IF NOT EXISTS public.pdv_venda (
     observacoes character varying(1000),
     xml_nfce text,
     danfe_nfce bytea,
+    nfce_erro character varying(500),
+    cupom_impressao text,
+    tentativas_impressao integer NOT NULL DEFAULT 0,
+    status_ultima_impressao character varying(30),
+    observacoes_impressao character varying(500),
+    data_ultima_impressao timestamp(6) without time zone,
     CONSTRAINT pdv_venda_status_check CHECK (((status)::text = ANY ((ARRAY['ABERTA'::character varying, 'EM_ANDAMENTO'::character varying, 'FINALIZADA'::character varying, 'PAGA'::character varying, 'CANCELADA'::character varying, 'DEVOLVIDA'::character varying, 'PENDENTE_PAGAMENTO'::character varying])::text[])))
 );
 
@@ -3120,6 +3126,12 @@ ALTER TABLE public.pdv_venda ADD COLUMN IF NOT EXISTS cliente_nome character var
 ALTER TABLE public.pdv_venda ADD COLUMN IF NOT EXISTS observacoes character varying(1000);
 ALTER TABLE public.pdv_venda ADD COLUMN IF NOT EXISTS xml_nfce text;
 ALTER TABLE public.pdv_venda ADD COLUMN IF NOT EXISTS danfe_nfce bytea;
+ALTER TABLE public.pdv_venda ADD COLUMN IF NOT EXISTS nfce_erro character varying(500);
+ALTER TABLE public.pdv_venda ADD COLUMN IF NOT EXISTS cupom_impressao text;
+ALTER TABLE public.pdv_venda ADD COLUMN IF NOT EXISTS tentativas_impressao integer NOT NULL DEFAULT 0;
+ALTER TABLE public.pdv_venda ADD COLUMN IF NOT EXISTS status_ultima_impressao character varying(30);
+ALTER TABLE public.pdv_venda ADD COLUMN IF NOT EXISTS observacoes_impressao character varying(500);
+ALTER TABLE public.pdv_venda ADD COLUMN IF NOT EXISTS data_ultima_impressao timestamp(6) without time zone;
 ALTER TABLE public.pdv_caderno_divida ADD COLUMN IF NOT EXISTS id uuid;
 ALTER TABLE public.pdv_caderno_divida ADD COLUMN IF NOT EXISTS cliente_id uuid;
 ALTER TABLE public.pdv_caderno_divida ADD COLUMN IF NOT EXISTS cliente_nome character varying(200);

@@ -114,6 +114,9 @@ public class ProdutoService extends BaseCrudServiceImpl<Produto, ProdutoDTO, UUI
         if (entity.codigo == null || entity.codigo.isBlank()) {
             entity.codigo = gerarCodigoUnico();
         }
+        if (entity.estoqueAtual == null) {
+            entity.estoqueAtual = BigDecimal.ZERO;
+        }
     }
 
     private String gerarCodigoUnico() {

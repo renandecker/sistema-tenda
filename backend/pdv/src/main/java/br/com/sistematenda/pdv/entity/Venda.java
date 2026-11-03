@@ -117,6 +117,35 @@ public class Venda extends BaseEntity {
     @Column(name = "danfe_nfce", columnDefinition = "BYTEA")
     public byte[] danfeNfce;
 
+    @Column(name = "nfce_erro", length = 500)
+    @Size(max = 500)
+    public String nfceErro;
+
+    /**
+     * Snapshot textual do comprovante gerado na finalização/emissão.
+     * Permite reimprimir mesmo que a impressora falhe ou a venda não tenha NFC-e.
+     */
+    @Column(name = "cupom_impressao", columnDefinition = "TEXT")
+    public String cupomImpressao;
+
+    /** Quantas vezes o fluxo de impressão desta venda já foi acionado. */
+    @Column(name = "tentativas_impressao", nullable = false)
+    public int tentativasImpressao = 0;
+
+    /** SUCESSO, FALHA ou PENDENTE para a última tentativa de impressão. */
+    @Column(name = "status_ultima_impressao", length = 30)
+    @Size(max = 30)
+    public String statusUltimaImpressao;
+
+    /** Detalhe/motivo da última tentativa de impressão (ex.: erro da impressora). */
+    @Column(name = "observacoes_impressao", length = 500)
+    @Size(max = 500)
+    public String observacoesImpressao;
+
+    /** Momento da última tentativa de impressão. */
+    @Column(name = "data_ultima_impressao")
+    public LocalDateTime dataUltimaImpressao;
+
     @ManyToOne
     @JoinColumn(name = "nfce_id")
     public Nfe nfce;

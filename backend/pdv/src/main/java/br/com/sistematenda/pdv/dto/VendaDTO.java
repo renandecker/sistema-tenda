@@ -46,10 +46,28 @@ public class VendaDTO extends BaseDTO {
     private String numeroNfce;
     private String chaveNfce;
     private String nfceErro;
+    private String cupomImpressao;
+    private int tentativasImpressao;
+    private String statusUltimaImpressao;
+    private String observacoesImpressao;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime dataUltimaImpressao;
+
     private NfeResumoDTO nfce;
     private List<ItemVendaResumoDTO> itens;
     private List<PagamentoResumoDTO> pagamentos;
     private List<FormaPagamentoDTO> formasPagamento;
+
+    /** Indica se há uma NFC-e autorizada (ou XML/chave) armazenada para reimpressão fiscal. */
+    public boolean isPossuiNfce() {
+        return nfce != null && (chaveNfce != null || nfce.getChaveAcesso() != null);
+    }
+
+    /** Indica se a venda já foi finalizada e, portanto, pode ter o comprovante reimpresso. */
+    public boolean isPodeReimprimir() {
+        return isFinalizada();
+    }
 
     public BigDecimal getSaldoDevedor() {
         return valorTotal != null ? valorTotal.subtract(valorPago != null ? valorPago : BigDecimal.ZERO) : BigDecimal.ZERO;

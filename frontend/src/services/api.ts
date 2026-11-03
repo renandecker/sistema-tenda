@@ -193,6 +193,10 @@ export const apiPdv = {
   getTotalFruteira: (dataInicio: string, dataFim: string) => api.get('/pdv/vendas/total-fruteira', { params: { dataInicio, dataFim } }),
   getTotalBuffet: (dataInicio: string, dataFim: string) => api.get('/pdv/vendas/total-buffet', { params: { dataInicio, dataFim } }),
 
+  // Reimpressão
+  reimprimirVenda: (vendaId: string, sucesso?: boolean, observacao?: string) =>
+    api.post(`/pdv/vendas/${vendaId}/reimprimir`, null, { params: { sucesso, observacao } }),
+
   // PIX
   gerarPix: (id: string, valor: number, txid?: string) => api.post(`/pdv/vendas/${id}/pix/gerar`, null, { params: { valor, txid } }),
   consultarPix: (id: string, txid: string) => api.get(`/pdv/vendas/${id}/pix/status`, { params: { txid } }),

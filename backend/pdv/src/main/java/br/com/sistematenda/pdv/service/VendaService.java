@@ -20,11 +20,13 @@ import br.com.sistematenda.fiscal.service.NfceService;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.enums.FormaPagamento;
 import br.com.sistematenda.common.enums.StatusVenda;
+import br.com.sistematenda.common.config.FiscalConfig;
 import br.com.sistematenda.common.exception.BusinessException;
 import br.com.sistematenda.common.exception.NotFoundException;
 import br.com.sistematenda.common.exception.ValidationException;
 import br.com.sistematenda.common.service.BaseCrudServiceImpl;
 import br.com.sistematenda.common.util.CpfUtils;
+import br.com.sistematenda.common.util.ChaveAcessoUtils;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -69,6 +71,9 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
 
     @Inject
     NfceService nfceService;
+
+    @Inject
+    FiscalConfig fiscalConfig;
 
     @Inject
     PagamentoRepository pagamentoRepository;
@@ -311,7 +316,28 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
         entity.troco = totalPago.subtract(entity.valorTotal);
         entity.valorPago = totalPago;
 
-        getRepository().persist(entity);
+        // Verificar se o cliente pagou com o CNPJ da empresa e emitir NFC-e automaticamente
+        if (entity.clienteDocumento != null && entity.clienteDocumento.length() == 14) {
+            String cnpjEmpresa = ChaveAcessoUtils.somenteDigitos(fiscalConfig.cnpj().orElse(""));
+            if (cnpjEmpresa.equals(entity.clienteDocumento)) {
+                // Cliente pagou com CNPJ da empresa - emitir NFC-e automaticamente
+                try {
+                    NfceRequest request = montarNfceRequest(entity);
+                    Nfe nfe = nfceService.emitirNfce(request);
+
+                    entity.nfce = nfe;
+                    entity.numeroNfce = nfe.numero.toString();
+                    entity.chaveNfce = nfe.chaveAcesso;
+                    entity.xmlNfce = nfe.xmlAutorizado != null ? nfe.xmlAutorizado : nfe.xmlOriginal;
+                    entity.danfeNfce = nfe.danfe;
+                    getRepository().persist(entity);
+                } catch (BusinessException e) {
+                    // Se falhar em emitir NFC-e, continua sem NFC-e mas marca como finalizada
+                    getRepository().persist(entity);
+                    throw e;
+                }
+            }
+        }
 
         // Se tiver comanda, marcar como paga
         if (entity.comanda != null) {
@@ -320,6 +346,10 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
             entity.comanda.valorPago = totalPago;
             comandaService.getRepository().persist(entity.comanda);
         }
+
+        // Snapshot do comprovante para permitir reimpressão mesmo se a impressora falhar.
+        entity.cupomImpressao = gerarCupomImpressao(entity);
+        getRepository().persist(entity);
 
         return mapper.toDTO(entity);
     }
@@ -355,6 +385,8 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
         entity.chaveNfce = nfe.chaveAcesso;
         entity.xmlNfce = nfe.xmlAutorizado != null ? nfe.xmlAutorizado : nfe.xmlOriginal;
         entity.danfeNfce = nfe.danfe;
+        // Atualiza o snapshot já com os dados fiscais (número/chave da NFC-e).
+        entity.cupomImpressao = gerarCupomImpressao(entity);
         getRepository().persist(entity);
 
         return mapper.toDTO(entity);
@@ -490,6 +522,152 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
         pagamentoService.estornarPagamentos(vendaId, motivo);
         
         return mapper.toDTO(entity);
+    }
+
+    /**
+     * Registra uma tentativa de reimpressão do comprovante/NFC-e da venda.
+     *
+     * <p>O conteúdo impresso é o snapshot salvo em {@link Venda#cupomImpressao},
+     * gerado na finalização/emissão. Desta forma, mesmo que a impressora falhe,
+     * a venda pode ser reimpressa exatamente como foi registrada.</p>
+     *
+     * @param vendaId    venda a ser reimpressa
+     * @param sucesso    resultado informado pelo ponto de venda (null assume sucesso)
+     * @param observacao detalhe do resultado (ex.: erro da impressora)
+     */
+    @Transactional
+    public VendaDTO reimprimirVenda(UUID vendaId, Boolean sucesso, String observacao) {
+        Venda entity = getRepository().findById(vendaId);
+        if (entity == null || entity.deleted) {
+            throw new NotFoundException("Venda", vendaId);
+        }
+        if (!entity.isFinalizada()) {
+            throw new BusinessException("VENDA_NAO_FINALIZADA",
+                "Finalize a venda antes de reimprimir o comprovante");
+        }
+
+        // Garante o snapshot do comprovante para reimpressão.
+        if (entity.cupomImpressao == null || entity.cupomImpressao.isBlank()) {
+            entity.cupomImpressao = gerarCupomImpressao(entity);
+        }
+
+        entity.tentativasImpressao = entity.tentativasImpressao + 1;
+        entity.dataUltimaImpressao = LocalDateTime.now();
+
+        boolean impressaoOk = sucesso == null || sucesso;
+        if (impressaoOk) {
+            entity.statusUltimaImpressao = "SUCESSO";
+            entity.observacoesImpressao = observacao != null && !observacao.isBlank()
+                ? limitarTexto(observacao, 500)
+                : "Reimpressão concluída";
+        } else {
+            entity.statusUltimaImpressao = "FALHA";
+            entity.observacoesImpressao = observacao != null && !observacao.isBlank()
+                ? limitarTexto(observacao, 500)
+                : "Falha ao imprimir o comprovante";
+        }
+
+        getRepository().persist(entity);
+        return mapper.toDTO(entity);
+    }
+
+    /**
+     * Registra o resultado de uma impressão automática (ex.: logo após emitir a NFC-e),
+     * contabilizando a tentativa no fluxo de impressão.
+     */
+    @Transactional
+    public VendaDTO registrarTentativaImpressao(UUID vendaId, boolean sucesso, String observacao) {
+        Venda entity = getRepository().findById(vendaId);
+        if (entity == null || entity.deleted) {
+            throw new NotFoundException("Venda", vendaId);
+        }
+        entity.tentativasImpressao = entity.tentativasImpressao + 1;
+        entity.dataUltimaImpressao = LocalDateTime.now();
+        entity.statusUltimaImpressao = sucesso ? "SUCESSO" : "FALHA";
+        entity.observacoesImpressao = observacao != null && !observacao.isBlank()
+            ? limitarTexto(observacao, 500)
+            : (sucesso ? "Impressão concluída" : "Falha ao imprimir o comprovante");
+        getRepository().persist(entity);
+        return mapper.toDTO(entity);
+    }
+
+    /** Monta o texto do comprovante que será persistido para reimpressão. */
+    private String gerarCupomImpressao(Venda entity) {
+        String linha = "----------------------------------------";
+        StringBuilder sb = new StringBuilder();
+        sb.append(linha).append('\n');
+        sb.append("SISTEMA TENDA\n");
+        if (entity.numero != null) {
+            sb.append("Venda: ").append(entity.numero).append('\n');
+        }
+        if (entity.data != null) {
+            sb.append("Data: ").append(entity.data).append('\n');
+        }
+        if (entity.dataFinalizacao != null) {
+            sb.append("Finalizada: ").append(entity.dataFinalizacao).append('\n');
+        }
+        sb.append("Cliente: ").append(entity.clienteNome != null && !entity.clienteNome.isBlank()
+            ? entity.clienteNome : "Consumidor final").append('\n');
+        if (entity.clienteDocumento != null && !entity.clienteDocumento.isBlank()) {
+            sb.append("Documento: ").append(entity.clienteDocumento).append('\n');
+        }
+        sb.append(linha).append('\n');
+        sb.append("ITENS\n");
+        if (entity.itens != null) {
+            for (ItemVenda item : entity.itens) {
+                if (item.cancelado) {
+                    continue;
+                }
+                sb.append(item.nomeProduto).append('\n');
+                sb.append(String.format("%s x %s = %s\n",
+                    formatarQuantidade(item.quantidade),
+                    formatarMoeda(item.precoUnitario),
+                    formatarMoeda(item.valorTotal)));
+            }
+        }
+        sb.append(linha).append('\n');
+        sb.append("Subtotal: ").append(formatarMoeda(entity.subtotal)).append('\n');
+        sb.append("Desconto: ").append(formatarMoeda(entity.desconto)).append('\n');
+        sb.append("Acrescimo: ").append(formatarMoeda(entity.acrescimo)).append('\n');
+        sb.append("TOTAL: ").append(formatarMoeda(entity.valorTotal)).append('\n');
+        sb.append("Pago: ").append(formatarMoeda(entity.valorPago)).append('\n');
+        sb.append("Troco: ").append(formatarMoeda(entity.troco)).append('\n');
+        sb.append(linha).append('\n');
+        sb.append("PAGAMENTOS\n");
+        for (Pagamento pagamento : pagamentoRepository.findByVenda(entity)) {
+            if (pagamento.status == Pagamento.StatusPagamento.CANCELADO
+                || pagamento.status == Pagamento.StatusPagamento.ESTORNADO) {
+                continue;
+            }
+            sb.append(pagamento.formaPagamento != null
+                ? pagamento.formaPagamento.getDescricao() : "Outros")
+                .append(": ").append(formatarMoeda(pagamento.valor)).append('\n');
+        }
+        sb.append(linha).append('\n');
+        if (entity.chaveNfce != null && !entity.chaveNfce.isBlank()) {
+            sb.append("NFC-e: ").append(entity.numeroNfce != null ? entity.numeroNfce : "-").append('\n');
+            sb.append("Chave: ").append(entity.chaveNfce).append('\n');
+            sb.append(linha).append('\n');
+        }
+        sb.append("Obrigado pela preferencia!\n");
+        sb.append(linha).append('\n');
+        return sb.toString();
+    }
+
+    private String formatarMoeda(BigDecimal valor) {
+        return valor != null
+            ? new java.text.DecimalFormat("#,##0.00", new java.text.DecimalFormatSymbols(new java.util.Locale("pt", "BR"))).format(valor)
+            : "0,00";
+    }
+
+    private String formatarQuantidade(BigDecimal quantidade) {
+        return quantidade != null
+            ? new java.text.DecimalFormat("#,##0.###", new java.text.DecimalFormatSymbols(new java.util.Locale("pt", "BR"))).format(quantidade)
+            : "1";
+    }
+
+    private String limitarTexto(String valor, int tamanho) {
+        return valor.length() <= tamanho ? valor : valor.substring(0, tamanho);
     }
 
     public BigDecimal getTotalVendasPeriodo(LocalDate dataInicio, LocalDate dataFim) {

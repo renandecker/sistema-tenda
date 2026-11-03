@@ -80,7 +80,6 @@ public class Produto extends BaseEntity {
     public BigDecimal margemDesejada;
 
     @Column(name = "estoque_atual", nullable = false, precision = 15, scale = 4)
-    @NotNull
     @DecimalMin("0.0")
     public BigDecimal estoqueAtual = BigDecimal.ZERO;
 

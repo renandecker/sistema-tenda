@@ -200,4 +200,12 @@ public class VendaResource {
         return service.getTotalBuffetPeriodo(dataInicio, dataFim);
     }
 
+    @POST
+    @Path("/{id}/reimprimir")
+    public VendaDTO reimprimir(@PathParam("id") UUID id,
+                               @QueryParam("sucesso") Boolean sucesso,
+                               @QueryParam("observacao") String observacao) {
+        return service.reimprimirVenda(id, sucesso, observacao);
+    }
+
 }

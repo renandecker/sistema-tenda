@@ -15,6 +15,7 @@ import {
   MenuBook as MenuBookIcon,
   Warning as WarningIcon,
   ListAlt as ListAltIcon,
+  ReceiptLong as ReceiptLongIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -22,7 +23,7 @@ import { api, apiBuffet, apiClientes, apiCaderno, apiFruteira, apiPdv } from '@/
 import { PageHeader } from '@/components/PageHeader';
 import { PixQrCode, type PixChargeResponse } from '@/components/pix';
 import { TesteProducaoPanel } from '@/components/TesteProducaoPanel';
-import { formatCurrency, formatNumber } from '@/utils/formatters';
+import { formatCurrency, formatDateTime, formatNumber } from '@/utils/formatters';
 import { maskCurrency, maskCpfCnpj, maskQuantity, parseCurrency, parseDecimal, parseDocument } from '@/utils/masks';
 
 interface ItemResumo {
@@ -44,6 +45,9 @@ interface PagamentoForma {
 interface VendaAtual {
   id: string;
   numero?: string;
+  clienteNome?: string;
+  clienteDocumento?: string;
+  data?: string;
   subtotal?: number;
   desconto?: number;
   acrescimo?: number;
@@ -52,6 +56,14 @@ interface VendaAtual {
   status?: string;
   itens?: ItemResumo[];
   pagamentos?: PagamentoForma[];
+  numeroNfce?: string;
+  chaveNfce?: string;
+  nfceErro?: string;
+  cupomImpressao?: string;
+  tentativasImpressao?: number;
+  statusUltimaImpressao?: string;
+  observacoesImpressao?: string;
+  dataUltimaImpressao?: string;
 }
 
 interface ProdutoBusca {
@@ -108,6 +120,8 @@ export function PdvPage() {
   const [buscando, setBuscando] = useState(false);
   const [quantidade, setQuantidade] = useState('1');
   const [pagDialog, setPagDialog] = useState(false);
+  const [reimpressaoDialog, setReimpressaoDialog] = useState(false);
+  const [processandoReimpressao, setProcessandoReimpressao] = useState(false);
   const [testDialogAberto, setTestDialogAberto] = useState(false);
   const [formaPagamento, setFormaPagamento] = useState('DINHEIRO');
   const [valorPagamento, setValorPagamento] = useState('');
@@ -554,6 +568,63 @@ export function PdvPage() {
     setValorPagamento('');
   };
 
+  const abrirJanelaImpressao = useCallback(() => {
+    const janela = window.open('', '_blank', 'width=420,height=700');
+    if (!janela) return null;
+    return janela;
+  }, []);
+
+  const preencherJanelaImpressao = useCallback((janela: Window, texto: string) => {
+    const escapeHtml = (s: string) =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Comprovante</title><style>
+      body { font-family: 'Courier New', monospace; font-size: 12px; }
+      pre { white-space: pre-wrap; margin: 0; }
+    </style></head><body><pre>${escapeHtml(texto)}</pre></body></html>`;
+    janela.document.open();
+    janela.document.write(html);
+    janela.document.close();
+    janela.focus();
+    setTimeout(() => janela.print(), 300);
+  }, []);
+
+  const handleReimprimir = useCallback(async () => {
+    if (!venda) return;
+    const janela = abrirJanelaImpressao();
+    if (!janela) {
+      toast.error('Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups.');
+      return;
+    }
+    setProcessandoReimpressao(true);
+    try {
+      const texto = venda.cupomImpressao;
+      let atualizado = venda;
+      if (texto) {
+        preencherJanelaImpressao(janela, texto);
+        const { data } = await apiPdv.reimprimirVenda(venda.id, true, 'Reimpressão enviada para a impressora');
+        atualizado = { ...venda, ...data, itens: venda.itens, pagamentos: venda.pagamentos };
+      } else {
+        const { data } = await apiPdv.reimprimirVenda(venda.id);
+        if (data?.cupomImpressao) preencherJanelaImpressao(janela, data.cupomImpressao);
+        atualizado = { ...venda, ...data, itens: venda.itens, pagamentos: venda.pagamentos };
+      }
+      setVenda(atualizado);
+      toast.success('Reimpressão enviada');
+      setReimpressaoDialog(false);
+    } catch (e: any) {
+      try { janela.close(); } catch { /* ignore */ }
+      const mensagem = e?.response?.data?.message || e?.message || 'Erro ao reimprimir';
+      toast.error(mensagem);
+      try { await apiPdv.reimprimirVenda(venda.id, false, mensagem); } catch { /* ignore */ }
+    } finally {
+      setProcessandoReimpressao(false);
+    }
+  }, [abrirJanelaImpressao, preencherJanelaImpressao, venda]);
+
+  const abrirReimpressao = () => {
+    setReimpressaoDialog(true);
+  };
+
   const abrirPagamento = () => {
     setPagamentosPendentes([]);
     setFormaPagamento('DINHEIRO');
@@ -877,7 +948,7 @@ export function PdvPage() {
     return () => window.removeEventListener('keydown', handler);
   }, [pagDialog]);
 
-  const vendaIniciada = !!venda && ((venda.itens?.length ?? 0) > 0 || !!cliente);
+  
   const filtrarProdutosDaAbas = (tab: 'buffet' | 'fruteira' | 'mesas') => {
     if (tab === 'buffet') {
       return buscou ? resultados.filter((p) => p.origem === 'BUFFET') : estoqueBuffet;
@@ -920,6 +991,7 @@ export function PdvPage() {
             <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => venda && recarregarVenda(venda.id)} disabled={!venda || venda.id.startsWith('local-')}>Atualizar <Typography variant="caption" color="text.secondary">(F10)</Typography></Button>
             <Button variant="contained" startIcon={<AddIcon />} onClick={novaVenda} disabled={loading}>Nova venda <Typography variant="caption" color="text.secondary">(F1)</Typography></Button>
             <Button variant="contained" startIcon={<WarningIcon />} onClick={() => setTestDialogAberto(true)} disabled={!venda}>Testes <Typography variant="caption" color="text.secondary">(F5)</Typography></Button>
+            <Button variant="outlined" startIcon={<ReceiptLongIcon />} onClick={() => { if (venda) abrirReimpressao(); }} disabled={!venda || venda.id.startsWith('local-')}>Reimprimir <Typography variant="caption" color="text.secondary">(Ctrl+R)</Typography></Button>
           </Box>
         }
       />
@@ -1096,7 +1168,7 @@ export function PdvPage() {
               <Grid container spacing={1}>
                 <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={abrirPagamento}>Pagar <Typography variant="caption" color="text.secondary">(F6)</Typography></Button></Grid>
                 <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={venda == null || saldoCentavos > 0}>Finalizar <Typography variant="caption" color="text.secondary">(F7)</Typography></Button></Grid>
-                <Grid item xs={12}><Button fullWidth color="error" startIcon={<CancelIcon />} onClick={cancelar} disabled={!vendaIniciada && !venda}>Cancelar venda <Typography variant="caption" color="text.secondary">(F8)</Typography></Button></Grid>
+                <Grid item xs={12}><Button fullWidth color="error" startIcon={<CancelIcon />} onClick={cancelar} disabled={!venda}>Cancelar venda <Typography variant="caption" color="text.secondary">(F8)</Typography></Button></Grid>
               </Grid>
               {venda?.pagamentos && venda.pagamentos.length > 0 && (
                 <Box sx={{ mt: 2 }}>
@@ -1337,6 +1409,44 @@ export function PdvPage() {
           <Button onClick={() => setTestDialogAberto(false)}>Fechar</Button>
           <Button variant="contained" onClick={() => setTestDialogAberto(false)}>
             Testar agora
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={reimpressaoDialog} onClose={() => setReimpressaoDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Reimprimir Venda</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">Venda: {venda?.numero ?? '—'}</Typography>
+          <Typography variant="body2">Cliente: {venda?.clienteNome ?? 'Consumidor final'}</Typography>
+          <Typography variant="body2">Data: {formatDateTime(venda?.data)}</Typography>
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="body2" color="text.secondary">
+            Status: {venda?.status ?? '—'}
+          </Typography>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" color="text.secondary">
+              Tentativas de impressão: {venda?.tentativasImpressao ?? 0}
+            </Typography>
+          </Box>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" color="text.secondary">
+              Status da última impressão: {venda?.statusUltimaImpressao ?? '—'}
+            </Typography>
+          </Box>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" color="text.secondary">
+              Observação: {venda?.observacoesImpressao ?? '—'}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReimpressaoDialog(false)}>Fechar</Button>
+          <Button
+            variant="contained"
+            onClick={handleReimprimir}
+            disabled={processandoReimpressao || !venda}
+          >
+            {processandoReimpressao ? 'Imprimindo...' : 'Reimprimir'}
           </Button>
         </DialogActions>
       </Dialog>
