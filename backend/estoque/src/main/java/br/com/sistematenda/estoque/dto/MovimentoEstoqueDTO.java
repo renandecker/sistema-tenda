@@ -17,6 +17,9 @@ public class MovimentoEstoqueDTO {
     private UUID id;
     private UUID produtoFruteiraId;
     private UUID produtoBuffetId;
+    private UUID produtoEstoqueId;
+    private String produtoNome;
+    private String produtoCodigo;
     private TipoMovimento tipo;
     private OrigemDestino origem;
     private OrigemDestino destino;
@@ -47,6 +50,15 @@ public class MovimentoEstoqueDTO {
 
     public UUID getProdutoBuffetId() { return produtoBuffetId; }
     public void setProdutoBuffetId(UUID produtoBuffetId) { this.produtoBuffetId = produtoBuffetId; }
+
+    public UUID getProdutoEstoqueId() { return produtoEstoqueId; }
+    public void setProdutoEstoqueId(UUID produtoEstoqueId) { this.produtoEstoqueId = produtoEstoqueId; }
+
+    public String getProdutoNome() { return produtoNome; }
+    public void setProdutoNome(String produtoNome) { this.produtoNome = produtoNome; }
+
+    public String getProdutoCodigo() { return produtoCodigo; }
+    public void setProdutoCodigo(String produtoCodigo) { this.produtoCodigo = produtoCodigo; }
 
     public TipoMovimento getTipo() { return tipo; }
     public void setTipo(TipoMovimento tipo) { this.tipo = tipo; }

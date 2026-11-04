@@ -20,7 +20,9 @@ backend/pdv/src/main/resources/db/migration/
 ├── V5__...
 ├── V6__...
 ├── V7__create_estoque_schema.sql      (módulo estoque)
-└── V8__ensure_complete_schema.sql
+├── V8__ensure_complete_schema.sql
+├── V9__add_missing_venda_fields.sql
+└── V10__create_estoque_produto.sql    (produtos de estoque/matéria-prima)
 ```
 
 As migrações dos outros módulos (`estoque`, etc.) também ficam em
@@ -31,9 +33,9 @@ definida pela versão, não pela localização do arquivo.
 
 | Situação do banco | O que o Flyway faz |
 |---|---|
-| Banco vazio | Executa `V1` até `V8` |
-| Banco existente **sem** histórico do Flyway | Cria o histórico na versão 7 (`baseline-version=7`) e executa a `V8` |
-| Banco já migrado | Valida os checksums e aplica apenas migrações pendentes |
+| Banco vazio | Executa `V1` até `V10` |
+| Banco existente **sem** histórico do Flyway | Cria o histórico na versão 7 (`baseline-version=7`) e executa da `V8` até a `V10` |
+| Banco já migrado | Aplica apenas migrações pendentes (validação de checksum desativada) |
 
 A `V8__ensure_complete_schema.sql` é **idempotente**: usa `CREATE TABLE IF NOT
 EXISTS`, `ADD COLUMN IF NOT EXISTS`, índices/constraints com guarda e seeds com
@@ -53,6 +55,11 @@ nova.
 As migrações `V2_1` e `V4_1` existem apenas para garantir tabelas que eram
 referenciadas por migrações antigas (`buffet_produto`, `cadastro_clientes` e
 `fiscal_nfe`) antes das versões seguintes.
+
+A `V10__create_estoque_produto.sql` cria a tabela `estoque_produto` (cadastro de
+matéria-prima/insumos), adiciona `produto_estoque_id` em `estoque_movimento`,
+atualiza as constraints de origem/destino/tipo e desliga o controle de estoque
+dos produtos do buffet (`controla_estoque = false`).
 
 ## Convenção de Nomes
 
@@ -115,13 +122,17 @@ quarkus.flyway.migrate-at-start=true
 quarkus.flyway.locations=db/migration
 quarkus.flyway.baseline-on-migrate=true
 quarkus.flyway.baseline-version=7
-quarkus.flyway.validate-on-migrate=true
+quarkus.flyway.validate-on-migrate=false
 quarkus.flyway.clean-disabled=true
 quarkus.hibernate-orm.database.generation=none
 ```
 
 - `baseline-version=7`: ao encontrar um banco não vazio sem histórico, o Flyway
   considera a versão 7 como já aplicada e executa a `V8`.
+- `validate-on-migrate=false`: evita que bancos migrados com versões antigas da
+  `V8` (o script foi ajustado depois de aplicado em algumas instalações) deixem
+  de iniciar por checksum. As migrations são idempotentes; ainda assim, prefira
+  criar uma nova versão em vez de editar um script já aplicado.
 - `clean-disabled=true`: impede `flyway:clean` de apagar o banco por acidente.
   Use apenas em desenvolvimento, sobrescrevendo explicitamente a configuração.
 - `database.generation=none`: o Hibernate **não** altera o schema. Quem manda no

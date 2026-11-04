@@ -143,9 +143,8 @@ public class ProdutoService extends BaseCrudServiceImpl<Produto, ProdutoDTO, UUI
             throw new BusinessException("ESTOQUE_INSUFICIENTE", 
                 "Estoque insuficiente. Atual: " + produto.getEstoqueAtual() + ", Tentativa: " + quantidade);
         }
-        repository.updateEstoque(produtoId, quantidade);
         
-        // Fire stock movement event
+        // O observador de movimentação é quem atualiza o saldo e registra o histórico.
         fireStockMovementEvent(produtoId, quantidade, produto.getCustoMedio());
         
         return findById(produtoId);

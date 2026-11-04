@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, TextField, Tooltip, Typography } from '@mui/material';
 import { Add as AddIcon, Download as DownloadIcon, Inventory as InventoryIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-import { apiBuffet, apiEstoque, apiFruteira } from '@/services/api';
+import { apiEstoque, apiFruteira } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
 import { formatDateTime, formatNumber } from '@/utils/formatters';
@@ -49,19 +49,19 @@ export function EstoquePage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [m, f, b] = await Promise.allSettled([
+      const [m, f, e] = await Promise.allSettled([
         apiEstoque.listMovimentos({ page: movPage, size: movRowsPerPage }),
         apiFruteira.listProdutos({ size: 200 }),
-        apiBuffet.listProdutos({ size: 200 }),
+        apiEstoque.listProdutos({ size: 200 }),
       ]);
       const movData = m.status === 'fulfilled' ? m.value.data : null;
       setMovimentos(movData?.content ?? (Array.isArray(movData) ? movData : []));
       setMovTotal(movData?.totalElements ?? (Array.isArray(movData) ? movData.length : 0));
       const listF: any[] = f.status === 'fulfilled' ? (f.value.data?.content ?? (Array.isArray(f.value.data) ? f.value.data : [])) : [];
-      const listB: any[] = b.status === 'fulfilled' ? (b.value.data?.content ?? (Array.isArray(b.value.data) ? b.value.data : [])) : [];
+      const listE: any[] = e.status === 'fulfilled' ? (e.value.data?.content ?? (Array.isArray(e.value.data) ? e.value.data : [])) : [];
       setSaldos([
         ...listF.map((p) => ({ id: `F-${p.id}`, produtoId: p.id, codigo: p.codigo, nome: p.nome, local: 'FRUTEIRA', estoque: Number(p.estoqueAtual ?? 0), minimo: Number(p.estoqueMinimo ?? 0) })),
-        ...listB.map((p) => ({ id: `B-${p.id}`, produtoId: p.id, codigo: p.codigo, nome: p.nome, local: 'BUFFET', estoque: Number(p.estoqueAtual ?? 0), minimo: Number(p.estoqueMinimo ?? 0) })),
+        ...listE.map((p) => ({ id: `E-${p.id}`, produtoId: p.id, codigo: p.codigo, nome: p.nome, local: 'ESTOQUE', estoque: Number(p.estoqueAtual ?? 0), minimo: Number(p.estoqueMinimo ?? 0) })),
       ]);
     } catch {
       setMovimentos([]);
@@ -90,7 +90,7 @@ export function EstoquePage() {
       responsavel: movForm.responsavel || undefined,
     };
     if (isFruteira) payload.produtoFruteiraId = saldo.produtoId;
-    else payload.produtoBuffetId = saldo.produtoId;
+    else payload.produtoEstoqueId = saldo.produtoId;
     setRegistrando(true);
     try {
       if (movForm.operacao === 'ENTRADA_COMPRA') {
@@ -165,7 +165,7 @@ export function EstoquePage() {
           <Grid container spacing={2}>
             <Grid item xs={6} sm={3}>
               <TextField select fullWidth size="small" label="Local" value={local} onChange={(e) => setLocal(e.target.value)}>
-                <MenuItem value="">Todos</MenuItem>{['FRUTEIRA', 'BUFFET', 'ESTOQUE'].map((l) => <MenuItem key={l} value={l}>{l}</MenuItem>)}
+                <MenuItem value="">Todos</MenuItem>{['FRUTEIRA', 'ESTOQUE'].map((l) => <MenuItem key={l} value={l}>{l}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={6} sm={3}>
@@ -173,7 +173,7 @@ export function EstoquePage() {
                 <MenuItem value="">Todos</MenuItem>{['ENTRADA', 'SAIDA', 'AJUSTE', 'TRANSFERENCIA', 'PERDA', 'VENDA', 'COMPRA'].map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Saldos consolidados de fruteira + buffet. Movimentos de compras, vendas, perdas e transferências aparecem no histórico abaixo.</Typography></Grid>
+            <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Saldos consolidados de fruteira + estoque. Movimentos de compras, vendas, perdas e transferências aparecem no histórico abaixo.</Typography></Grid>
           </Grid>
         </CardContent>
       </Card>
@@ -192,7 +192,7 @@ export function EstoquePage() {
       />
       <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 3, mb: 1 }}>Histórico de movimentações</Typography>
       <DataTable<Movimento>
-        data={movimentos.filter((m) => !tipo || m.tipo === tipo)} loading={loading} serverSide totalCount={tipo ? movimentos.filter((m) => m.tipo === tipo).length : movTotal} page={movPage} rowsPerPage={movRowsPerPage}
+        data={movimentos.filter((m) => !tipo || (m.tipo ?? '').includes(tipo))} loading={loading} serverSide totalCount={tipo ? movimentos.filter((m) => (m.tipo ?? '').includes(tipo)).length : movTotal} page={movPage} rowsPerPage={movRowsPerPage}
         onPageChange={(p, r) => { setMovPage(p); setMovRowsPerPage(r); }}
         searchPlaceholder="Buscar no histórico..." emptyMessage="Sem histórico — os movimentos de compras, vendas, perdas e transferências passarão a aparecer aqui"
         columns={[

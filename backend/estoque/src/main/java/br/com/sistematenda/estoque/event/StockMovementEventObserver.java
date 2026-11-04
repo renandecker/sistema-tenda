@@ -2,7 +2,9 @@ package br.com.sistematenda.estoque.event;
 
 import br.com.sistematenda.common.event.StockMovementEvent;
 import br.com.sistematenda.estoque.entity.MovimentoEstoque;
+import br.com.sistematenda.estoque.entity.ProdutoEstoque;
 import br.com.sistematenda.estoque.repository.MovimentoEstoqueRepository;
+import br.com.sistematenda.estoque.repository.ProdutoEstoqueRepository;
 import br.com.sistematenda.fruteira.entity.Produto;
 import br.com.sistematenda.fruteira.repository.ProdutoRepository;
 import br.com.sistematenda.buffet.entity.ProdutoBuffet;
@@ -28,6 +30,9 @@ public class StockMovementEventObserver {
 
     @Inject
     ProdutoBuffetRepository produtoBuffetRepository;
+
+    @Inject
+    ProdutoEstoqueRepository produtoEstoqueRepository;
 
     @Inject
     EntityManager entityManager;
@@ -56,6 +61,25 @@ public class StockMovementEventObserver {
                 
                 produto.estoqueAtual = estoquePosterior;
                 produtoRepository.persist(produto);
+            }
+        } else if (event.getProdutoEstoqueId() != null) {
+            ProdutoEstoque produto = produtoEstoqueRepository.findById(event.getProdutoEstoqueId());
+            if (produto != null) {
+                estoqueAnterior = produto.estoqueAtual != null ? produto.estoqueAtual : BigDecimal.ZERO;
+
+                boolean isEntrada = isEntrada(event.getTipo());
+
+                if (isEntrada) {
+                    estoquePosterior = estoqueAnterior.add(event.getQuantidade());
+                } else {
+                    estoquePosterior = estoqueAnterior.subtract(event.getQuantidade());
+                    if (estoquePosterior.compareTo(BigDecimal.ZERO) < 0) {
+                        estoquePosterior = BigDecimal.ZERO;
+                    }
+                }
+
+                produto.estoqueAtual = estoquePosterior;
+                produtoEstoqueRepository.persist(produto);
             }
         } else if (event.getProdutoBuffetId() != null) {
             ProdutoBuffet produto = produtoBuffetRepository.findById(event.getProdutoBuffetId());
@@ -86,6 +110,9 @@ public class StockMovementEventObserver {
         }
         if (event.getProdutoBuffetId() != null) {
             entity.produtoBuffet = entityManager.getReference(ProdutoBuffet.class, event.getProdutoBuffetId());
+        }
+        if (event.getProdutoEstoqueId() != null) {
+            entity.produtoEstoque = entityManager.getReference(ProdutoEstoque.class, event.getProdutoEstoqueId());
         }
         
         entity.tipo = mapTipoMovimento(event.getTipo());
@@ -134,10 +161,13 @@ public class StockMovementEventObserver {
         return switch (origem) {
             case FRUTEIRA -> MovimentoEstoque.OrigemDestino.FRUTEIRA;
             case BUFFET -> MovimentoEstoque.OrigemDestino.BUFFET;
+            case ESTOQUE -> MovimentoEstoque.OrigemDestino.ESTOQUE;
             case FORNECEDOR -> MovimentoEstoque.OrigemDestino.FORNECEDOR;
             case CLIENTE -> MovimentoEstoque.OrigemDestino.CLIENTE;
             case PERDA -> MovimentoEstoque.OrigemDestino.PERDA;
             case AJUSTE -> MovimentoEstoque.OrigemDestino.AJUSTE;
+            case DEFEITO -> MovimentoEstoque.OrigemDestino.DEFEITO;
+            case REPROCESSO -> MovimentoEstoque.OrigemDestino.REPROCESSO;
             case OUTROS -> MovimentoEstoque.OrigemDestino.OUTROS;
         };
     }

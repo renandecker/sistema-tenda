@@ -6,6 +6,8 @@ import br.com.sistematenda.fruteira.entity.Produto;
 import br.com.sistematenda.fruteira.repository.ProdutoRepository;
 import br.com.sistematenda.buffet.entity.ProdutoBuffet;
 import br.com.sistematenda.buffet.repository.ProdutoBuffetRepository;
+import br.com.sistematenda.estoque.entity.ProdutoEstoque;
+import br.com.sistematenda.estoque.repository.ProdutoEstoqueRepository;
 import br.com.sistematenda.common.mapper.BaseMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -19,6 +21,9 @@ public class MovimentoEstoqueMapper implements BaseMapper<MovimentoEstoque, Movi
     @Inject
     ProdutoBuffetRepository produtoBuffetRepository;
 
+    @Inject
+    ProdutoEstoqueRepository produtoEstoqueRepository;
+
     @Override
     public MovimentoEstoqueDTO toDTO(MovimentoEstoque entity) {
         if (entity == null) return null;
@@ -26,6 +31,9 @@ public class MovimentoEstoqueMapper implements BaseMapper<MovimentoEstoque, Movi
         dto.setId(entity.id);
         dto.setProdutoFruteiraId(entity.produtoFruteira != null ? entity.produtoFruteira.id : null);
         dto.setProdutoBuffetId(entity.produtoBuffet != null ? entity.produtoBuffet.id : null);
+        dto.setProdutoEstoqueId(entity.produtoEstoque != null ? entity.produtoEstoque.id : null);
+        dto.setProdutoNome(entity.getProdutoNome());
+        dto.setProdutoCodigo(entity.getProdutoCodigo());
         dto.setTipo(entity.tipo);
         dto.setOrigem(entity.origem);
         dto.setDestino(entity.destino);
@@ -60,6 +68,9 @@ public class MovimentoEstoqueMapper implements BaseMapper<MovimentoEstoque, Movi
         if (dto.getProdutoBuffetId() != null) {
             entity.produtoBuffet = produtoBuffetRepository.findById(dto.getProdutoBuffetId());
         }
+        if (dto.getProdutoEstoqueId() != null) {
+            entity.produtoEstoque = produtoEstoqueRepository.findById(dto.getProdutoEstoqueId());
+        }
         
         entity.tipo = dto.getTipo();
         entity.origem = dto.getOrigem();
@@ -92,6 +103,9 @@ public class MovimentoEstoqueMapper implements BaseMapper<MovimentoEstoque, Movi
         }
         if (dto.getProdutoBuffetId() != null) {
             entity.produtoBuffet = produtoBuffetRepository.findById(dto.getProdutoBuffetId());
+        }
+        if (dto.getProdutoEstoqueId() != null) {
+            entity.produtoEstoque = produtoEstoqueRepository.findById(dto.getProdutoEstoqueId());
         }
         
         entity.tipo = dto.getTipo();

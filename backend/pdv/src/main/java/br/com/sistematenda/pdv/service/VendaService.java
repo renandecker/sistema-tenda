@@ -305,7 +305,8 @@ public class VendaService extends BaseCrudServiceImpl<Venda, VendaDTO, UUID> {
             throw new BusinessException("VENDA_SEM_VALOR", "Venda não possui itens");
         }
 
-        BigDecimal totalPago = pagamentoService.getTotalPago(vendaId);
+        // Considera tanto pagamentos AUTORIZADOS quanto PENDENTE (ex.: PIX não confirmado)
+        BigDecimal totalPago = repository.getTotalByVendaIncluindoPendente(entity);
         if (totalPago.compareTo(entity.valorTotal) < 0) {
             throw new BusinessException("PAGAMENTO_INCOMPLETO",
                 "Valor pago (" + totalPago + ") menor que total (" + entity.valorTotal + ")");

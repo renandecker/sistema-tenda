@@ -90,6 +90,7 @@ public class MovimentoEstoqueResource {
         MovimentoEstoqueDTO created = service.registrarEntradaCompra(
                 dto.getProdutoFruteiraId(),
                 dto.getProdutoBuffetId(),
+                dto.getProdutoEstoqueId(),
                 dto.getQuantidade(),
                 dto.getCustoUnitario(),
                 dto.getDocumentoReferencia(),
@@ -108,6 +109,7 @@ public class MovimentoEstoqueResource {
         MovimentoEstoqueDTO created = service.registrarEntradaTransferencia(
                 dto.getProdutoFruteiraId(),
                 dto.getProdutoBuffetId(),
+                dto.getProdutoEstoqueId(),
                 dto.getQuantidade(),
                 dto.getCustoUnitario(),
                 dto.getOrigem(),
@@ -123,6 +125,7 @@ public class MovimentoEstoqueResource {
         MovimentoEstoqueDTO created = service.registrarSaidaVenda(
                 dto.getProdutoFruteiraId(),
                 dto.getProdutoBuffetId(),
+                dto.getProdutoEstoqueId(),
                 dto.getQuantidade(),
                 dto.getCustoUnitario(),
                 dto.getResponsavel()
@@ -137,6 +140,7 @@ public class MovimentoEstoqueResource {
         MovimentoEstoqueDTO created = service.registrarAjuste(
                 dto.getProdutoFruteiraId(),
                 dto.getProdutoBuffetId(),
+                dto.getProdutoEstoqueId(),
                 dto.getQuantidade(),
                 dto.getCustoUnitario(),
                 dto.getTipo() == TipoMovimento.ENTRADA_AJUSTE,
@@ -153,6 +157,7 @@ public class MovimentoEstoqueResource {
         MovimentoEstoqueDTO created = service.registrarDefeito(
                 dto.getProdutoFruteiraId(),
                 dto.getProdutoBuffetId(),
+                dto.getProdutoEstoqueId(),
                 dto.getTipo(),
                 dto.getQuantidade(),
                 dto.getCustoUnitario(),
@@ -172,6 +177,7 @@ public class MovimentoEstoqueResource {
         MovimentoEstoqueDTO created = service.registrarEntradaDevolucao(
                 dto.getProdutoFruteiraId(),
                 dto.getProdutoBuffetId(),
+                dto.getProdutoEstoqueId(),
                 dto.getQuantidade(),
                 dto.getCustoUnitario(),
                 dto.getDocumentoReferencia(),
@@ -191,6 +197,7 @@ public class MovimentoEstoqueResource {
         MovimentoEstoqueDTO created = service.registrarEntradaReprocessamento(
                 dto.getProdutoFruteiraId(),
                 dto.getProdutoBuffetId(),
+                dto.getProdutoEstoqueId(),
                 dto.getQuantidade(),
                 dto.getCustoUnitario(),
                 dto.getQuantidadeRecuperavel(),
@@ -208,6 +215,7 @@ public class MovimentoEstoqueResource {
         MovimentoEstoqueDTO created = service.registrarSaidaTransferencia(
                 dto.getProdutoFruteiraId(),
                 dto.getProdutoBuffetId(),
+                dto.getProdutoEstoqueId(),
                 dto.getQuantidade(),
                 dto.getCustoUnitario(),
                 dto.getOrigem(),
@@ -223,6 +231,7 @@ public class MovimentoEstoqueResource {
         MovimentoEstoqueDTO created = service.registrarSaidaConsumoInterno(
                 dto.getProdutoFruteiraId(),
                 dto.getProdutoBuffetId(),
+                dto.getProdutoEstoqueId(),
                 dto.getQuantidade(),
                 dto.getCustoUnitario(),
                 dto.getObservacoes(),
@@ -238,6 +247,7 @@ public class MovimentoEstoqueResource {
         MovimentoEstoqueDTO created = service.registrarSaidaPerda(
                 dto.getProdutoFruteiraId(),
                 dto.getProdutoBuffetId(),
+                dto.getProdutoEstoqueId(),
                 dto.getQuantidade(),
                 dto.getCustoUnitario(),
                 dto.getMotivoDefeito(),
@@ -254,7 +264,8 @@ public class MovimentoEstoqueResource {
             @QueryParam("tipo") @DefaultValue("fruteira") String tipo) {
         UUID fruteiraId = "fruteira".equals(tipo) ? produtoId : null;
         UUID buffetId = "buffet".equals(tipo) ? produtoId : null;
-        BigDecimal saldo = service.getEstoqueAtual(fruteiraId, buffetId);
+        UUID estoqueId = "estoque".equals(tipo) ? produtoId : null;
+        BigDecimal saldo = service.getEstoqueAtual(fruteiraId, buffetId, estoqueId);
         return Response.ok(saldo).build();
     }
 
@@ -265,7 +276,8 @@ public class MovimentoEstoqueResource {
             @QueryParam("tipo") @DefaultValue("fruteira") String tipo) {
         UUID fruteiraId = "fruteira".equals(tipo) ? produtoId : null;
         UUID buffetId = "buffet".equals(tipo) ? produtoId : null;
-        MovimentoEstoqueService.EstoqueResumoDTO resumo = service.getEstoqueResumo(fruteiraId, buffetId);
+        UUID estoqueId = "estoque".equals(tipo) ? produtoId : null;
+        MovimentoEstoqueService.EstoqueResumoDTO resumo = service.getEstoqueResumo(fruteiraId, buffetId, estoqueId);
         if (resumo == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }

@@ -6,18 +6,15 @@ import br.com.sistematenda.buffet.mapper.ProdutoBuffetMapper;
 import br.com.sistematenda.buffet.repository.ProdutoBuffetRepository;
 import br.com.sistematenda.common.dto.PageResponse;
 import br.com.sistematenda.common.enums.UnidadeMedida;
-import br.com.sistematenda.common.event.StockMovementEvent;
 import br.com.sistematenda.common.exception.NotFoundException;
 import br.com.sistematenda.common.exception.ValidationException;
 import br.com.sistematenda.common.service.BaseCrudServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,9 +23,6 @@ public class ProdutoBuffetService extends BaseCrudServiceImpl<ProdutoBuffet, Pro
 
     @Inject
     ProdutoBuffetRepository repository;
-
-    @Inject
-    Event<StockMovementEvent> stockMovementEvent;
 
     @Override
     public ProdutoBuffetRepository getRepository() {
@@ -95,12 +89,16 @@ public class ProdutoBuffetService extends BaseCrudServiceImpl<ProdutoBuffet, Pro
     @Override
     @Transactional
     public ProdutoBuffetDTO create(@Valid ProdutoBuffetDTO dto) {
+        // Produtos do buffet são itens de venda/consumo e não controlam estoque.
+        // O estoque de matéria-prima é controlado pelo cadastro de produtos de estoque.
+        dto.setControlaEstoque(false);
         validateCreate(dto);
         return super.create(dto);
     }
 
     @Override
     protected void antesDePersistir(ProdutoBuffet entity) {
+        entity.controlaEstoque = false;
         if (entity.codigo == null || entity.codigo.isBlank()) {
             entity.codigo = gerarCodigoUnico();
         }
@@ -118,43 +116,15 @@ public class ProdutoBuffetService extends BaseCrudServiceImpl<ProdutoBuffet, Pro
     @Override
     @Transactional
     public ProdutoBuffetDTO update(UUID id, @Valid ProdutoBuffetDTO dto) {
+        dto.setControlaEstoque(false);
         validateUpdate(id, dto);
         return super.update(id, dto);
     }
 
     @Transactional
     public ProdutoBuffetDTO atualizarEstoque(UUID produtoId, BigDecimal quantidade) {
-        ProdutoBuffetDTO produto = findById(produtoId);
-        if (!produto.getControlaEstoque()) {
-            throw new ValidationException("Este produto não controla estoque");
-        }
-        BigDecimal novoEstoque = produto.getEstoqueAtual().add(quantidade);
-        if (novoEstoque.compareTo(BigDecimal.ZERO) < 0) {
-            throw new ValidationException("Estoque insuficiente. Atual: " + produto.getEstoqueAtual() + ", Tentativa: " + quantidade);
-        }
-        repository.updateEstoque(produtoId, quantidade);
-        
-        // Fire stock movement event
-        fireStockMovementEvent(produtoId, quantidade, produto.getCustoMedio());
-        
-        return findById(produtoId);
-    }
-
-    private void fireStockMovementEvent(UUID produtoId, BigDecimal quantidade, BigDecimal custoUnitario) {
-        StockMovementEvent event = new StockMovementEvent();
-        event.setProdutoBuffetId(produtoId);
-        event.setTipo(quantidade.compareTo(BigDecimal.ZERO) > 0 
-            ? StockMovementEvent.MovementType.ENTRADA_AJUSTE 
-            : StockMovementEvent.MovementType.SAIDA_AJUSTE);
-        event.setOrigem(StockMovementEvent.OriginDest.AJUSTE);
-        event.setDestino(StockMovementEvent.OriginDest.BUFFET);
-        event.setQuantidade(quantidade.abs());
-        event.setCustoUnitario(custoUnitario);
-        event.setData(LocalDateTime.now());
-        event.setResponsavel("SISTEMA");
-        event.setObservacoes("Ajuste de estoque via atualização direta");
-        
-        stockMovementEvent.fire(event);
+        // Produtos do buffet não controlam estoque. Utilize o cadastro de produtos de estoque.
+        throw new ValidationException("Produtos do buffet não controlam estoque. Utilize o cadastro de produtos de estoque.");
     }
 
     private void validateCreate(ProdutoBuffetDTO dto) {

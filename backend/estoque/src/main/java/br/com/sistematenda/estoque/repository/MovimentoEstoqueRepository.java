@@ -1,6 +1,7 @@
 package br.com.sistematenda.estoque.repository;
 
 import br.com.sistematenda.estoque.entity.MovimentoEstoque;
+import br.com.sistematenda.estoque.entity.ProdutoEstoque;
 import br.com.sistematenda.fruteira.entity.Produto;
 import br.com.sistematenda.buffet.entity.ProdutoBuffet;
 import br.com.sistematenda.common.dto.PageResponse;
@@ -24,6 +25,10 @@ public class MovimentoEstoqueRepository implements PanacheRepositoryBase<Movimen
         return find("produtoBuffet = ?1 and deleted = false", produto).list();
     }
 
+    public List<MovimentoEstoque> findByProdutoEstoque(ProdutoEstoque produto) {
+        return find("produtoEstoque = ?1 and deleted = false", produto).list();
+    }
+
     public List<MovimentoEstoque> findByTipo(MovimentoEstoque.TipoMovimento tipo) {
         return find("tipo = ?1 and deleted = false", tipo).list();
     }
@@ -40,6 +45,7 @@ public class MovimentoEstoqueRepository implements PanacheRepositoryBase<Movimen
     public PageResponse<MovimentoEstoque> findPaginated(int page, int size, String sortBy, String sortDirection,
                                                           MovimentoEstoque.TipoMovimento tipo,
                                                           UUID produtoFruteiraId, UUID produtoBuffetId,
+                                                          UUID produtoEstoqueId,
                                                           LocalDateTime inicio, LocalDateTime fim) {
         StringBuilder query = new StringBuilder("deleted = false");
         var params = new java.util.ArrayList<Object>();
@@ -55,6 +61,10 @@ public class MovimentoEstoqueRepository implements PanacheRepositoryBase<Movimen
         if (produtoBuffetId != null) {
             query.append(" and produtoBuffet.id = ?").append(params.size() + 1);
             params.add(produtoBuffetId);
+        }
+        if (produtoEstoqueId != null) {
+            query.append(" and produtoEstoque.id = ?").append(params.size() + 1);
+            params.add(produtoEstoqueId);
         }
         if (inicio != null) {
             query.append(" and data >= ?").append(params.size() + 1);

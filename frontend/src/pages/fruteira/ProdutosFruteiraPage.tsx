@@ -11,8 +11,8 @@ import { toast } from 'react-toastify';
 import { apiFruteira } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
-import { formatCurrency } from '@/utils/formatters';
-import { maskCurrency, parseCurrency } from '@/utils/masks';
+import { formatCurrency, formatNumber } from '@/utils/formatters';
+import { maskCurrency, maskQuantity, parseCurrency, parseDecimal } from '@/utils/masks';
 
 interface Produto {
   id: string;
@@ -22,6 +22,9 @@ interface Produto {
   tipo?: string;
   precoVenda?: number;
   custoMedio?: number;
+  estoqueAtual?: number;
+  estoqueMinimo?: number;
+  estoqueMaximo?: number;
   unidade?: string;
   unidadeMedida?: string;
   ativo?: boolean;
@@ -50,6 +53,9 @@ const emptyForm = {
   unidadeMedida: 'KG',
   precoVenda: '',
   custoMedio: '',
+  estoqueAtual: '',
+  estoqueMinimo: '',
+  estoqueMaximo: '',
 };
 
 export function ProdutosFruteiraPage() {
@@ -96,6 +102,9 @@ const openEdit = (p: Produto) => {
       unidadeMedida: p.unidadeMedida ?? p.unidade ?? 'KG',
       precoVenda: String(p.precoVenda ?? ''),
       custoMedio: String(p.custoMedio ?? ''),
+      estoqueAtual: String(p.estoqueAtual ?? ''),
+      estoqueMinimo: String(p.estoqueMinimo ?? ''),
+      estoqueMaximo: String(p.estoqueMaximo ?? ''),
     });
     setDialog(true);
   };
@@ -113,6 +122,9 @@ const openEdit = (p: Produto) => {
         unidadeMedida: form.unidadeMedida,
         precoVenda: parseCurrency(form.precoVenda),
         custoMedio: form.custoMedio ? parseCurrency(form.custoMedio) : 0,
+        estoqueAtual: form.estoqueAtual ? parseDecimal(form.estoqueAtual, 3) : 0,
+        estoqueMinimo: form.estoqueMinimo ? parseDecimal(form.estoqueMinimo, 3) : undefined,
+        estoqueMaximo: form.estoqueMaximo ? parseDecimal(form.estoqueMaximo, 3) : undefined,
         ativo: true,
       };
 
@@ -181,6 +193,13 @@ const openEdit = (p: Produto) => {
             width: 120,
             align: 'right',
             render: (value: number) => formatCurrency(value),
+          },
+          {
+            field: 'estoqueAtual',
+            headerName: 'Estoque',
+            width: 120,
+            align: 'right',
+            render: (value: number) => formatNumber(value ?? 0, 3),
           },
           {
             field: 'ativo',
@@ -286,6 +305,39 @@ const openEdit = (p: Produto) => {
                 value={maskCurrency(form.custoMedio)}
                 onChange={(e) => setForm({ ...form, custoMedio: maskCurrency(e.target.value) })}
                 placeholder="0,00"
+                inputMode="decimal"
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Estoque Atual"
+                value={maskQuantity(form.estoqueAtual)}
+                onChange={(e) => setForm({ ...form, estoqueAtual: maskQuantity(e.target.value) })}
+                placeholder="0,000"
+                inputMode="decimal"
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Estoque Mínimo"
+                value={maskQuantity(form.estoqueMinimo)}
+                onChange={(e) => setForm({ ...form, estoqueMinimo: maskQuantity(e.target.value) })}
+                placeholder="0,000"
+                inputMode="decimal"
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Estoque Máximo"
+                value={maskQuantity(form.estoqueMaximo)}
+                onChange={(e) => setForm({ ...form, estoqueMaximo: maskQuantity(e.target.value) })}
+                placeholder="0,000"
                 inputMode="decimal"
               />
             </Grid>

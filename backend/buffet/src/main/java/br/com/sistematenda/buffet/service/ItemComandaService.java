@@ -166,11 +166,6 @@ public class ItemComandaService extends BaseCrudServiceImpl<ItemComanda, ItemCom
     public ItemComandaDTO lancarProdutoBuffet(UUID comandaId, UUID produtoId, BigDecimal quantidade) {
         ProdutoBuffetDTO produto = produtoBuffetService.findById(produtoId);
         
-        if (produto.getControlaEstoque() && produto.getEstoqueAtual().compareTo(quantidade) < 0) {
-            throw new BusinessException("ESTOQUE_INSUFICIENTE", 
-                "Estoque insuficiente. Disponível: " + produto.getEstoqueAtual());
-        }
-        
         ItemComandaDTO dto = new ItemComandaDTO();
         dto.setComanda(new ItemComandaDTO.ComandaResumoDTO());
         dto.getComanda().setId(comandaId.toString());
@@ -180,11 +175,6 @@ public class ItemComandaService extends BaseCrudServiceImpl<ItemComanda, ItemCom
         dto.setPrecoUnitario(produto.getPrecoVenda());
         
         ItemComandaDTO criado = create(dto);
-        
-        // Baixar estoque se controla
-        if (produto.getControlaEstoque()) {
-            produtoBuffetService.atualizarEstoque(produtoId, quantidade.negate());
-        }
         
         return criado;
     }

@@ -77,7 +77,7 @@ public class ProdutoBuffet extends BaseEntity {
     public BigDecimal custoMedio;
 
     @Column(name = "controla_estoque", nullable = false)
-    public boolean controlaEstoque = true;
+    public boolean controlaEstoque = false;
 
     @Column(name = "estoque_atual", precision = 15, scale = 4)
     @DecimalMin("0.0")

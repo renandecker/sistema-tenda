@@ -16,6 +16,7 @@ import java.util.UUID;
 @Table(name = "estoque_movimento", indexes = {
     @Index(name = "idx_estoque_movimento_produto_fruteira", columnList = "produto_fruteira_id"),
     @Index(name = "idx_estoque_movimento_produto_buffet", columnList = "produto_buffet_id"),
+    @Index(name = "idx_estoque_movimento_produto_estoque", columnList = "produto_estoque_id"),
     @Index(name = "idx_estoque_movimento_tipo", columnList = "tipo"),
     @Index(name = "idx_estoque_movimento_data", columnList = "data"),
     @Index(name = "idx_estoque_movimento_origem_destino", columnList = "origem, destino")
@@ -60,6 +61,7 @@ public class MovimentoEstoque extends BaseEntity {
     public enum OrigemDestino {
         FRUTEIRA("Fruteira"),
         BUFFET("Buffet"),
+        ESTOQUE("Estoque"),
         FORNECEDOR("Fornecedor"),
         CLIENTE("Cliente"),
         PERDA("Perda/Descarte"),
@@ -80,6 +82,10 @@ public class MovimentoEstoque extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "produto_buffet_id")
     public ProdutoBuffet produtoBuffet;
+
+    @ManyToOne
+    @JoinColumn(name = "produto_estoque_id")
+    public ProdutoEstoque produtoEstoque;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo", nullable = false, length = 30)
@@ -168,18 +174,21 @@ public class MovimentoEstoque extends BaseEntity {
 
     public UUID getProdutoId() {
         if (produtoFruteira != null) return produtoFruteira.id;
+        if (produtoEstoque != null) return produtoEstoque.id;
         if (produtoBuffet != null) return produtoBuffet.id;
         return null;
     }
 
     public String getProdutoNome() {
         if (produtoFruteira != null) return produtoFruteira.nome;
+        if (produtoEstoque != null) return produtoEstoque.nome;
         if (produtoBuffet != null) return produtoBuffet.nome;
         return null;
     }
 
     public String getProdutoCodigo() {
         if (produtoFruteira != null) return produtoFruteira.codigo;
+        if (produtoEstoque != null) return produtoEstoque.codigo;
         if (produtoBuffet != null) return produtoBuffet.codigo;
         return null;
     }

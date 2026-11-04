@@ -141,11 +141,6 @@ public class ItemVendaService extends BaseCrudServiceImpl<ItemVenda, ItemVendaDT
             throw new NotFoundException("Produto Buffet", produtoId);
         }
         
-        if (produto.controlaEstoque && produto.estoqueAtual.compareTo(quantidade) < 0) {
-            throw new BusinessException("ESTOQUE_INSUFICIENTE", 
-                "Estoque insuficiente. Disponível: " + produto.estoqueAtual);
-        }
-        
         ItemVenda entity = new ItemVenda();
         entity.venda = venda;
         entity.origem = ItemVenda.OrigemItem.BUFFET;
@@ -160,10 +155,6 @@ public class ItemVendaService extends BaseCrudServiceImpl<ItemVenda, ItemVendaDT
         getRepository().persist(entity);
         
         atualizarTotaisVenda(venda);
-        
-        if (produto.controlaEstoque) {
-            produtoBuffetService.atualizarEstoque(produtoId, quantidade.negate());
-        }
         
         return mapper.toDTO(entity);
     }

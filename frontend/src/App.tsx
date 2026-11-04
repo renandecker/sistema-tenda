@@ -17,6 +17,7 @@ import { ProdutosBuffetPage } from './pages/buffet/ProdutosBuffetPage';
 import { ReceitasBuffetPage } from './pages/buffet/ReceitasBuffetPage';
 import { TransferenciasEstoquePage } from './pages/buffet/TransferenciasEstoquePage';
 import { EstoquePage } from './pages/estoque/EstoquePage';
+import { ProdutosEstoquePage } from './pages/estoque/ProdutosEstoquePage';
 import { InventarioPage } from './pages/estoque/InventarioPage';
 import { AlertasEstoquePage } from './pages/estoque/AlertasEstoquePage';
 import { DefeitosPage } from './pages/estoque/DefeitosPage';
@@ -88,6 +89,7 @@ export function App() {
         
         {/* Estoque */}
         <Route path="estoque" element={<EstoquePage />} />
+        <Route path="estoque/produtos" element={<ProdutosEstoquePage />} />
         <Route path="estoque/inventario" element={<InventarioPage />} />
         <Route path="estoque/alertas" element={<AlertasEstoquePage />} />
         <Route path="estoque/defeitos" element={<DefeitosPage />} />

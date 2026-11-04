@@ -21,15 +21,19 @@ public class StockMovementEvent {
     public enum OriginDest {
         FRUTEIRA,
         BUFFET,
+        ESTOQUE,
         FORNECEDOR,
         CLIENTE,
         PERDA,
         AJUSTE,
+        DEFEITO,
+        REPROCESSO,
         OUTROS
     }
 
     private UUID produtoFruteiraId;
     private UUID produtoBuffetId;
+    private UUID produtoEstoqueId;
     private MovementType tipo;
     private OriginDest origem;
     private OriginDest destino;
@@ -52,6 +56,9 @@ public class StockMovementEvent {
 
     public UUID getProdutoBuffetId() { return produtoBuffetId; }
     public void setProdutoBuffetId(UUID produtoBuffetId) { this.produtoBuffetId = produtoBuffetId; }
+
+    public UUID getProdutoEstoqueId() { return produtoEstoqueId; }
+    public void setProdutoEstoqueId(UUID produtoEstoqueId) { this.produtoEstoqueId = produtoEstoqueId; }
 
     public MovementType getTipo() { return tipo; }
     public void setTipo(MovementType tipo) { this.tipo = tipo; }

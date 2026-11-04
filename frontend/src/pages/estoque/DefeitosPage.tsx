@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, TextField, Tooltip, Typography } from '@mui/material';
 import { Add as AddIcon, Refresh as RefreshIcon, Download as DownloadIcon, Warning as WarningIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-import { apiEstoque, apiFruteira, apiBuffet } from '@/services/api';
+import { apiEstoque, apiFruteira } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
 import { formatDateTime, formatNumber } from '@/utils/formatters';
@@ -29,6 +29,7 @@ interface ProdutoSimple {
   id: string;
   codigo?: string;
   nome: string;
+  local: 'FRUTEIRA' | 'ESTOQUE';
   estoqueAtual?: number;
   custoMedio?: number;
 }
@@ -53,7 +54,7 @@ export function DefeitosPage() {
   const [selectedDefeito, setSelectedDefeito] = useState<Defeito | null>(null);
   const [form, setForm] = useState({
     produtoFruteiraId: '',
-    produtoBuffetId: '',
+    produtoEstoqueId: '',
     tipo: 'SAIDA_DEFEITO_AVARIA',
     quantidade: '',
     custoUnitario: '',
@@ -70,7 +71,7 @@ export function DefeitosPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [d, f, b] = await Promise.allSettled([
+      const [d, f, e] = await Promise.allSettled([
         apiEstoque.listDefeitos({
           page,
           size: rowsPerPage,
@@ -78,17 +79,17 @@ export function DefeitosPage() {
           ...(dataFim ? { dataFim } : {}),
         }),
         apiFruteira.listProdutos({ size: 500 }),
-        apiBuffet.listProdutos({ size: 500 }),
+        apiEstoque.listProdutos({ size: 500 }),
       ]);
       const defeitoData = d.status === 'fulfilled' ? d.value.data : null;
       setDefeitos(defeitoData?.content ?? (Array.isArray(defeitoData) ? defeitoData : []));
       setTotalRows(defeitoData?.totalElements ?? (Array.isArray(defeitoData) ? defeitoData.length : 0));
 
       const listF: any[] = f.status === 'fulfilled' ? (f.value.data?.content ?? (Array.isArray(f.value.data) ? f.value.data : [])) : [];
-      const listB: any[] = b.status === 'fulfilled' ? (b.value.data?.content ?? (Array.isArray(b.value.data) ? b.value.data : [])) : [];
+      const listE: any[] = e.status === 'fulfilled' ? (e.value.data?.content ?? (Array.isArray(e.value.data) ? e.value.data : [])) : [];
       setProdutos([
-        ...listF.map((p) => ({ id: p.id, codigo: p.codigo, nome: `[F] ${p.nome}`, estoqueAtual: Number(p.estoqueAtual ?? 0), custoMedio: Number(p.custoMedio ?? 0) })),
-        ...listB.map((p) => ({ id: p.id, codigo: p.codigo, nome: `[B] ${p.nome}`, estoqueAtual: Number(p.estoqueAtual ?? 0), custoMedio: Number(p.custoMedio ?? 0) })),
+        ...listF.map((p) => ({ id: p.id, codigo: p.codigo, nome: p.nome, local: 'FRUTEIRA' as const, estoqueAtual: Number(p.estoqueAtual ?? 0), custoMedio: Number(p.custoMedio ?? 0) })),
+        ...listE.map((p) => ({ id: p.id, codigo: p.codigo, nome: p.nome, local: 'ESTOQUE' as const, estoqueAtual: Number(p.estoqueAtual ?? 0), custoMedio: Number(p.custoMedio ?? 0) })),
       ]);
     } catch (e) {
       console.error(e);
@@ -113,14 +114,14 @@ export function DefeitosPage() {
   };
 
   const submit = async () => {
-    if (!form.produtoFruteiraId && !form.produtoBuffetId) { toast.warning('Selecione um produto'); return; }
+    if (!form.produtoFruteiraId && !form.produtoEstoqueId) { toast.warning('Selecione um produto'); return; }
     if (!form.quantidade || Number(form.quantidade) <= 0) { toast.warning('Informe a quantidade'); return; }
     if (!form.responsavel) { toast.warning('Informe o responsável'); return; }
     if (!form.motivoDefeito) { toast.warning('Informe o motivo do defeito'); return; }
 
     const payload = {
       produtoFruteiraId: form.produtoFruteiraId || undefined,
-      produtoBuffetId: form.produtoBuffetId || undefined,
+      produtoEstoqueId: form.produtoEstoqueId || undefined,
       tipo: form.tipo,
       quantidade: Number(form.quantidade),
       custoUnitario: form.custoUnitario ? Number(form.custoUnitario) : undefined,
@@ -136,7 +137,7 @@ export function DefeitosPage() {
       toast.success('Defeito registrado com sucesso!');
       setDialog(false);
       setForm({
-        produtoFruteiraId: '', produtoBuffetId: '', tipo: 'SAIDA_DEFEITO_AVARIA',
+        produtoFruteiraId: '', produtoEstoqueId: '', tipo: 'SAIDA_DEFEITO_AVARIA',
         quantidade: '', custoUnitario: '', motivoDefeito: '', tipoDefeito: '',
         loteDefeituoso: '', quantidadeRecuperavel: '', responsavel: '',
       });
@@ -236,15 +237,15 @@ export function DefeitosPage() {
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
-              <TextField select fullWidth size="small" label="Produto (Fruteira)" value={form.produtoFruteiraId} onChange={(e) => { setForm({ ...form, produtoFruteiraId: e.target.value, produtoBuffetId: '' }); handleProdutoChange(e.target.value); }}>
+              <TextField select fullWidth size="small" label="Produto (Fruteira)" value={form.produtoFruteiraId} onChange={(e) => { setForm({ ...form, produtoFruteiraId: e.target.value, produtoEstoqueId: '' }); handleProdutoChange(e.target.value); }}>
                 <MenuItem value="">Selecione...</MenuItem>
-                {produtos.filter(p => p.id.startsWith('F-') || !p.id.startsWith('B-')).map((p) => <MenuItem key={p.id} value={p.id}>{p.codigo} - {p.nome} (Est: {formatNumber(p.estoqueAtual ?? 0, 3)})</MenuItem>)}
+                {produtos.filter(p => p.local === 'FRUTEIRA').map((p) => <MenuItem key={p.id} value={p.id}>{p.codigo} - {p.nome} (Est: {formatNumber(p.estoqueAtual ?? 0, 3)})</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField select fullWidth size="small" label="Produto (Buffet)" value={form.produtoBuffetId} onChange={(e) => { setForm({ ...form, produtoBuffetId: e.target.value, produtoFruteiraId: '' }); handleProdutoChange(e.target.value); }}>
+              <TextField select fullWidth size="small" label="Produto (Estoque)" value={form.produtoEstoqueId} onChange={(e) => { setForm({ ...form, produtoEstoqueId: e.target.value, produtoFruteiraId: '' }); handleProdutoChange(e.target.value); }}>
                 <MenuItem value="">Selecione...</MenuItem>
-                {produtos.filter(p => p.id.startsWith('B-')).map((p) => <MenuItem key={p.id} value={p.id}>{p.codigo} - {p.nome} (Est: {formatNumber(p.estoqueAtual ?? 0, 3)})</MenuItem>)}
+                {produtos.filter(p => p.local === 'ESTOQUE').map((p) => <MenuItem key={p.id} value={p.id}>{p.codigo} - {p.nome} (Est: {formatNumber(p.estoqueAtual ?? 0, 3)})</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -308,7 +309,5 @@ export function DefeitosPage() {
     </Box>
   );
 }
-
-import { useMemo } from 'react';
 
 export default DefeitosPage;

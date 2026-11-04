@@ -18,7 +18,6 @@ interface Produto {
   unidadeMedida?: string;
   disponivelBalcao?: boolean;
   ativo?: boolean;
-  controlaEstoque?: boolean;
 }
 
 const emptyForm = { nome: '', codigoBarras: '', categoria: 'PRATO_FEITO', unidadeMedida: 'KG', precoVenda: '', descricao: '', disponivelBalcao: true };
@@ -59,7 +58,7 @@ export function ProdutosBuffetPage() {
   const salvar = async () => {
     if (!form.nome || !form.precoVenda) { toast.warning('Informe nome e preço'); return; }
     try {
-      const payload = { nome: form.nome, codigoBarras: form.codigoBarras || undefined, categoria: form.categoria, unidadeMedida: form.unidadeMedida, precoVenda: parseCurrency(form.precoVenda), descricao: form.descricao, disponivelBalcao: form.disponivelBalcao, ativo: true, controlaEstoque: true };
+      const payload = { nome: form.nome, codigoBarras: form.codigoBarras || undefined, categoria: form.categoria, unidadeMedida: form.unidadeMedida, precoVenda: parseCurrency(form.precoVenda), descricao: form.descricao, disponivelBalcao: form.disponivelBalcao, ativo: true };
       if (editing) await apiBuffet.updateProduto(editing.id, payload);
       else await apiBuffet.createProduto(payload);
       toast.success('Produto salvo!');

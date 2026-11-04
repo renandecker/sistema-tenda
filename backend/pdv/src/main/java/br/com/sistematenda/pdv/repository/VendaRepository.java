@@ -119,6 +119,13 @@ public class VendaRepository implements PanacheRepositoryBase<Venda, UUID> {
         return count("status = ?1 and deleted = false", status);
     }
 
+    public java.math.BigDecimal getTotalByVendaIncluindoPendente(Venda venda) {
+        return find("select sum(p.valor) from Pagamento p where p.venda = ?1 and p.deleted = false and p.status in ('AUTORIZADO', 'PENDENTE')", venda)
+            .project(java.math.BigDecimal.class)
+            .firstResultOptional()
+            .orElse(java.math.BigDecimal.ZERO);
+    }
+
     public String getProximoNumero(UUID pdvId) {
         // Numero e unico globalmente (idx_pdv_venda_numero), portanto o sequencial
         // e calculado sobre todas as vendas para evitar colisao entre PDVs.

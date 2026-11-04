@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Box, Button, Card, CardContent, Chip, Grid, IconButton, MenuItem, TextField, Tooltip, Typography } from '@mui/material';
 import { Download as DownloadIcon, Refresh as RefreshIcon, Warning as WarningIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-import { apiBuffet, apiEstoque, apiFruteira } from '@/services/api';
+import { apiEstoque, apiFruteira } from '@/services/api';
 import { DataTable } from '@/components/DataTable';
 import { PageHeader } from '@/components/PageHeader';
 import { formatNumber } from '@/utils/formatters';
@@ -28,17 +28,17 @@ export function AlertasEstoquePage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [a, fb, bb] = await Promise.allSettled([
+      const [a, fb, eb] = await Promise.allSettled([
         apiEstoque.listAlertas({ size: 200 }),
         apiFruteira.getEstoqueBaixo(),
-        apiBuffet.getEstoqueBaixo(),
+        apiEstoque.listProdutosEstoqueBaixo(),
       ]);
       const listA: any[] = a.status === 'fulfilled' ? (a.value.data?.content ?? (Array.isArray(a.value.data) ? a.value.data : [])) : [];
       const listF: any[] = fb.status === 'fulfilled' ? (Array.isArray(fb.value.data) ? fb.value.data : fb.value.data?.content ?? []) : [];
-      const listB: any[] = bb.status === 'fulfilled' ? (Array.isArray(bb.value.data) ? bb.value.data : bb.value.data?.content ?? []) : [];
+      const listE: any[] = eb.status === 'fulfilled' ? (Array.isArray(eb.value.data) ? eb.value.data : eb.value.data?.content ?? []) : [];
       const derivados: Alerta[] = [
         ...listF.map((p: any, i: number) => ({ id: `F-${p.id ?? i}`, codigo: p.codigo, nome: p.nome, local: 'FRUTEIRA', estoque: Number(p.estoqueAtual ?? 0), minimo: Number(p.estoqueMinimo ?? 0), tipo: 'ESTOQUE_BAIXO', sugestaoReposicao: Math.max(0, Number(p.estoqueMinimo ?? 0) * 2 - Number(p.estoqueAtual ?? 0)) })),
-        ...listB.map((p: any, i: number) => ({ id: `B-${p.id ?? i}`, codigo: p.codigo, nome: p.nome, local: 'BUFFET', estoque: Number(p.estoqueAtual ?? 0), minimo: Number(p.estoqueMinimo ?? 0), tipo: 'ESTOQUE_BAIXO', sugestaoReposicao: Math.max(0, Number(p.estoqueMinimo ?? 0) * 2 - Number(p.estoqueAtual ?? 0)) })),
+        ...listE.map((p: any, i: number) => ({ id: `E-${p.id ?? i}`, codigo: p.codigo, nome: p.nome, local: 'ESTOQUE', estoque: Number(p.estoqueAtual ?? 0), minimo: Number(p.estoqueMinimo ?? 0), tipo: 'ESTOQUE_BAIXO', sugestaoReposicao: Math.max(0, Number(p.estoqueMinimo ?? 0) * 2 - Number(p.estoqueAtual ?? 0)) })),
       ];
       setAlertas([...listA, ...derivados]);
     } catch {

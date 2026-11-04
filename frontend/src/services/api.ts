@@ -261,6 +261,20 @@ export const apiEstoque = {
   listInventarios: (params?: any) => api.get('/estoque/inventarios', { params }),
   listAlertas: (params?: any) => api.get('/estoque/alertas', { params }),
 
+  // Produtos de estoque (matéria-prima/insumos)
+  listProdutos: (params?: any) => api.get('/estoque/produtos', { params }),
+  listProdutosAtivos: () => api.get('/estoque/produtos/ativos'),
+  listProdutosEstoqueBaixo: () => api.get('/estoque/produtos/estoque-baixo'),
+  getProduto: (id: string) => api.get(`/estoque/produtos/${id}`),
+  getProdutoPorCodigo: (codigo: string) => api.get(`/estoque/produtos/codigo/${codigo}`),
+  getProdutoPorCodigoBarras: (codigoBarras: string) => api.get(`/estoque/produtos/codigo-barras/${codigoBarras}`),
+  buscarProdutos: (q: string) => api.get('/estoque/produtos/search', { params: { q } }),
+  createProduto: (data: any) => api.post('/estoque/produtos', data),
+  updateProduto: (id: string, data: any) => api.put(`/estoque/produtos/${id}`, data),
+  removeProduto: (id: string) => api.delete(`/estoque/produtos/${id}`),
+  atualizarEstoqueProduto: (id: string, quantidade: number) =>
+    api.put(`/estoque/produtos/${id}/estoque`, null, { params: { quantidade } }),
+
   // Entradas
   listEntradas: (params?: any) => api.get('/estoque/movimentos/entradas', { params }),
   registrarEntradaCompra: (data: any) => api.post('/estoque/movimentos/entrada-compra', data),

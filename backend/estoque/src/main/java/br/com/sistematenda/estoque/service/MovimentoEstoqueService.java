@@ -2,7 +2,9 @@ package br.com.sistematenda.estoque.service;
 
 import br.com.sistematenda.estoque.dto.MovimentoEstoqueDTO;
 import br.com.sistematenda.estoque.entity.MovimentoEstoque;
+import br.com.sistematenda.estoque.entity.ProdutoEstoque;
 import br.com.sistematenda.estoque.repository.MovimentoEstoqueRepository;
+import br.com.sistematenda.estoque.repository.ProdutoEstoqueRepository;
 import br.com.sistematenda.fruteira.entity.Produto;
 import br.com.sistematenda.fruteira.repository.ProdutoRepository;
 import br.com.sistematenda.fruteira.service.ProdutoService;
@@ -32,6 +34,9 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
 
     @Inject
     ProdutoBuffetRepository produtoBuffetRepository;
+
+    @Inject
+    ProdutoEstoqueRepository produtoEstoqueRepository;
 
     @Inject
     ProdutoService produtoService;
@@ -77,7 +82,9 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
         }
         if (produto != null) {
             query.append(" and (produtoFruteira.id = ?").append(params.size() + 1)
-                 .append(" or produtoBuffet.id = ?").append(params.size() + 2).append(")");
+                 .append(" or produtoBuffet.id = ?").append(params.size() + 2)
+                 .append(" or produtoEstoque.id = ?").append(params.size() + 3).append(")");
+            params.add(produto);
             params.add(produto);
             params.add(produto);
         }
@@ -175,10 +182,13 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
         return toDtoPage(PageResponse.of(content, totalElements, page, size));
     }
 
-    public BigDecimal getEstoqueAtual(UUID produtoFruteiraId, UUID produtoBuffetId) {
+    public BigDecimal getEstoqueAtual(UUID produtoFruteiraId, UUID produtoBuffetId, UUID produtoEstoqueId) {
         if (produtoFruteiraId != null) {
             Produto produto = produtoRepository.findById(produtoFruteiraId);
             return produto != null ? produto.estoqueAtual : BigDecimal.ZERO;
+        } else if (produtoEstoqueId != null) {
+            ProdutoEstoque produto = produtoEstoqueRepository.findById(produtoEstoqueId);
+            return produto != null && produto.estoqueAtual != null ? produto.estoqueAtual : BigDecimal.ZERO;
         } else if (produtoBuffetId != null) {
             ProdutoBuffet produto = produtoBuffetRepository.findById(produtoBuffetId);
             return (produto != null && produto.controlaEstoque) ? produto.estoqueAtual : BigDecimal.ZERO;
@@ -197,11 +207,23 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
         boolean estoqueBaixo
     ) {}
 
-    public EstoqueResumoDTO getEstoqueResumo(UUID produtoFruteiraId, UUID produtoBuffetId) {
+    public EstoqueResumoDTO getEstoqueResumo(UUID produtoFruteiraId, UUID produtoBuffetId, UUID produtoEstoqueId) {
         if (produtoFruteiraId != null) {
             Produto produto = produtoRepository.findById(produtoFruteiraId);
             if (produto != null) {
                 boolean estoqueBaixo = produto.estoqueMinimo != null && 
+                    produto.estoqueAtual.compareTo(produto.estoqueMinimo) <= 0;
+                return new EstoqueResumoDTO(
+                    produto.id, produto.nome, produto.codigo,
+                    produto.estoqueAtual, produto.estoqueMinimo, produto.estoqueMaximo,
+                    produto.unidadeMedida != null ? produto.unidadeMedida.name() : "UN",
+                    estoqueBaixo
+                );
+            }
+        } else if (produtoEstoqueId != null) {
+            ProdutoEstoque produto = produtoEstoqueRepository.findById(produtoEstoqueId);
+            if (produto != null) {
+                boolean estoqueBaixo = produto.estoqueMinimo != null &&
                     produto.estoqueAtual.compareTo(produto.estoqueMinimo) <= 0;
                 return new EstoqueResumoDTO(
                     produto.id, produto.nome, produto.codigo,
@@ -236,45 +258,25 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
             Produto produto = produtoRepository.findById(dto.getProdutoFruteiraId());
             if (produto != null) {
                 estoqueAnterior = produto.estoqueAtual;
-
-                // Determine if it's an entry or exit
-                boolean isEntrada = dto.getTipo() != null && dto.getTipo().isEntrada();
-
-                if (isEntrada) {
-                    estoquePosterior = estoqueAnterior.add(dto.getQuantidade());
-                } else {
-                    // Validate stock availability for exits
-                    if (estoqueAnterior.compareTo(dto.getQuantidade()) < 0) {
-                        throw new IllegalArgumentException(
-                            "Estoque insuficiente. Estoque atual: " + estoqueAnterior + 
-                            ", Quantidade solicitada: " + dto.getQuantidade()
-                        );
-                    }
-                    estoquePosterior = estoqueAnterior.subtract(dto.getQuantidade());
-                }
+                estoquePosterior = calcularNovoEstoque(estoqueAnterior, dto);
 
                 produto.estoqueAtual = estoquePosterior;
                 produtoRepository.persist(produto);
+            }
+        } else if (dto.getProdutoEstoqueId() != null) {
+            ProdutoEstoque produto = produtoEstoqueRepository.findById(dto.getProdutoEstoqueId());
+            if (produto != null) {
+                estoqueAnterior = produto.estoqueAtual != null ? produto.estoqueAtual : BigDecimal.ZERO;
+                estoquePosterior = calcularNovoEstoque(estoqueAnterior, dto);
+
+                produto.estoqueAtual = estoquePosterior;
+                produtoEstoqueRepository.persist(produto);
             }
         } else if (dto.getProdutoBuffetId() != null) {
             ProdutoBuffet produto = produtoBuffetRepository.findById(dto.getProdutoBuffetId());
             if (produto != null && produto.controlaEstoque) {
                 estoqueAnterior = produto.estoqueAtual;
-
-                boolean isEntrada = dto.getTipo() != null && dto.getTipo().isEntrada();
-
-                if (isEntrada) {
-                    estoquePosterior = estoqueAnterior.add(dto.getQuantidade());
-                } else {
-                    // Validate stock availability for exits
-                    if (estoqueAnterior.compareTo(dto.getQuantidade()) < 0) {
-                        throw new IllegalArgumentException(
-                            "Estoque insuficiente. Estoque atual: " + estoqueAnterior + 
-                            ", Quantidade solicitada: " + dto.getQuantidade()
-                        );
-                    }
-                    estoquePosterior = estoqueAnterior.subtract(dto.getQuantidade());
-                }
+                estoquePosterior = calcularNovoEstoque(estoqueAnterior, dto);
 
                 produto.estoqueAtual = estoquePosterior;
                 produtoBuffetRepository.persist(produto);
@@ -292,18 +294,36 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
             entity.valorTotal = entity.quantidade.multiply(entity.custoUnitario);
         }
 
-        // For defect entries from reprocessing, add recoverable quantity to stock
-        if (entity.tipo == MovimentoEstoque.TipoMovimento.ENTRADA_DEFEITO_REPROCESSO && entity.quantidadeRecuperavel != null) {
-            // The recoverable quantity is already added via the normal entry logic above
-            // This field is for tracking purposes
-        }
-
         repository.persist(entity);
         return mapper.toDTO(entity);
     }
 
+    private BigDecimal calcularNovoEstoque(BigDecimal estoqueAnterior, MovimentoEstoqueDTO dto) {
+        boolean isEntrada = dto.getTipo() != null && dto.getTipo().isEntrada();
+
+        if (isEntrada) {
+            return estoqueAnterior.add(dto.getQuantidade());
+        }
+
+        // Validate stock availability for exits
+        if (estoqueAnterior.compareTo(dto.getQuantidade()) < 0) {
+            throw new IllegalArgumentException(
+                "Estoque insuficiente. Estoque atual: " + estoqueAnterior +
+                ", Quantidade solicitada: " + dto.getQuantidade()
+            );
+        }
+        return estoqueAnterior.subtract(dto.getQuantidade());
+    }
+
+    private MovimentoEstoque.OrigemDestino destinoDoProduto(UUID produtoFruteiraId, UUID produtoBuffetId, UUID produtoEstoqueId) {
+        if (produtoFruteiraId != null) return MovimentoEstoque.OrigemDestino.FRUTEIRA;
+        if (produtoEstoqueId != null) return MovimentoEstoque.OrigemDestino.ESTOQUE;
+        if (produtoBuffetId != null) return MovimentoEstoque.OrigemDestino.BUFFET;
+        return MovimentoEstoque.OrigemDestino.OUTROS;
+    }
+
     @Transactional
-    public MovimentoEstoqueDTO registrarDefeito(UUID produtoFruteiraId, UUID produtoBuffetId,
+    public MovimentoEstoqueDTO registrarDefeito(UUID produtoFruteiraId, UUID produtoBuffetId, UUID produtoEstoqueId,
                                                  MovimentoEstoque.TipoMovimento tipoDefeito,
                                                  BigDecimal quantidade, BigDecimal custoUnitario,
                                                  String motivo, String tipoDefeitoDesc,
@@ -312,6 +332,7 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
         MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
         dto.setProdutoFruteiraId(produtoFruteiraId);
         dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setProdutoEstoqueId(produtoEstoqueId);
         dto.setTipo(tipoDefeito);
         dto.setOrigem(MovimentoEstoque.OrigemDestino.DEFEITO);
         dto.setDestino(MovimentoEstoque.OrigemDestino.PERDA);
@@ -327,7 +348,7 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
     }
 
     @Transactional
-    public MovimentoEstoqueDTO registrarEntradaCompra(UUID produtoFruteiraId, UUID produtoBuffetId,
+    public MovimentoEstoqueDTO registrarEntradaCompra(UUID produtoFruteiraId, UUID produtoBuffetId, UUID produtoEstoqueId,
                                                        BigDecimal quantidade, BigDecimal custoUnitario,
                                                        String documentoReferencia, String numeroDocumento,
                                                        String lote, LocalDateTime dataValidade,
@@ -335,9 +356,10 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
         MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
         dto.setProdutoFruteiraId(produtoFruteiraId);
         dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setProdutoEstoqueId(produtoEstoqueId);
         dto.setTipo(MovimentoEstoque.TipoMovimento.ENTRADA_COMPRA);
         dto.setOrigem(MovimentoEstoque.OrigemDestino.FORNECEDOR);
-        dto.setDestino(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setDestino(destinoDoProduto(produtoFruteiraId, produtoBuffetId, produtoEstoqueId));
         dto.setQuantidade(quantidade);
         dto.setCustoUnitario(custoUnitario);
         dto.setDocumentoReferencia(documentoReferencia);
@@ -350,16 +372,17 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
     }
 
     @Transactional
-    public MovimentoEstoqueDTO registrarEntradaTransferencia(UUID produtoFruteiraId, UUID produtoBuffetId,
+    public MovimentoEstoqueDTO registrarEntradaTransferencia(UUID produtoFruteiraId, UUID produtoBuffetId, UUID produtoEstoqueId,
                                                               BigDecimal quantidade, BigDecimal custoUnitario,
                                                               MovimentoEstoque.OrigemDestino origem,
                                                               String responsavel) {
         MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
         dto.setProdutoFruteiraId(produtoFruteiraId);
         dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setProdutoEstoqueId(produtoEstoqueId);
         dto.setTipo(MovimentoEstoque.TipoMovimento.ENTRADA_TRANSFERENCIA);
         dto.setOrigem(origem);
-        dto.setDestino(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setDestino(destinoDoProduto(produtoFruteiraId, produtoBuffetId, produtoEstoqueId));
         dto.setQuantidade(quantidade);
         dto.setCustoUnitario(custoUnitario);
         dto.setResponsavel(responsavel);
@@ -368,14 +391,15 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
     }
 
     @Transactional
-    public MovimentoEstoqueDTO registrarSaidaVenda(UUID produtoFruteiraId, UUID produtoBuffetId,
+    public MovimentoEstoqueDTO registrarSaidaVenda(UUID produtoFruteiraId, UUID produtoBuffetId, UUID produtoEstoqueId,
                                                     BigDecimal quantidade, BigDecimal custoUnitario,
                                                     String responsavel) {
         MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
         dto.setProdutoFruteiraId(produtoFruteiraId);
         dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setProdutoEstoqueId(produtoEstoqueId);
         dto.setTipo(MovimentoEstoque.TipoMovimento.SAIDA_VENDA);
-        dto.setOrigem(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setOrigem(destinoDoProduto(produtoFruteiraId, produtoBuffetId, produtoEstoqueId));
         dto.setDestino(MovimentoEstoque.OrigemDestino.CLIENTE);
         dto.setQuantidade(quantidade);
         dto.setCustoUnitario(custoUnitario);
@@ -385,15 +409,16 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
     }
 
     @Transactional
-    public MovimentoEstoqueDTO registrarAjuste(UUID produtoFruteiraId, UUID produtoBuffetId,
+    public MovimentoEstoqueDTO registrarAjuste(UUID produtoFruteiraId, UUID produtoBuffetId, UUID produtoEstoqueId,
                                                 BigDecimal quantidade, BigDecimal custoUnitario,
                                                 boolean isEntrada, String observacoes, String responsavel) {
         MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
         dto.setProdutoFruteiraId(produtoFruteiraId);
         dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setProdutoEstoqueId(produtoEstoqueId);
         dto.setTipo(isEntrada ? MovimentoEstoque.TipoMovimento.ENTRADA_AJUSTE : MovimentoEstoque.TipoMovimento.SAIDA_AJUSTE);
-        dto.setOrigem(isEntrada ? MovimentoEstoque.OrigemDestino.AJUSTE : (produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET));
-        dto.setDestino(isEntrada ? (produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET) : MovimentoEstoque.OrigemDestino.AJUSTE);
+        dto.setOrigem(isEntrada ? MovimentoEstoque.OrigemDestino.AJUSTE : destinoDoProduto(produtoFruteiraId, produtoBuffetId, produtoEstoqueId));
+        dto.setDestino(isEntrada ? destinoDoProduto(produtoFruteiraId, produtoBuffetId, produtoEstoqueId) : MovimentoEstoque.OrigemDestino.AJUSTE);
         dto.setQuantidade(quantidade);
         dto.setCustoUnitario(custoUnitario);
         dto.setObservacoes(observacoes);
@@ -403,7 +428,7 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
     }
 
     @Transactional
-    public MovimentoEstoqueDTO registrarEntradaDevolucao(UUID produtoFruteiraId, UUID produtoBuffetId,
+    public MovimentoEstoqueDTO registrarEntradaDevolucao(UUID produtoFruteiraId, UUID produtoBuffetId, UUID produtoEstoqueId,
                                                           BigDecimal quantidade, BigDecimal custoUnitario,
                                                           String documentoReferencia, String numeroDocumento,
                                                           String lote, LocalDateTime dataValidade,
@@ -411,9 +436,10 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
         MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
         dto.setProdutoFruteiraId(produtoFruteiraId);
         dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setProdutoEstoqueId(produtoEstoqueId);
         dto.setTipo(MovimentoEstoque.TipoMovimento.ENTRADA_DEVOLUCAO);
         dto.setOrigem(MovimentoEstoque.OrigemDestino.CLIENTE);
-        dto.setDestino(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setDestino(destinoDoProduto(produtoFruteiraId, produtoBuffetId, produtoEstoqueId));
         dto.setQuantidade(quantidade);
         dto.setCustoUnitario(custoUnitario);
         dto.setDocumentoReferencia(documentoReferencia);
@@ -427,16 +453,17 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
     }
 
     @Transactional
-    public MovimentoEstoqueDTO registrarEntradaReprocessamento(UUID produtoFruteiraId, UUID produtoBuffetId,
+    public MovimentoEstoqueDTO registrarEntradaReprocessamento(UUID produtoFruteiraId, UUID produtoBuffetId, UUID produtoEstoqueId,
                                                                 BigDecimal quantidade, BigDecimal custoUnitario,
                                                                 BigDecimal quantidadeRecuperavel,
                                                                 String lote, String observacoes, String responsavel) {
         MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
         dto.setProdutoFruteiraId(produtoFruteiraId);
         dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setProdutoEstoqueId(produtoEstoqueId);
         dto.setTipo(MovimentoEstoque.TipoMovimento.ENTRADA_DEFEITO_REPROCESSO);
         dto.setOrigem(MovimentoEstoque.OrigemDestino.REPROCESSO);
-        dto.setDestino(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setDestino(destinoDoProduto(produtoFruteiraId, produtoBuffetId, produtoEstoqueId));
         dto.setQuantidade(quantidade);
         dto.setCustoUnitario(custoUnitario);
         dto.setQuantidadeRecuperavel(quantidadeRecuperavel);
@@ -448,15 +475,16 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
     }
 
     @Transactional
-    public MovimentoEstoqueDTO registrarSaidaTransferencia(UUID produtoFruteiraId, UUID produtoBuffetId,
+    public MovimentoEstoqueDTO registrarSaidaTransferencia(UUID produtoFruteiraId, UUID produtoBuffetId, UUID produtoEstoqueId,
                                                             BigDecimal quantidade, BigDecimal custoUnitario,
                                                             MovimentoEstoque.OrigemDestino origem,
                                                             String responsavel) {
         MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
         dto.setProdutoFruteiraId(produtoFruteiraId);
         dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setProdutoEstoqueId(produtoEstoqueId);
         dto.setTipo(MovimentoEstoque.TipoMovimento.SAIDA_TRANSFERENCIA);
-        dto.setOrigem(origem != null ? origem : (produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET));
+        dto.setOrigem(origem != null ? origem : destinoDoProduto(produtoFruteiraId, produtoBuffetId, produtoEstoqueId));
         dto.setDestino(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.BUFFET : MovimentoEstoque.OrigemDestino.FRUTEIRA);
         dto.setQuantidade(quantidade);
         dto.setCustoUnitario(custoUnitario);
@@ -466,14 +494,15 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
     }
 
     @Transactional
-    public MovimentoEstoqueDTO registrarSaidaConsumoInterno(UUID produtoFruteiraId, UUID produtoBuffetId,
+    public MovimentoEstoqueDTO registrarSaidaConsumoInterno(UUID produtoFruteiraId, UUID produtoBuffetId, UUID produtoEstoqueId,
                                                              BigDecimal quantidade, BigDecimal custoUnitario,
                                                              String observacoes, String responsavel) {
         MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
         dto.setProdutoFruteiraId(produtoFruteiraId);
         dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setProdutoEstoqueId(produtoEstoqueId);
         dto.setTipo(MovimentoEstoque.TipoMovimento.SAIDA_CONSUMO_INTERNO);
-        dto.setOrigem(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setOrigem(destinoDoProduto(produtoFruteiraId, produtoBuffetId, produtoEstoqueId));
         dto.setDestino(MovimentoEstoque.OrigemDestino.OUTROS);
         dto.setQuantidade(quantidade);
         dto.setCustoUnitario(custoUnitario);
@@ -484,14 +513,15 @@ public class MovimentoEstoqueService extends BaseCrudServiceImpl<MovimentoEstoqu
     }
 
     @Transactional
-    public MovimentoEstoqueDTO registrarSaidaPerda(UUID produtoFruteiraId, UUID produtoBuffetId,
+    public MovimentoEstoqueDTO registrarSaidaPerda(UUID produtoFruteiraId, UUID produtoBuffetId, UUID produtoEstoqueId,
                                                     BigDecimal quantidade, BigDecimal custoUnitario,
                                                     String motivo, String lote, String responsavel) {
         MovimentoEstoqueDTO dto = new MovimentoEstoqueDTO();
         dto.setProdutoFruteiraId(produtoFruteiraId);
         dto.setProdutoBuffetId(produtoBuffetId);
+        dto.setProdutoEstoqueId(produtoEstoqueId);
         dto.setTipo(MovimentoEstoque.TipoMovimento.SAIDA_PERDA);
-        dto.setOrigem(produtoFruteiraId != null ? MovimentoEstoque.OrigemDestino.FRUTEIRA : MovimentoEstoque.OrigemDestino.BUFFET);
+        dto.setOrigem(destinoDoProduto(produtoFruteiraId, produtoBuffetId, produtoEstoqueId));
         dto.setDestino(MovimentoEstoque.OrigemDestino.PERDA);
         dto.setQuantidade(quantidade);
         dto.setCustoUnitario(custoUnitario);
