@@ -94,6 +94,10 @@ public interface FiscalConfig {
     @WithDefault("1")
     String modeloDanfe();
 
+    @WithName("danfe-dir")
+    @WithDefault("./danfe")
+    String danfeDir();
+
     @WithName("logo-path")
     Optional<String> logoPath();
 

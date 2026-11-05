@@ -51,6 +51,7 @@ import {
   ChevronRight as ChevronRightIcon,
   Notifications as NotificationsIcon,
   AccountBalance as CashIcon,
+  Business as BusinessIcon,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { usePdv } from '@/contexts/PdvContext';
@@ -87,6 +88,7 @@ const menuItems = [
   { divider: true, section: 'Fiscal/Contábil' },
   { text: 'Saúde / Testes', icon: <WarningIcon />, path: '/saude', roles: ['ADMIN', 'GERENTE', 'SUPERVISOR'] },
   { text: 'NFC-e/Notas', icon: <ReceiptLongIcon />, path: '/fiscal/nfe', roles: ['FISCAL', 'ADMIN', 'GERENTE', 'CONTABIL'] },
+  { text: 'DANFEs por CNPJ', icon: <BusinessIcon />, path: '/fiscal/danfes', roles: ['FISCAL', 'ADMIN', 'GERENTE', 'CONTABIL', 'CAIXA'] },
   { text: 'SPED Fiscal', icon: <AccountBalanceIcon />, path: '/fiscal/sped-fiscal', roles: ['FISCAL', 'ADMIN', 'CONTABIL'] },
   { text: 'DRE', icon: <AssessmentIcon />, path: '/fiscal/dre', roles: ['FISCAL', 'ADMIN', 'CONTABIL', 'GERENTE'] },
   { text: 'Ativos Imobilizados', icon: <StoreIcon />, path: '/fiscal/ativos', roles: ['FISCAL', 'ADMIN', 'CONTABIL'] },

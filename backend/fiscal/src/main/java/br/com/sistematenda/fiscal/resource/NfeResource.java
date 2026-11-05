@@ -2,6 +2,7 @@ package br.com.sistematenda.fiscal.resource;
 
 import br.com.sistematenda.fiscal.dto.NfeDTO;
 import br.com.sistematenda.fiscal.dto.NfeRequest;
+import br.com.sistematenda.fiscal.danfe.DanfeStorageService;
 import br.com.sistematenda.fiscal.entity.Nfe;
 import br.com.sistematenda.fiscal.mapper.NfeMapper;
 import br.com.sistematenda.fiscal.nfe.NfeEmissor;
@@ -42,6 +43,9 @@ public class NfeResource {
 
     @Inject
     NfeEmissor nfeEmissor;
+
+    @Inject
+    DanfeStorageService danfeStorageService;
 
     @GET
     public PageResponse<NfeDTO> listar(
@@ -145,16 +149,15 @@ public class NfeResource {
 
     @GET
     @Path("/{id}/danfe")
+    @Transactional
     public Response downloadDanfe(@PathParam("id") UUID id) {
         Nfe nfe = repository.findById(id);
         if (nfe == null || nfe.deleted) {
             throw new NotFoundException("Nfe", id);
         }
-        if (nfe.danfe == null) {
-            throw new BusinessException("DANFE_NAO_ENCONTRADO", "DANFE não encontrado para esta nota");
-        }
+        byte[] pdf = danfeStorageService.obterOuGerar(nfe);
         StreamingOutput stream = output -> {
-            try (ByteArrayInputStream input = new ByteArrayInputStream(nfe.danfe)) {
+            try (ByteArrayInputStream input = new ByteArrayInputStream(pdf)) {
                 byte[] buffer = new byte[8192];
                 int bytesRead;
                 while ((bytesRead = input.read(buffer)) != -1) {

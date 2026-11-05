@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { irPara, esperarApi, expectOk, acaoPorIcone } from './nav';
+import { irPara, esperarApi, expectOk } from './nav';
 
 test.describe('PDV e Vendas', () => {
   test('PDV: frente de caixa carrega e oferece as ações principais', async ({ page }) => {
@@ -10,7 +10,7 @@ test.describe('PDV e Vendas', () => {
     await expect(main.getByRole('button', { name: 'Nova venda' })).toBeVisible();
     await expect(main.getByRole('button', { name: /Buscar/ })).toBeVisible();
     await expect(main.getByRole('button', { name: 'Caderno (fiado)' })).toBeVisible();
-    await expect(main.getByRole('button', { name: 'Pagamento' })).toBeDisabled();
+    await expect(main.getByRole('button', { name: 'Pagar' })).toBeDisabled();
     await expect(main.getByRole('button', { name: 'Finalizar' })).toBeDisabled();
 
     for (const aba of ['Buffet', 'Fruteira', 'Mesas']) {
@@ -27,7 +27,7 @@ test.describe('PDV e Vendas', () => {
     await expect(main.getByRole('button', { name: 'Caderno (fiado)' })).toBeEnabled();
     await expect(main.getByRole('button', { name: 'Lançar fiado' })).toBeEnabled();
     await expect(main.getByRole('button', { name: 'Aplicar' })).toBeDisabled();
-    await expect(main.getByRole('button', { name: 'Pagamento' })).toBeDisabled();
+    await expect(main.getByRole('button', { name: 'Pagar' })).toBeDisabled();
 
     // Sem cliente selecionado, "Caderno (fiado)" não abre diálogo (exibe aviso)
     await main.getByRole('button', { name: 'Caderno (fiado)' }).click();
@@ -60,8 +60,13 @@ test.describe('PDV e Vendas', () => {
     await dialog.getByRole('button', { name: 'Fechar' }).click();
     await expect(page.getByRole('dialog')).toBeHidden();
 
-    // O ícone de cancelar não tem aria-label (Tooltip envolto por <span>)
-    await acaoPorIcone(page, 'CancelIcon').first().click();
+    // O ícone de cancelar não tem aria-label (Tooltip envolto por <span>).
+    // Vendas já canceladas exibem o ícone desabilitado; seleciona a primeira
+    // venda que ainda pode ser cancelada.
+    await page
+      .locator('button:has(svg[data-testid="CancelIcon"]):not([disabled])')
+      .first()
+      .click();
     dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('heading', { name: 'Cancelar venda' })).toBeVisible();
     await expect(dialog.getByLabel(/Motivo do cancelamento/)).toBeVisible();

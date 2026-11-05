@@ -36,6 +36,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-minha-chave-secreta-super-segura-para-desenvolvimento-local-32-chars-min}
     ports:
       - "8080:8080"
+    volumes:
+      - sistematenda-danfe:/app/danfe
 
   frontend:
     build: ./frontend
@@ -48,3 +50,4 @@ services:
 
 volumes:
   sistematenda-pgdata:
+  sistematenda-danfe:

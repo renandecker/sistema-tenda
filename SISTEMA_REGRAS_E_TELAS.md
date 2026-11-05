@@ -126,6 +126,14 @@ O Sistema Tenda é construído em uma arquitetura modular moderna:
 * **Funcionalidades:**
   * Inutilização, cancelamento e consulta de notas autorizadas.
 
+#### A.1. DANFEs por CNPJ (`/fiscal/danfes`)
+* **Descrição:** Consulta dos DANFEs agrupados pelo CNPJ/CPF do destinatário, sempre exibindo a razão social.
+* **Funcionalidades:**
+  * Agrupa os documentos das notas emitidas e dos clientes pessoa jurídica cadastrados.
+  * Quando não há nenhum CNPJ na base, exibe também os CPFs para a tela não ficar vazia.
+  * Imprime ou baixa o PDF do DANFE; se o arquivo ainda não existir, ele é gerado a partir dos dados da nota.
+  * O PDF fica armazenado fisicamente no servidor em `FISCAL_DANFE_DIR/<cnpj-ou-cpf>/danfe-<chave>.pdf`.
+
 #### B. SPED Fiscal / EFD (`/fiscal/sped-fiscal`)
 * **Descrição:** Geração de arquivos digitais para prestação de contas ao fisco (ICMS/IPI).
 

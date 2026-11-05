@@ -8,7 +8,12 @@ class ComandaStateMachine {
   private estado: ComandaFalso;
 
   constructor(comandaInicial: ComandaFalso) {
-    this.estado = { ...comandaInicial };
+    // Copia profunda dos itens: evita mutar as fixtures compartilhadas
+    // (COMANDAS_FAKE) e contaminar outros testes do mesmo worker.
+    this.estado = {
+      ...comandaInicial,
+      itens: comandaInicial.itens?.map((item) => ({ ...item })),
+    };
   }
 
   public getStatus(): string {

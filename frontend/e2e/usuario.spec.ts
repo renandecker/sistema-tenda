@@ -31,7 +31,7 @@ test.describe('Usuário, Perfil, Auditoria e Saúde', () => {
     const main = page.getByRole('main');
     await expect(main.getByText('Saúde dos Pagamentos')).toBeVisible();
     expectOk(await resp);
-    await expect(main.getByText('PIX', { exact: true })).toBeVisible();
-    await expect(main.getByText('TEF', { exact: true })).toBeVisible();
+    await expect(main.getByRole('heading', { name: 'PIX / PSP' })).toBeVisible();
+    await expect(main.getByRole('heading', { name: 'TEF / Pinpad' })).toBeVisible();
   });
 });

@@ -3,6 +3,7 @@ package br.com.sistematenda.fiscal.nfe;
 import br.com.sistematenda.common.config.FiscalConfig;
 import br.com.sistematenda.common.exception.BusinessException;
 import br.com.sistematenda.common.util.ChaveAcessoUtils;
+import br.com.sistematenda.fiscal.danfe.DanfeStorageService;
 import br.com.sistematenda.fiscal.entity.Nfe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -34,6 +35,9 @@ public class NfeEmissor {
 
     @Inject
     CertificadoDigital certificadoDigital;
+
+    @Inject
+    DanfeStorageService danfeStorageService;
 
     @Transactional
     public Nfe emitir(Nfe nfe) {
@@ -72,6 +76,7 @@ public class NfeEmissor {
             }
 
             aplicarRespostaAutorizacao(nfe, resposta);
+            gerarDanfe(nfe);
             return nfe;
         } catch (BusinessException e) {
             nfe.status = Nfe.StatusNfe.REJEITADA;
@@ -106,7 +111,24 @@ public class NfeEmissor {
             nfe.status = Nfe.StatusNfe.DENEGADA;
             nfe.motivoRejeicao = limitar(resposta.descricao(), 500);
         }
+        gerarDanfe(nfe);
         return nfe;
+    }
+
+    /**
+     * Gera o DANFE fisico apos a autorizacao. Uma falha na geracao do PDF nao
+     * pode desfazer a emissao ja autorizada pela SEFAZ.
+     */
+    private void gerarDanfe(Nfe nfe) {
+        if (nfe == null || nfe.status != Nfe.StatusNfe.AUTORIZADA) {
+            return;
+        }
+        try {
+            danfeStorageService.gerarESalvar(nfe);
+        } catch (Exception e) {
+            LOG.warnf("Nota %s autorizada, mas o DANFE nao pode ser gerado: %s",
+                nfe.chaveAcesso, e.getMessage());
+        }
     }
 
     @Transactional

@@ -300,6 +300,13 @@ export const apiFiscal = {
   statusServico: (modelo: string = '65') => api.get('/fiscal/nfe/status-servico', { params: { modelo } }),
   downloadXml: (id: string) => api.get(`/fiscal/nfe/${id}/xml`, { responseType: 'blob' }),
   downloadDanfe: (id: string) => api.get(`/fiscal/nfe/${id}/danfe`, { responseType: 'blob' }),
+
+  // DANFEs por CNPJ
+  listDanfeCnpjs: (params?: any) => api.get('/fiscal/danfe/cnpjs', { params }),
+  listDanfePorCnpj: (cnpj: string, params?: any) => api.get(`/fiscal/danfe/cnpj/${cnpj}`, { params }),
+  getDanfePdf: (id: string, download: boolean = false) =>
+    api.get(`/fiscal/danfe/${id}/pdf`, { params: { download }, responseType: 'blob' }),
+  gerarDanfe: (id: string) => api.post(`/fiscal/danfe/${id}/gerar`),
   inutilizarNumeracao: (justificativa: string, numeroInicial: number, numeroFinal: number, modelo: string = '65', serie: number = 1) =>
     api.post('/fiscal/nfe/inutilizar', null, { params: { justificativa, numeroInicial, numeroFinal, modelo, serie } }),
   listSpedFiscal: (params?: any) => api.get('/fiscal/sped-fiscal', { params }),

@@ -25,6 +25,7 @@ import { PixQrCode, type PixChargeResponse } from '@/components/pix';
 import { TesteProducaoPanel } from '@/components/TesteProducaoPanel';
 import { formatCurrency, formatDateTime, formatNumber } from '@/utils/formatters';
 import { maskCurrency, maskCpfCnpj, maskQuantity, parseCurrency, parseDecimal, parseDocument } from '@/utils/masks';
+import { formatarMensagemErro } from '@/utils/errorFormatter';
 
 interface ItemResumo {
   id?: string;
@@ -613,9 +614,9 @@ export function PdvPage() {
       setReimpressaoDialog(false);
     } catch (e: any) {
       try { janela.close(); } catch { /* ignore */ }
-      const mensagem = e?.response?.data?.message || e?.message || 'Erro ao reimprimir';
-      toast.error(mensagem);
-      try { await apiPdv.reimprimirVenda(venda.id, false, mensagem); } catch { /* ignore */ }
+      const errInfo = formatarMensagemErro(e);
+      toast.error(`${errInfo.titulo}: ${errInfo.mensagem}`);
+      try { await apiPdv.reimprimirVenda(venda.id, false, errInfo.mensagem); } catch { /* ignore */ }
     } finally {
       setProcessandoReimpressao(false);
     }
@@ -1166,7 +1167,7 @@ export function PdvPage() {
                 <Button variant="outlined" onClick={aplicarDesconto} disabled={!venda}>Aplicar <Typography variant="caption" color="text.secondary">(F5)</Typography></Button>
               </Box>
               <Grid container spacing={1}>
-                <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={abrirPagamento}>Pagar <Typography variant="caption" color="text.secondary">(F6)</Typography></Button></Grid>
+                <Grid item xs={6}><Button fullWidth variant="outlined" startIcon={<PaymentsIcon />} onClick={abrirPagamento} disabled={!venda}>Pagar <Typography variant="caption" color="text.secondary">(F6)</Typography></Button></Grid>
                 <Grid item xs={6}><Button fullWidth variant="contained" startIcon={<CheckIcon />} onClick={finalizar} disabled={venda == null || saldoCentavos > 0}>Finalizar <Typography variant="caption" color="text.secondary">(F7)</Typography></Button></Grid>
                 <Grid item xs={12}><Button fullWidth color="error" startIcon={<CancelIcon />} onClick={cancelar} disabled={!venda}>Cancelar venda <Typography variant="caption" color="text.secondary">(F8)</Typography></Button></Grid>
               </Grid>

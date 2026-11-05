@@ -10,12 +10,12 @@ test.describe('Fiscal / Contábil', () => {
 
     const main = page.getByRole('main');
     await expect(main.getByRole('button', { name: 'Atualizar' })).toBeVisible();
-    await expect(main.getByLabel('Status')).toBeVisible();
+    await expect(main.getByLabel('Status', { exact: true })).toBeVisible();
     await expect(main.getByLabel('Modelo')).toBeVisible();
     await expect(main.getByLabel('Início')).toBeVisible();
     await expect(main.getByLabel('Fim')).toBeVisible();
 
-    await main.getByLabel('Status').selectOption({ label: 'Autorizada' });
+    await main.getByLabel('Status', { exact: true }).selectOption({ label: 'Autorizada' });
     await main.getByLabel('Modelo').selectOption({ label: 'NFC-e (65)' });
     await main.getByLabel('Início').fill('2024-01-01');
     await main.getByLabel('Fim').fill('2026-12-31');

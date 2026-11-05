@@ -25,6 +25,7 @@ import { VendasPage } from './pages/pdv/VendasPage';
 import { CadernoPage } from './pages/pdv/CadernoPage';
 import { SessoesCaixaPage } from './pages/pdv/SessoesCaixaPage';
 import { NfePage } from './pages/fiscal/NfePage';
+import { DanfeCnpjPage } from './pages/fiscal/DanfeCnpjPage';
 import { SpedFiscalPage } from './pages/fiscal/SpedFiscalPage';
 import { DrePage } from './pages/fiscal/DrePage';
 import { AtivosImobilizadosPage } from './pages/fiscal/AtivosImobilizadosPage';
@@ -96,6 +97,7 @@ export function App() {
         
         {/* Fiscal */}
         <Route path="fiscal/nfe" element={<NfePage />} />
+        <Route path="fiscal/danfes" element={<DanfeCnpjPage />} />
         <Route path="fiscal/sped-fiscal" element={<SpedFiscalPage />} />
         <Route path="fiscal/dre" element={<DrePage />} />
         <Route path="fiscal/ativos" element={<AtivosImobilizadosPage />} />

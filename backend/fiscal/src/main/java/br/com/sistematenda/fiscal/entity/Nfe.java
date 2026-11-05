@@ -163,6 +163,10 @@ public class Nfe extends BaseEntity {
     @Column(name = "danfe", columnDefinition = "BYTEA")
     public byte[] danfe;
 
+    @Column(name = "danfe_path", length = 500)
+    @Size(max = 500)
+    public String danfePath;
+
     @Column(name = "venda_id")
     public UUID vendaId;
 
